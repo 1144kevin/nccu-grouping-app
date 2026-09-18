@@ -1,56 +1,59 @@
-# Welcome to your Expo app 👋
+# 政缺一咖 App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native + Expo 前端。
 
-## Get started
+## 開始開發
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+需要 Node.js 24。安裝依賴後啟動 Expo：
 
 ```bash
-npm run reset-project
+nvm use
+npm install
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+終端機顯示 QR code 後可用 Expo Go 開啟；需要測試推播等原生能力時，改用 development build。
 
-### Other setup steps
+## 常用指令
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+```bash
+npm run ios
+npm run android
+npm run web
+npm run typecheck
+npm run lint
+npm test
+```
 
-## Learn more
+## 目錄
 
-To learn more about developing your project with Expo, look at the following resources:
+- `src/app/`：Expo Router 頁面與導覽。
+- `src/components/`：跨頁共用 UI 元件。
+- `src/store/`：Zustand 本機狀態與操作。
+- `src/lib/`：API client 與 React Query 設定。
+- `src/services/`：推播等裝置服務。
+- `src/data/`：後端完成前使用的展示資料。
+- `src/theme/`：設計色彩、字體、間距與圓角 token。
+- `src/types/`：跨模組共用的 TypeScript 型別。
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 主要路由
 
-## Join the community
+- `/(tabs)`：首頁、拼單、新增、訊息、個人檔案。
+- `/search`：跨貼文、使用者、訊息與拼單紀錄的獨立搜尋。
+- `/post/[id]`、`/order/[id]`、`/user/[name]`、`/chat/[id]`：各類詳情與互動流程。
+- `/notifications`、`/preferences`、`/settings`、`/edit-profile`、`/help`：Drawer 及帳號相關功能。
 
-Join our community of developers creating universal apps.
+## 環境變數
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+以 `.env.example` 建立本機 `.env`，不要提交私密金鑰。OpenAI 金鑰只能存在後端，不能放入 Expo App。
+
+## TestFlight
+
+登入 Expo 與 Apple Developer 帳號後執行：
+
+```bash
+npx eas-cli build --platform ios --profile production
+npx eas-cli submit --platform ios --profile production
+```
+
+首次執行前需用 `eas init` 綁定 Expo 專案，並將產生的 project ID 放入 App 設定或環境變數。

@@ -1,16 +1,22 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "政缺一咖",
+    "slug": "nccu-grouping",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "app",
-    "userInterfaceStyle": "automatic",
+    "scheme": "nccugrouping",
+    "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nccugrouping.nccuGrouping",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "用於通知拼單申請、成團狀態與新訊息。"
+      }
     },
     "android": {
+      "package": "com.nccugrouping.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -20,7 +26,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -28,11 +34,28 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "允許政缺一咖使用麥克風建立語音拼單。"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允許政缺一咖選取照片加入拼單或聊天室。",
+          "cameraPermission": "允許政缺一咖拍攝拼單照片。"
+        }
+      ],
+      "expo-notifications",
+      "@react-native-community/datetimepicker",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

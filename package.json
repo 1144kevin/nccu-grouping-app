@@ -1,17 +1,27 @@
 {
-  "name": "app",
+  "name": "nccu-grouping",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.16",
+    "@expo/vector-icons": "^15.0.2",
+    "@hookform/resolvers": "^5.9.1",
+    "@react-native-community/datetimepicker": "9.1.0",
+    "@tanstack/react-query": "^5.102.8",
+    "axios": "^1.20.0",
     "expo": "~57.0.20",
+    "expo-asset": "~57.0.16",
+    "expo-audio": "~57.0.4",
     "expo-constants": "~57.0.17",
     "expo-device": "~57.0.1",
     "expo-font": "~57.0.3",
     "expo-glass-effect": "~57.0.1",
     "expo-image": "~57.0.4",
+    "expo-image-picker": "~57.0.16",
     "expo-linking": "~57.0.9",
+    "expo-notifications": "~57.0.17",
     "expo-router": "~57.0.19",
+    "expo-secure-store": "~57.0.3",
     "expo-splash-screen": "~57.0.8",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.2",
@@ -19,25 +29,43 @@
     "expo-web-browser": "~57.0.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-hook-form": "^7.87.0",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.10.1"
+    "react-native-worklets": "0.10.1",
+    "zod": "^4.5.4",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "eslint": "^9.39.5",
+    "eslint-config-expo": "^57.0.2",
+    "jest": "^29.7.0",
+    "jest-expo": "^57.0.5",
+    "prettier": "^3.9.6",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "preview": "node ./scripts/preview.mjs",
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "jest --no-watchman"
   },
-  "private": true
+  "jest": {
+    "preset": "jest-expo"
+  },
+  "private": true,
+  "packageManager": "pnpm@9.7.0+sha512.dc09430156b427f5ecfc79888899e1c39d2d690f004be70e05230b72cb173d96839587545d09429b55ac3c429c801b4dc3c0e002f653830a420fa2dd4e3cf9cf"
 }

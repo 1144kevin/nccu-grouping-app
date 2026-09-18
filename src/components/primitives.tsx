@@ -1,0 +1,291 @@
+import { useNavigationStore } from '@/store/navigation-store';
+import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export function Screen({
+  children,
+  scroll = false,
+  style,
+}: PropsWithChildren<{ scroll?: boolean; style?: ViewStyle }>) {
+  const content = scroll ? (
+    <ScrollView
+      contentContainerStyle={[styles.scrollContent, style]}
+      keyboardShouldPersistTaps="handled"
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[styles.screenContent, style]}>{children}</View>
+  );
+  return (
+    <SafeAreaView edges={['top']} style={styles.safe}>
+      {content}
+    </SafeAreaView>
+  );
+}
+
+export function AppHeader({
+  title,
+  searchScope = 'all',
+}: {
+  title?: string;
+  searchScope?: 'all' | 'posts' | 'orders' | 'messages' | 'history';
+}) {
+  const openDrawer = useNavigationStore((state) => state.openDrawer);
+  return (
+    <View style={styles.header}>
+      <IconButton icon="menu" label="開啟選單" onPress={openDrawer} />
+      {title ? (
+        <Text style={styles.headerTitle}>{title}</Text>
+      ) : (
+        <MaterialCommunityIcons name="bowl-mix-outline" size={26} color={colors.ink} />
+      )}
+      <IconButton
+        icon="magnify"
+        label="搜尋"
+        onPress={() => router.push({ pathname: '/search', params: { scope: searchScope } })}
+      />
+    </View>
+  );
+}
+
+export function DetailHeader({ title, right }: { title: string; right?: ReactNode }) {
+  return (
+    <View style={styles.header}>
+      <IconButton icon="chevron-left" label="返回" onPress={() => router.back()} />
+      <Text numberOfLines={1} style={styles.headerTitle}>
+        {title}
+      </Text>
+      <View style={styles.headerRight}>{right}</View>
+    </View>
+  );
+}
+
+export function IconButton({
+  icon,
+  label,
+  onPress,
+  color = colors.ink,
+  disabled = false,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  label: string;
+  onPress?: () => void;
+  color?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.iconButton,
+        pressed && styles.pressed,
+        disabled && styles.disabled,
+      ]}
+    >
+      <MaterialCommunityIcons name={icon} size={20} color={disabled ? colors.subtle : color} />
+    </Pressable>
+  );
+}
+
+export function Avatar({ name, badge, size = 48 }: { name: string; badge: string; size?: number }) {
+  const palette = ['#CDE2EA', '#E8E1B4', '#E7CDC3', '#D2DDC9'];
+  const index =
+    [...name].reduce((sum, character) => sum + character.charCodeAt(0), 0) % palette.length;
+  return (
+    <View
+      accessibilityLabel={`${name} 的頭像`}
+      style={[
+        styles.avatar,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: palette[index] },
+      ]}
+    >
+      <Text style={{ fontSize: size * 0.44 }}>{badge}</Text>
+    </View>
+  );
+}
+
+export function Pill({
+  icon,
+  children,
+  tone = 'plain',
+}: PropsWithChildren<{
+  icon?: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  tone?: 'plain' | 'yellow' | 'danger' | 'success';
+}>) {
+  const toneStyle =
+    tone === 'yellow'
+      ? styles.pillYellow
+      : tone === 'danger'
+        ? styles.pillDanger
+        : tone === 'success'
+          ? styles.pillSuccess
+          : undefined;
+  return (
+    <View style={[styles.pill, toneStyle]}>
+      {icon && (
+        <MaterialCommunityIcons
+          name={icon}
+          size={13}
+          color={tone === 'plain' ? colors.yellow : colors.ink}
+        />
+      )}
+      <Text style={styles.pillText}>{children}</Text>
+    </View>
+  );
+}
+
+export function PrimaryButton({
+  children,
+  onPress,
+  disabled = false,
+  secondary = false,
+  style,
+}: PropsWithChildren<{
+  onPress?: () => void;
+  disabled?: boolean;
+  secondary?: boolean;
+  style?: ViewStyle;
+}>) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.primaryButton,
+        secondary && styles.secondaryButton,
+        disabled && styles.disabledButton,
+        style,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Text style={styles.primaryButtonText}>{children}</Text>
+    </Pressable>
+  );
+}
+
+export function SectionTitle({ children, action }: PropsWithChildren<{ action?: ReactNode }>) {
+  return (
+    <View style={styles.sectionTitleRow}>
+      <Text style={styles.sectionTitle}>{children}</Text>
+      {action}
+    </View>
+  );
+}
+
+export function EmptyState({
+  icon,
+  title,
+  action,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  title: string;
+  action?: ReactNode;
+}) {
+  return (
+    <View style={styles.empty}>
+      <MaterialCommunityIcons name={icon} size={38} color={colors.subtle} />
+      <Text style={styles.emptyText}>{title}</Text>
+      {action}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    backgroundColor: colors.background,
+  },
+  screenContent: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: spacing.xl },
+  header: {
+    height: 54,
+    paddingHorizontal: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: {
+    fontFamily: typography.rounded,
+    color: colors.ink,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerRight: { width: 40, alignItems: 'center' },
+  iconButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+  },
+  pressed: { opacity: 0.62 },
+  disabled: { opacity: 0.5 },
+  avatar: { alignItems: 'center', justifyContent: 'center' },
+  pill: {
+    minHeight: 30,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    gap: 5,
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  pillYellow: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
+  pillDanger: { borderColor: '#F2C9C9', backgroundColor: '#FFF0F0' },
+  pillSuccess: { borderColor: '#BFDDCA', backgroundColor: '#EDF8F1' },
+  pillText: { fontFamily: typography.regular, fontSize: 12, color: colors.ink },
+  primaryButton: {
+    minHeight: 43,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.yellow,
+  },
+  secondaryButton: { backgroundColor: colors.surface },
+  disabledButton: { backgroundColor: '#E5E5E3' },
+  primaryButtonText: {
+    fontFamily: typography.rounded,
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', minHeight: 42 },
+  sectionTitle: {
+    flex: 1,
+    fontFamily: typography.rounded,
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  empty: {
+    flex: 1,
+    minHeight: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.xl,
+  },
+  emptyText: {
+    color: colors.muted,
+    fontFamily: typography.regular,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+});
