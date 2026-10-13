@@ -2,7 +2,7 @@
 
 React Native + Expo 前端。
 
-## 開始開發
+## 開始開發嘍
 
 需要 Node.js 24。安裝依賴後啟動 Expo：
 
