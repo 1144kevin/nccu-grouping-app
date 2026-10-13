@@ -161,7 +161,7 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
               ],
             }]}>
               <GlassSurface solid={reduceTransparency} style={{ ...styles.selectionMaterial, ...(dragging ? styles.selectionDragging : {}), ...(reduceTransparency ? { backgroundColor: '#E5E5E1' } : {}) }}>
-                <View style={styles.lensHighlight} />
+                <Animated.View style={[{ opacity: dragProgress }]} />
               </GlassSurface>
             </Animated.View>
           )}
@@ -213,7 +213,6 @@ const styles = StyleSheet.create({
   selection: { overflow: 'visible', position: 'absolute', top: 0, bottom: 0 },
   selectionMaterial: { flex: 1, borderRadius: 28, backgroundColor: 'rgba(210,210,205,0.42)', borderColor: 'rgba(255,255,255,0.65)', boxShadow: 'none' },
   selectionDragging: { backgroundColor: 'rgba(255,255,255,0.34)', borderColor: 'rgba(255,255,255,0.95)', boxShadow: '0px 5px 18px rgba(25,25,20,0.2)' },
-  lensHighlight: { position: 'absolute', top: 1, left: 12, right: 12, height: 1, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.8)' },
   tabContents: { alignItems: 'center', justifyContent: 'center', gap: 3 },
   label: { color: '#62615D', fontFamily: typography.regular, fontSize: 10, fontWeight: '500' },
   selectedLabel: { color: colors.ink, fontWeight: '700' },
