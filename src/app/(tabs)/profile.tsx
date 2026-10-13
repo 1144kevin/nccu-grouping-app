@@ -30,7 +30,7 @@ function HistoryRow({ item }: { item: OrderHistory }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  content: { padding: spacing.lg, paddingBottom: 120 },
   identity: { flexDirection: 'row', alignItems: 'center' },
   identityText: { flex: 1, marginLeft: 14 },
   username: { color: colors.ink, fontFamily: typography.rounded, fontSize: 22, fontWeight: '800' },

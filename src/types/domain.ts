@@ -1,6 +1,9 @@
 export type JoinStatus = 'pending' | 'accepted' | 'rejected';
 export type InboxType = 'primary' | 'general';
 
+export type Coordinates = { latitude: number; longitude: number };
+export type PostLocation = Coordinates & { name: string; address?: string; source?: 'openstreetmap' };
+
 export type FeedPost = {
   id: string;
   name: string;
@@ -14,6 +17,8 @@ export type FeedPost = {
   capacity: number;
   imageUrl?: string;
   isMine?: boolean;
+  location?: PostLocation;
+  pricePerPerson?: number;
 };
 
 export type JoinRequest = {
@@ -35,6 +40,7 @@ export type ChatMessage = {
 };
 
 export type Conversation = {
+  pinned?: boolean;
   id: string;
   name: string;
   badge: string;
@@ -79,6 +85,8 @@ export type UserProfile = {
 };
 
 export type CreatePostInput = {
+  pricePerPerson?: number;
+  location: PostLocation;
   content: string;
   tags: string[];
   deadline: string;

@@ -1,7 +1,7 @@
 import { useNavigationStore } from '@/store/navigation-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,7 +42,14 @@ export function AppHeader({
       {title ? (
         <Text style={styles.headerTitle}>{title}</Text>
       ) : (
-        <MaterialCommunityIcons name="bowl-mix-outline" size={26} color={colors.ink} />
+        <Link href="/" asChild>
+          <Pressable
+            accessibilityLabel="返回首頁"
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          >
+            <MaterialCommunityIcons name="bowl-mix-outline" size={26} color={colors.ink} />
+          </Pressable>
+        </Link>
       )}
       <IconButton
         icon="magnify"
@@ -148,11 +155,13 @@ export function PrimaryButton({
   disabled = false,
   secondary = false,
   style,
+  textColor,
 }: PropsWithChildren<{
   onPress?: () => void;
   disabled?: boolean;
   secondary?: boolean;
   style?: ViewStyle;
+  textColor?: string;
 }>) {
   return (
     <Pressable
@@ -167,7 +176,7 @@ export function PrimaryButton({
         pressed && styles.pressed,
       ]}
     >
-      <Text style={styles.primaryButtonText}>{children}</Text>
+      <Text style={[styles.primaryButtonText, textColor ? { color: textColor } : undefined]}>{children}</Text>
     </Pressable>
   );
 }

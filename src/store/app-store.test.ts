@@ -59,10 +59,15 @@ describe('app store workflows', () => {
       content: '今天晚上六點想揪三個人一起訂晚餐。',
       tags: ['拼單'],
       deadline: '今天 17:30',
-      capacity: 4,
+      capacity: 100,
+      pricePerPerson: 85,
+      location: { name: '測試取餐點', latitude: 24.98, longitude: 121.575 },
     });
 
     expect(useAppStore.getState().posts[0].id).toBe(post.id);
+    expect(useAppStore.getState().posts[0].location).toEqual({ name: '測試取餐點', latitude: 24.98, longitude: 121.575 });
+    expect(useAppStore.getState().posts[0].capacity).toBe(100);
+    expect(useAppStore.getState().posts[0].pricePerPerson).toBe(85);
     expect(useAppStore.getState().history[0].status).toBe('進行中');
   });
 

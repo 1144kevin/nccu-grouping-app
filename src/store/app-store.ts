@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { postLocationSchema } from '@/lib/location';
+import { priceSchema } from '@/lib/price';
+import { capacitySchema } from '@/lib/capacity';
 import {
   initialConversations,
   initialHistory,
@@ -11,6 +14,7 @@ import type {
   Conversation,
   CreatePostInput,
   FeedPost,
+  InboxType,
   JoinStatus,
   NotificationSettings,
   OrderHistory,
@@ -23,6 +27,7 @@ type AppState = {
   dismissedPostIds: string[];
   requests: typeof initialRequests;
   conversations: Conversation[];
+  deletedConversations: { conversation: Conversation; index: number; muted: boolean }[];
   history: OrderHistory[];
   notifications: AppNotification[];
   reminderPostIds: string[];
@@ -33,8 +38,13 @@ type AppState = {
   currentUser: UserProfile;
   toggleInterest: (postId: string) => void;
   dismissPost: (postId: string) => void;
+  restorePost: (postId: string) => void;
   updateRequest: (requestId: string, status: JoinStatus) => void;
   markRead: (conversationId: string) => void;
+  setConversationInbox: (conversationId: string, inbox: InboxType) => void;
+  toggleConversationPinned: (conversationId: string) => void;
+  deleteConversation: (conversationId: string) => void;
+  restoreConversation: (conversationId: string) => void;
   sendMessage: (conversationId: string, text: string) => void;
   startConversation: (name: string, badge: string, level: number) => string;
   toggleReminder: (postId: string) => void;
@@ -54,6 +64,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   dismissedPostIds: [],
   requests: initialRequests,
   conversations: initialConversations,
+  deletedConversations: [],
   history: initialHistory,
   notifications: initialNotifications,
   reminderPostIds: [],
@@ -80,12 +91,40 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   dismissPost: (postId) =>
     set((state) => ({ dismissedPostIds: [...new Set([...state.dismissedPostIds, postId])] })),
+  restorePost: (postId) =>
+    set((state) => ({ dismissedPostIds: state.dismissedPostIds.filter((id) => id !== postId) })),
   updateRequest: (requestId, status) =>
     set((state) => ({
       requests: state.requests.map((request) =>
         request.id === requestId ? { ...request, status } : request,
       ),
     })),
+  setConversationInbox: (conversationId, inbox) =>
+    set((state) => ({ conversations: state.conversations.map((item) => item.id === conversationId ? { ...item, inbox } : item) })),
+  toggleConversationPinned: (conversationId) =>
+    set((state) => ({ conversations: state.conversations.map((item) => item.id === conversationId ? { ...item, pinned: !item.pinned } : item) })),
+  deleteConversation: (conversationId) =>
+    set((state) => {
+      const index = state.conversations.findIndex((item) => item.id === conversationId);
+      if (index < 0) return state;
+      return {
+        conversations: state.conversations.filter((item) => item.id !== conversationId),
+        mutedConversationIds: state.mutedConversationIds.filter((id) => id !== conversationId),
+        deletedConversations: [...state.deletedConversations, { conversation: state.conversations[index], index, muted: state.mutedConversationIds.includes(conversationId) }],
+      };
+    }),
+  restoreConversation: (conversationId) =>
+    set((state) => {
+      const deleted = state.deletedConversations.find((item) => item.conversation.id === conversationId);
+      if (!deleted || state.conversations.some((item) => item.id === conversationId)) return state;
+      const conversations = [...state.conversations];
+      conversations.splice(Math.min(deleted.index, conversations.length), 0, deleted.conversation);
+      return {
+        conversations,
+        mutedConversationIds: deleted.muted ? [...new Set([...state.mutedConversationIds, conversationId])] : state.mutedConversationIds,
+        deletedConversations: state.deletedConversations.filter((item) => item.conversation.id !== conversationId),
+      };
+    }),
   markRead: (conversationId) =>
     set((state) => ({
       conversations: state.conversations.map((conversation) =>
@@ -112,6 +151,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   startConversation: (name, badge, level) => {
     const existing = get().conversations.find((item) => item.name === name);
     if (existing) return existing.id;
+    const deleted = get().deletedConversations.find((item) => item.conversation.name === name);
+    if (deleted) {
+      get().restoreConversation(deleted.conversation.id);
+      return deleted.conversation.id;
+    }
     const id = `c-${Date.now()}`;
     set((state) => ({
       conversations: [
@@ -170,6 +214,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateProfile: (profile) =>
     set((state) => ({ currentUser: { ...state.currentUser, ...profile } })),
   publishPost: (input) => {
+    const location = postLocationSchema.parse(input.location);
+    const pricePerPerson = priceSchema.parse(input.pricePerPerson);
+    const capacity = capacitySchema.parse(input.capacity);
     const currentUser = get().currentUser;
     const post: FeedPost = {
       id: `mine-${Date.now()}`,
@@ -178,10 +225,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       level: 5,
       time: '剛剛',
       content: input.content,
+      location,
+      pricePerPerson,
       tags: input.tags,
       deadline: input.deadline,
       joined: 1,
-      capacity: input.capacity,
+      capacity,
       imageUrl: input.imageUrl,
       isMine: true,
     };

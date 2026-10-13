@@ -9,9 +9,14 @@ import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollV
 import { z } from 'zod';
 import { IconButton, PrimaryButton, SectionTitle, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { LocationPicker } from '@/components/location-picker';
+import { SettingField } from '@/components/setting-field';
+import { parsePrice, priceInputSchema } from '@/lib/price';
+import { capacityInputSchema } from '@/lib/capacity';
+import { postLocationSchema } from '@/lib/location';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
-const schema = z.object({ content: z.string().trim().min(10, '至少輸入 10 個字').max(500, '最多 500 個字') });
+const schema = z.object({ content: z.string().trim().min(10, '至少輸入 10 個字').max(500, '最多 500 個字'), location: postLocationSchema, price: priceInputSchema, capacity: capacityInputSchema });
 type FormValues = z.infer<typeof schema>;
 const suggestedTags = ['拼單', '政大附近', '東側門', '麵包', '法國可頌'];
 
@@ -23,15 +28,21 @@ export default function CreateScreen() {
   const [deadline, setDeadline] = useState(createInitialDeadline);
   const [draftDeadline, setDraftDeadline] = useState(deadline);
   const [deadlineStartDate] = useState(startOfDay);
-  const [capacity, setCapacity] = useState(4);
   const [deadlineModalVisible, setDeadlineModalVisible] = useState(false);
-  const [working, setWorking] = useState(false);
   const [tagModalVisible, setTagModalVisible] = useState(false);
   const [customTag, setCustomTag] = useState('');
+  const [locationKey, setLocationKey] = useState(0);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
-  const { control, handleSubmit, formState: { errors, isValid, isDirty }, getValues, setValue, reset } = useForm<FormValues>({ resolver: zodResolver(schema), mode: 'onChange', defaultValues: { content: '' } });
+  const { control, handleSubmit, formState: { errors, isValid, isDirty }, setValue, reset } = useForm<FormValues>({ resolver: zodResolver(schema), mode: 'onChange', defaultValues: { content: '', price: '', capacity: '4' } });
   const content = useWatch({ control, name: 'content' });
+  const capacityInput = useWatch({ control, name: 'capacity' });
+  const capacity = Number(capacityInput);
+
+  function stepCapacity(amount: number) {
+    const current = Number.isSafeInteger(capacity) && capacityInput.trim() !== '' ? capacity : 1;
+    setValue('capacity', String(Math.max(1, current + amount)), { shouldDirty: true, shouldValidate: true });
+  }
 
   async function pickImage() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,22 +63,6 @@ export default function CreateScreen() {
     recorder.record();
   }
 
-  async function generate() {
-    setWorking(true);
-    await new Promise((resolve) => setTimeout(resolve, 550));
-    setValue('content', '今天想揪大家一起訂東側門附近的餐點，目前還缺 3 人。預計在校門口取餐，費用會依人數均分，有興趣請在截止前加入！', { shouldDirty: true, shouldValidate: true });
-    setTags(['拼單', '政大附近', '東側門']);
-    setWorking(false);
-  }
-
-  async function polish() {
-    if (!getValues('content').trim()) return;
-    setWorking(true);
-    await new Promise((resolve) => setTimeout(resolve, 450));
-    setValue('content', `${getValues('content').trim()}\n\n費用將平均分攤，成團後會透過訊息確認取餐時間與地點。`, { shouldDirty: true, shouldValidate: true });
-    setWorking(false);
-  }
-
   function close() {
     if (!isDirty && !imageUri && !voiceUri) return router.replace('/');
     Alert.alert('捨棄這篇貼文？', '尚未發布的內容不會被保留。', [{ text: '繼續編輯', style: 'cancel' }, { text: '捨棄', style: 'destructive', onPress: () => router.replace('/') }]);
@@ -75,9 +70,13 @@ export default function CreateScreen() {
 
   const submit = handleSubmit((values) => {
     if (!tags.length) return Alert.alert('請選擇標籤', '至少需要一個主題標籤。');
-    publishPost({ content: values.content.trim(), tags, deadline: formatDeadline(deadline), capacity, imageUrl: imageUri, voiceUri });
+    publishPost({ content: values.content.trim(), location: values.location, pricePerPerson: parsePrice(values.price), tags, deadline: formatDeadline(deadline), capacity: Number(values.capacity), imageUrl: imageUri, voiceUri });
     reset();
-    Alert.alert('貼文已發布', '已加入首頁推薦資訊流。', [{ text: '查看首頁', onPress: () => router.replace('/') }]);
+    setLocationKey((key) => key + 1);
+    setImageUri(undefined);
+    setVoiceUri(undefined);
+    setTags(['拼單']);
+    router.replace('/');
   });
 
   function addCustomTag() {
@@ -114,12 +113,24 @@ export default function CreateScreen() {
           </View>
           <Controller control={control} name="content" render={({ field: { onChange, onBlur, value } }) => <TextInput autoFocus multiline maxLength={500} value={value} onBlur={onBlur} onChangeText={onChange} placeholder="分享想揪的餐點、價格、取餐地點等資訊..." placeholderTextColor={colors.subtle} style={styles.editor} textAlignVertical="top" />} />
           <View style={styles.counterRow}><Text style={styles.error}>{errors.content?.message}</Text><Text style={styles.counter}>{content.length}/500</Text></View>
-          <View style={styles.aiBox}><View style={styles.aiHeader}><MaterialCommunityIcons name="creation" size={18} /><Text style={styles.aiTitle}>AI 文字助理</Text><Text style={styles.aiNote}>內容仍需自行確認</Text></View><View style={styles.aiActions}><PrimaryButton secondary disabled={working} style={styles.aiButton} onPress={generate}>✨ 生成</PrimaryButton><PrimaryButton secondary disabled={working || !content.trim()} style={styles.aiButton} onPress={polish}>✎ 潤稿</PrimaryButton></View></View>
           <SectionTitle action={<IconButton icon="plus-circle-outline" label="新增標籤" onPress={() => setTagModalVisible(true)} />}>主題標籤</SectionTitle>
           <View style={styles.tagRow}>{suggestedTags.map((tag) => { const selected = tags.includes(tag); return <Pressable key={tag} onPress={() => setTags((items) => selected ? items.filter((item) => item !== tag) : [...items, tag])} style={[styles.tag, selected && styles.selectedTag]}><Text style={styles.tagText}>{selected ? '✓  ' : ''}{tag}</Text></Pressable>; })}</View>
           <SectionTitle>拼單設定</SectionTitle>
-          <Pressable accessibilityRole="button" accessibilityLabel="選擇截止時間" onPress={openDeadlinePicker} style={styles.settingRow}><MaterialCommunityIcons name="clock-outline" size={19} color={colors.yellow} /><View style={styles.settingText}><Text style={styles.settingLabel}>截止時間</Text><Text style={styles.settingValue}>{formatDeadline(deadline)}</Text></View><MaterialCommunityIcons name="chevron-right" size={17} color={colors.muted} /></Pressable>
-          <View style={styles.settingRow}><MaterialCommunityIcons name="account-group-outline" size={19} color={colors.yellow} /><View style={styles.settingText}><Text style={styles.settingLabel}>需求人數</Text><Text style={styles.settingValue}>{capacity} 人（包含主揪）</Text></View><IconButton icon="minus-circle-outline" label="減少人數" disabled={capacity <= 2} onPress={() => setCapacity((value) => value - 1)} /><Text style={styles.capacity}>{capacity}</Text><IconButton icon="plus-circle-outline" label="增加人數" disabled={capacity >= 20} onPress={() => setCapacity((value) => value + 1)} /></View>
+          <SettingField icon="clock-outline" title="截止時間">
+            <Pressable accessibilityRole="button" accessibilityLabel="選擇截止時間" onPress={openDeadlinePicker} style={styles.settingControl}><Text style={styles.controlValue}>{formatDeadline(deadline)}</Text><MaterialCommunityIcons name="chevron-right" size={17} color={colors.muted} /></Pressable>
+          </SettingField>
+          <SettingField icon="account-group-outline" title="需求人數">
+            <View style={styles.settingControl}><Text style={styles.peopleHint}>含主揪</Text><IconButton icon="minus" label="減少人數" disabled={capacity === 1} onPress={() => stepCapacity(-1)} /><Controller control={control} name="capacity" render={({ field: { onChange, onBlur, value } }) => <TextInput accessibilityLabel="需求人數" keyboardType="number-pad" inputMode="numeric" selectTextOnFocus value={value} onChangeText={onChange} onBlur={onBlur} style={styles.capacity} />} /><Text style={styles.currency}>人</Text><IconButton icon="plus" label="增加人數" onPress={() => stepCapacity(1)} /></View>
+            {errors.capacity ? <Text style={styles.fieldError}>{errors.capacity.message}</Text> : null}
+          </SettingField>
+          <SettingField icon="cash" title="每人預估金額">
+            <View style={styles.settingControl}><Text style={styles.currency}>NT$</Text><Controller control={control} name="price" render={({ field: { onChange, onBlur, value } }) => <TextInput accessibilityLabel="每人預估金額" keyboardType="decimal-pad" value={value} onChangeText={onChange} onBlur={onBlur} placeholder="未填寫則顯示待確認" placeholderTextColor={colors.subtle} style={styles.priceInput} />} /><Text style={styles.currency}>／人</Text></View>
+            {errors.price ? <Text style={styles.fieldError}>{errors.price.message}</Text> : <Text style={styles.fieldHint}>可填 0 表示免費，最多兩位小數。</Text>}
+          </SettingField>
+          <SettingField icon="map-marker-outline" title="取餐地點（必填）">
+            <Controller control={control} name="location" render={({ field: { onChange, value } }) => <LocationPicker key={locationKey} value={value} onChange={onChange} />} />
+            {errors.location ? <Text style={styles.fieldError}>請搜尋並選擇取餐地點，或使用目前位置。</Text> : null}
+          </SettingField>
         </ScrollView>
       </KeyboardAvoidingView>
       <DeadlinePickerModal
@@ -175,8 +186,8 @@ function updateDate(value: Date, selectedDate: Date) {
 
 function shiftTime(value: Date, amount: number, unit: 'hours' | 'minutes' | 'days') {
   const next = new Date(value);
-  if (unit === 'hours') next.setHours(next.getHours() + amount);
-  if (unit === 'minutes') next.setMinutes(next.getMinutes() + amount);
+  if (unit === 'hours') next.setHours((next.getHours() + amount + 24) % 24);
+  if (unit === 'minutes') next.setMinutes((next.getMinutes() + amount + 60) % 60);
   if (unit === 'days') next.setDate(next.getDate() + amount);
   return next;
 }
@@ -227,15 +238,9 @@ function DeadlinePickerModal({ startDate, value, visible, onApply, onChange, onC
 
           <Text style={styles.pickerLabel}>時間</Text>
           <View style={styles.timePicker}>
-            <TimeStepper label="小時" value={String(value.getHours()).padStart(2, '0')} onDecrease={() => onChange(shiftTime(value, -1, 'hours'))} onIncrease={() => onChange(shiftTime(value, 1, 'hours'))} />
+            <TimeStepper label="時" value={String(value.getHours()).padStart(2, '0')} onDecrease={() => onChange(shiftTime(value, -1, 'hours'))} onIncrease={() => onChange(shiftTime(value, 1, 'hours'))} />
             <Text style={styles.timeColon}>:</Text>
-            <TimeStepper label="分鐘" value={String(value.getMinutes()).padStart(2, '0')} onDecrease={() => onChange(shiftTime(value, -15, 'minutes'))} onIncrease={() => onChange(shiftTime(value, 15, 'minutes'))} />
-          </View>
-
-          <View style={styles.quickActions}>
-            <Pressable onPress={() => onChange(shiftTime(value, 1, 'hours'))} style={styles.quickButton}><Text style={styles.quickButtonText}>延後 1 小時</Text></Pressable>
-            <Pressable onPress={() => onChange(shiftTime(value, 3, 'hours'))} style={styles.quickButton}><Text style={styles.quickButtonText}>延後 3 小時</Text></Pressable>
-            <Pressable onPress={() => onChange(shiftTime(value, 1, 'days'))} style={styles.quickButton}><Text style={styles.quickButtonText}>隔天同時間</Text></Pressable>
+            <TimeStepper label="分" value={String(value.getMinutes()).padStart(2, '0')} onDecrease={() => onChange(shiftTime(value, -1, 'minutes'))} onIncrease={() => onChange(shiftTime(value, 1, 'minutes'))} />
           </View>
 
           <View style={styles.modalActions}><PrimaryButton secondary style={styles.modalButton} onPress={onClose}>取消</PrimaryButton><PrimaryButton style={styles.modalButton} onPress={onApply}>套用時間</PrimaryButton></View>
@@ -266,7 +271,7 @@ const styles = StyleSheet.create({
   publish: { minWidth: 64, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.yellow },
   publishDisabled: { backgroundColor: '#E4E4E2' },
   publishText: { color: colors.ink, fontFamily: typography.rounded, fontSize: 13, fontWeight: '700' },
-  content: { padding: spacing.lg, paddingBottom: 40 },
+  content: { padding: spacing.lg, paddingBottom: 120 },
   mediaRow: { height: 84, flexDirection: 'row', gap: 10 },
   thumbnail: { width: 84, height: 84, borderRadius: radius.md },
   removeMedia: { position: 'absolute', top: 3, right: 3, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000099' },
@@ -277,21 +282,18 @@ const styles = StyleSheet.create({
   counterRow: { height: 24, flexDirection: 'row' },
   error: { flex: 1, color: colors.danger, fontSize: 11 },
   counter: { color: colors.muted, fontSize: 11 },
-  aiBox: { padding: spacing.md, marginBottom: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface },
-  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  aiTitle: { flex: 1, color: colors.ink, fontWeight: '700' },
-  aiNote: { color: colors.muted, fontSize: 10 },
-  aiActions: { marginTop: 10, flexDirection: 'row', gap: 8 },
-  aiButton: { flex: 1, minHeight: 38, borderWidth: 1, borderColor: colors.muted },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.lg },
   tag: { minHeight: 36, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.yellow, borderRadius: radius.md },
   selectedTag: { backgroundColor: colors.yellowSoft },
   tagText: { color: colors.ink, fontFamily: typography.regular, fontSize: 13 },
-  settingRow: { minHeight: 67, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  settingText: { flex: 1 },
-  settingLabel: { color: colors.ink, fontFamily: typography.regular, fontSize: 14 },
-  settingValue: { marginTop: 3, color: colors.muted, fontFamily: typography.regular, fontSize: 12 },
-  capacity: { width: 18, textAlign: 'center', fontWeight: '700' },
+  settingControl: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
+  controlValue: { flex: 1, color: colors.ink, fontSize: 13 },
+  capacity: { flex: 1, minWidth: 36, minHeight: 42, textAlign: 'center', fontSize: 13, fontWeight: '700', color: colors.ink },
+  peopleHint: { fontSize: 12, color: colors.muted },
+  currency: { fontSize: 12, color: colors.muted },
+  priceInput: { flex: 1, minWidth: 0, minHeight: 42, color: colors.ink, fontSize: 13 },
+  fieldHint: { color: colors.muted, fontSize: 11 },
+  fieldError: { color: colors.danger, fontSize: 11 },
   modalBackdrop: { flex: 1, padding: spacing.xl, justifyContent: 'center', backgroundColor: '#00000055' },
   modalSheet: { padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.background },
   modalTitle: { color: colors.ink, fontFamily: typography.rounded, fontSize: 17, fontWeight: '700' },
@@ -315,7 +317,4 @@ const styles = StyleSheet.create({
   timeControls: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
   timeValue: { minWidth: 34, textAlign: 'center', color: colors.ink, fontFamily: typography.rounded, fontSize: 18, fontWeight: '700' },
   timeColon: { paddingBottom: 13, color: colors.ink, fontSize: 18, fontWeight: '700' },
-  quickActions: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  quickButton: { minHeight: 34, paddingHorizontal: 11, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.surface },
-  quickButtonText: { color: colors.ink, fontFamily: typography.regular, fontSize: 11, fontWeight: '600' },
 });
