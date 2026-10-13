@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { router } from 'expo-router';
 import { Avatar, DetailHeader, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
@@ -18,14 +19,14 @@ function ToggleRow({ title, detail, value, onValueChange }: { title: string; det
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
-  section: { marginTop: spacing.xl, marginBottom: spacing.sm, color: colors.brown, fontFamily: typography.rounded, fontSize: 12, fontWeight: '700' },
+  section: { marginTop: spacing.xl, marginBottom: spacing.sm, color: colors.brown, fontFamily: typography.rounded, fontSize: 14, fontWeight: '700' },
   row: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   rowText: { flex: 1 },
-  rowTitle: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  rowDetail: { marginTop: 4, color: colors.muted, fontSize: 10 },
+  rowTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  rowDetail: { marginTop: 4, color: colors.muted, fontSize: 13 },
   blockedRow: { minHeight: 46, paddingLeft: 31, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border },
-  blockedName: { flex: 1, color: colors.ink, fontSize: 12 },
-  unblock: { color: colors.brown, fontSize: 11, fontWeight: '700' },
+  blockedName: { flex: 1, color: colors.ink, fontSize: 14 },
+  unblock: { color: colors.brown, fontSize: 13, fontWeight: '700' },
   logout: { height: 46, marginTop: spacing.xl, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E6B9B9' },
   logoutText: { color: colors.danger, fontWeight: '700' },
 });

@@ -1,5 +1,6 @@
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { googleMapsUrl } from '@/lib/location';
 import { searchPlaces, type PlaceResult } from '@/lib/place-search';
@@ -79,20 +80,20 @@ export function LocationPicker({ value, onChange }: { value?: PostLocation; onCh
 
 const styles = StyleSheet.create({
   container: { gap: spacing.sm },
-  input: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, color: colors.ink, fontSize: 13 },
-  hint: { fontSize: 11, color: colors.muted, lineHeight: 17 },
-  error: { fontSize: 12, color: colors.danger, lineHeight: 18 },
+  input: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md, color: colors.ink, fontSize: 15 },
+  hint: { fontSize: 13, color: colors.muted, lineHeight: 19 },
+  error: { fontSize: 14, color: colors.danger, lineHeight: 20 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   button: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: spacing.sm, borderRadius: radius.sm, backgroundColor: colors.surface },
   searchButton: { backgroundColor: colors.yellow },
   disabled: { opacity: 0.5 },
-  buttonText: { fontSize: 12, fontWeight: '600', color: colors.ink },
-  confirmed: { fontSize: 13, fontWeight: '600', color: colors.success },
+  buttonText: { fontSize: 14, fontWeight: '600', color: colors.ink },
+  confirmed: { fontSize: 15, fontWeight: '600', color: colors.success },
   results: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, padding: spacing.sm },
   result: { paddingVertical: spacing.md, gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  resultName: { fontSize: 13, fontWeight: '600', color: colors.ink },
+  resultName: { fontSize: 15, fontWeight: '600', color: colors.ink },
   selected: { padding: spacing.sm, borderRadius: radius.sm, backgroundColor: colors.surface, gap: 4 },
   mapLink: { minHeight: 32, justifyContent: 'center' },
-  linkText: { fontSize: 12, color: colors.brown },
-  attribution: { fontSize: 9, color: colors.muted },
+  linkText: { fontSize: 14, color: colors.brown },
+  attribution: { fontSize: 12, color: colors.muted },
 });

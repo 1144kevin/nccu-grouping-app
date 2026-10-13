@@ -1,7 +1,8 @@
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -59,30 +60,30 @@ function scopeToFilter(scope?: string): 'all' | ResultType {
 const styles = StyleSheet.create({
   header: { minHeight: 58, paddingHorizontal: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: 4, borderBottomWidth: 1, borderBottomColor: colors.border },
   inputWrap: { flex: 1, height: 42, paddingLeft: spacing.md, flexDirection: 'row', alignItems: 'center', borderRadius: radius.md, backgroundColor: colors.surface },
-  input: { flex: 1, height: '100%', paddingHorizontal: spacing.sm, color: colors.ink, fontFamily: typography.regular, fontSize: 14 },
+  input: { flex: 1, height: '100%', paddingHorizontal: spacing.sm, color: colors.ink, fontFamily: typography.regular, fontSize: 16 },
   filters: { height: 51, borderBottomWidth: 1, borderBottomColor: colors.border },
   filterContent: { paddingHorizontal: spacing.lg, alignItems: 'center', gap: spacing.sm },
   filter: { height: 31, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill, backgroundColor: colors.surface },
   filterActive: { backgroundColor: colors.yellow },
-  filterText: { color: colors.muted, fontSize: 12 },
+  filterText: { color: colors.muted, fontSize: 14 },
   filterTextActive: { color: colors.ink, fontWeight: '700' },
   discovery: { padding: spacing.lg },
   sectionTitle: { marginTop: spacing.md, marginBottom: spacing.md, color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: { minHeight: 34, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill },
-  tagText: { color: colors.brown, fontSize: 12 },
+  tagText: { color: colors.brown, fontSize: 14 },
   quickRow: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   quickText: { flex: 1 },
-  quickTitle: { color: colors.ink, fontSize: 14, fontWeight: '700' },
-  quickDetail: { marginTop: 3, color: colors.muted, fontSize: 11 },
+  quickTitle: { color: colors.ink, fontSize: 16, fontWeight: '700' },
+  quickDetail: { marginTop: 3, color: colors.muted, fontSize: 13 },
   results: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   emptyResults: { flexGrow: 1 },
-  resultCount: { paddingVertical: spacing.md, color: colors.muted, fontSize: 11 },
+  resultCount: { paddingVertical: spacing.md, color: colors.muted, fontSize: 13 },
   resultRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   resultIcon: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: 21, backgroundColor: colors.surface },
   resultEmoji: { fontSize: 19 },
   resultText: { flex: 1 },
-  resultTitle: { color: colors.ink, fontFamily: typography.regular, fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  resultDetail: { marginTop: 4, color: colors.muted, fontSize: 10 },
+  resultTitle: { color: colors.ink, fontFamily: typography.regular, fontSize: 15, fontWeight: '600', lineHeight: 21 },
+  resultDetail: { marginTop: 4, color: colors.muted, fontSize: 13 },
   pressed: { opacity: 0.62 },
 });

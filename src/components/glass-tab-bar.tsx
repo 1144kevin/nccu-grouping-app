@@ -1,8 +1,9 @@
+import { AppText as Text } from '@/components/app-text';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type PropsWithChildren } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { Tabs } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
-import { AccessibilityInfo, Animated, Keyboard, PanResponder, Platform, Pressable, StyleSheet, Text, View, type ViewProps, type ViewStyle } from 'react-native';
+import { AccessibilityInfo, Animated, Keyboard, PanResponder, Platform, Pressable, StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 import { colors, typography } from '@/theme/tokens';
 
 type BottomTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
@@ -214,9 +215,9 @@ const styles = StyleSheet.create({
   selectionMaterial: { flex: 1, borderRadius: 28, backgroundColor: 'rgba(210,210,205,0.42)', borderColor: 'rgba(255,255,255,0.65)', boxShadow: 'none' },
   selectionDragging: { backgroundColor: 'rgba(255,255,255,0.34)', borderColor: 'rgba(255,255,255,0.95)', boxShadow: '0px 5px 18px rgba(25,25,20,0.2)' },
   tabContents: { alignItems: 'center', justifyContent: 'center', gap: 3 },
-  label: { color: '#62615D', fontFamily: typography.regular, fontSize: 10, fontWeight: '500' },
+  label: { color: '#62615D', fontFamily: typography.regular, fontSize: 12, fontWeight: '500' },
   selectedLabel: { color: colors.ink, fontWeight: '700' },
   pressed: { backgroundColor: 'rgba(190,190,185,0.3)' },
-  badge: { position: 'absolute', top: -5, left: 15, minWidth: 16, height: 16, paddingHorizontal: 4, borderRadius: 8, backgroundColor: '#D92738', alignItems: 'center', justifyContent: 'center' },
-  badgeText: { fontSize: 9, lineHeight: 14, color: '#FFFFFF', fontWeight: '700' },
+  badge: { position: 'absolute', top: -5, left: 15, minWidth: 18, height: 18, paddingHorizontal: 4, borderRadius: 9, backgroundColor: '#D92738', alignItems: 'center', justifyContent: 'center' },
+  badgeText: { fontSize: 11, lineHeight: 16, color: '#FFFFFF', fontWeight: '700' },
 });

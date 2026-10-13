@@ -1,7 +1,8 @@
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useEffect, useMemo, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
@@ -57,20 +58,20 @@ const styles = StyleSheet.create({
   link: { color: colors.brown, fontWeight: '700' },
   header: { height: 64, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   headerName: { flex: 1, marginLeft: 9 },
-  name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 14, fontWeight: '700' },
-  level: { marginTop: 2, color: colors.muted, fontSize: 10 },
-  date: { paddingTop: 12, textAlign: 'center', color: colors.subtle, fontSize: 11 },
-  warning: { paddingTop: 6, textAlign: 'center', color: colors.subtle, fontSize: 10 },
+  name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
+  level: { marginTop: 2, color: colors.muted, fontSize: 13 },
+  date: { paddingTop: 12, textAlign: 'center', color: colors.subtle, fontSize: 13 },
+  warning: { paddingTop: 6, textAlign: 'center', color: colors.subtle, fontSize: 13 },
   messages: { padding: spacing.lg },
   bubbleWrap: { marginBottom: 12, alignItems: 'flex-start' },
   mineWrap: { alignItems: 'flex-end' },
   bubble: { maxWidth: '78%', paddingHorizontal: 13, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.surface },
   mineBubble: { backgroundColor: colors.yellow },
-  messageText: { color: colors.ink, fontFamily: typography.regular, fontSize: 14, lineHeight: 20 },
-  sentAt: { marginTop: 3, color: colors.subtle, fontSize: 9 },
+  messageText: { color: colors.ink, fontFamily: typography.regular, fontSize: 16, lineHeight: 23 },
+  sentAt: { marginTop: 3, color: colors.subtle, fontSize: 12 },
   composer: { minHeight: 62, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', gap: 4, borderTopWidth: 1, borderTopColor: colors.border },
-  input: { flex: 1, minHeight: 42, paddingHorizontal: 13, color: colors.ink, fontFamily: typography.regular, borderRadius: 21, backgroundColor: colors.surface },
+  input: { fontSize: 16, flex: 1, minHeight: 42, paddingHorizontal: 13, color: colors.ink, fontFamily: typography.regular, borderRadius: 21, backgroundColor: colors.surface },
   blocked: { minHeight: 62, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
-  blockedText: { color: colors.muted, fontSize: 12 },
-  unblock: { color: colors.brown, fontSize: 12, fontWeight: '700' },
+  blockedText: { color: colors.muted, fontSize: 14 },
+  unblock: { color: colors.brown, fontSize: 14, fontWeight: '700' },
 });

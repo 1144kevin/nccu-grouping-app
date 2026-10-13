@@ -1,6 +1,7 @@
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
@@ -22,12 +23,12 @@ const styles = StyleSheet.create({
   title: { marginTop: spacing.md, marginBottom: spacing.sm, color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
   question: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   questionRow: { flexDirection: 'row', alignItems: 'center' },
-  questionText: { flex: 1, color: colors.ink, fontSize: 13, fontWeight: '600' },
-  answer: { marginTop: spacing.sm, paddingRight: spacing.xl, color: colors.muted, fontSize: 11, lineHeight: 18 },
-  input: { minHeight: 120, padding: spacing.md, color: colors.ink, fontSize: 13, lineHeight: 19, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
-  counter: { marginVertical: 5, color: colors.subtle, fontSize: 10, textAlign: 'right' },
+  questionText: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: '600' },
+  answer: { marginTop: spacing.sm, paddingRight: spacing.xl, color: colors.muted, fontSize: 15, lineHeight: 23 },
+  input: { minHeight: 120, padding: spacing.md, color: colors.ink, fontSize: 15, lineHeight: 21, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
+  counter: { marginVertical: 5, color: colors.subtle, fontSize: 13, textAlign: 'right' },
   success: { minHeight: 62, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: radius.md, backgroundColor: '#EDF8F1' },
-  successText: { color: colors.success, fontSize: 12 },
+  successText: { color: colors.success, fontSize: 14 },
   email: { minHeight: 48, marginTop: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
-  emailText: { color: colors.brown, fontSize: 11, fontWeight: '700' },
+  emailText: { color: colors.brown, fontSize: 13, fontWeight: '700' },
 });

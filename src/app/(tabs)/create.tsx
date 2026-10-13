@@ -1,3 +1,4 @@
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,11 +6,12 @@ import { RecordingPresets, requestRecordingPermissionsAsync, useAudioRecorder, u
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { z } from 'zod';
 import { IconButton, PrimaryButton, SectionTitle, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { LocationPicker } from '@/components/location-picker';
+import { TagChip } from '@/components/tag-chip';
 import { SettingField } from '@/components/setting-field';
 import { parsePrice, priceInputSchema } from '@/lib/price';
 import { capacityInputSchema } from '@/lib/capacity';
@@ -113,8 +115,15 @@ export default function CreateScreen() {
           </View>
           <Controller control={control} name="content" render={({ field: { onChange, onBlur, value } }) => <TextInput autoFocus multiline maxLength={500} value={value} onBlur={onBlur} onChangeText={onChange} placeholder="分享想揪的餐點、價格、取餐地點等資訊..." placeholderTextColor={colors.subtle} style={styles.editor} textAlignVertical="top" />} />
           <View style={styles.counterRow}><Text style={styles.error}>{errors.content?.message}</Text><Text style={styles.counter}>{content.length}/500</Text></View>
-          <SectionTitle action={<IconButton icon="plus-circle-outline" label="新增標籤" onPress={() => setTagModalVisible(true)} />}>主題標籤</SectionTitle>
-          <View style={styles.tagRow}>{suggestedTags.map((tag) => { const selected = tags.includes(tag); return <Pressable key={tag} onPress={() => setTags((items) => selected ? items.filter((item) => item !== tag) : [...items, tag])} style={[styles.tag, selected && styles.selectedTag]}><Text style={styles.tagText}>{selected ? '✓  ' : ''}{tag}</Text></Pressable>; })}</View>
+          <SectionTitle>主題標籤</SectionTitle>
+          <View style={styles.tagRow}>
+            {[...new Set([...suggestedTags, ...tags])].map((tag) => (
+              <TagChip key={tag} label={tag} selected={tags.includes(tag)} onPress={() => setTags((items) => items.includes(tag) ? items.filter((item) => item !== tag) : [...items, tag])} />
+            ))}
+            <Pressable accessibilityRole="button" accessibilityLabel="新增標籤" onPress={() => setTagModalVisible(true)} style={({ pressed }) => [styles.addTag, pressed && { opacity: 0.6 }]}>
+              <MaterialCommunityIcons name="plus" size={20} color={colors.ink} />
+            </Pressable>
+          </View>
           <SectionTitle>拼單設定</SectionTitle>
           <SettingField icon="clock-outline" title="截止時間">
             <Pressable accessibilityRole="button" accessibilityLabel="選擇截止時間" onPress={openDeadlinePicker} style={styles.settingControl}><Text style={styles.controlValue}>{formatDeadline(deadline)}</Text><MaterialCommunityIcons name="chevron-right" size={17} color={colors.muted} /></Pressable>
@@ -270,50 +279,48 @@ const styles = StyleSheet.create({
   title: { flex: 1, textAlign: 'center', color: colors.ink, fontFamily: typography.rounded, fontSize: 18, fontWeight: '700' },
   publish: { minWidth: 64, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.yellow },
   publishDisabled: { backgroundColor: '#E4E4E2' },
-  publishText: { color: colors.ink, fontFamily: typography.rounded, fontSize: 13, fontWeight: '700' },
+  publishText: { color: colors.ink, fontFamily: typography.rounded, fontSize: 15, fontWeight: '700' },
   content: { padding: spacing.lg, paddingBottom: 120 },
   mediaRow: { height: 84, flexDirection: 'row', gap: 10 },
   thumbnail: { width: 84, height: 84, borderRadius: radius.md },
   removeMedia: { position: 'absolute', top: 3, right: 3, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#00000099' },
   mediaButton: { width: 84, height: 84, alignItems: 'center', justifyContent: 'center', gap: 5, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
   recording: { borderColor: colors.danger, backgroundColor: '#FFF4F4' },
-  mediaLabel: { color: colors.muted, fontFamily: typography.regular, fontSize: 11 },
+  mediaLabel: { color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
   editor: { minHeight: 185, paddingTop: 18, color: colors.ink, fontFamily: typography.regular, fontSize: 16, lineHeight: 24 },
   counterRow: { height: 24, flexDirection: 'row' },
-  error: { flex: 1, color: colors.danger, fontSize: 11 },
-  counter: { color: colors.muted, fontSize: 11 },
+  error: { flex: 1, color: colors.danger, fontSize: 13 },
+  counter: { color: colors.muted, fontSize: 13 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: spacing.lg },
-  tag: { minHeight: 36, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.yellow, borderRadius: radius.md },
-  selectedTag: { backgroundColor: colors.yellowSoft },
-  tagText: { color: colors.ink, fontFamily: typography.regular, fontSize: 13 },
+  addTag: { width: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.yellow, borderRadius: radius.md },
   settingControl: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
-  controlValue: { flex: 1, color: colors.ink, fontSize: 13 },
-  capacity: { flex: 1, minWidth: 36, minHeight: 42, textAlign: 'center', fontSize: 13, fontWeight: '700', color: colors.ink },
-  peopleHint: { fontSize: 12, color: colors.muted },
-  currency: { fontSize: 12, color: colors.muted },
-  priceInput: { flex: 1, minWidth: 0, minHeight: 42, color: colors.ink, fontSize: 13 },
-  fieldHint: { color: colors.muted, fontSize: 11 },
-  fieldError: { color: colors.danger, fontSize: 11 },
+  controlValue: { flex: 1, color: colors.ink, fontSize: 15 },
+  capacity: { flex: 1, minWidth: 36, minHeight: 42, textAlign: 'center', fontSize: 15, fontWeight: '700', color: colors.ink },
+  peopleHint: { fontSize: 14, color: colors.muted },
+  currency: { fontSize: 14, color: colors.muted },
+  priceInput: { flex: 1, minWidth: 0, minHeight: 42, color: colors.ink, fontSize: 15 },
+  fieldHint: { color: colors.muted, fontSize: 13 },
+  fieldError: { color: colors.danger, fontSize: 13 },
   modalBackdrop: { flex: 1, padding: spacing.xl, justifyContent: 'center', backgroundColor: '#00000055' },
   modalSheet: { padding: spacing.lg, borderRadius: radius.md, backgroundColor: colors.background },
   modalTitle: { color: colors.ink, fontFamily: typography.rounded, fontSize: 17, fontWeight: '700' },
-  modalInput: { height: 46, marginTop: spacing.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, color: colors.ink },
+  modalInput: { fontSize: 16, height: 46, marginTop: spacing.md, paddingHorizontal: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, color: colors.ink },
   modalActions: { marginTop: spacing.md, flexDirection: 'row', gap: spacing.sm },
   modalButton: { flex: 1 },
   deadlineSheet: { width: '100%', maxWidth: 440, alignSelf: 'center' },
   deadlineHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   deadlineHeading: { flex: 1 },
-  deadlinePreview: { marginTop: 5, color: colors.muted, fontFamily: typography.regular, fontSize: 12 },
-  pickerLabel: { marginTop: spacing.lg, marginBottom: spacing.sm, color: colors.ink, fontFamily: typography.regular, fontSize: 12, fontWeight: '700' },
+  deadlinePreview: { marginTop: 5, color: colors.muted, fontFamily: typography.regular, fontSize: 14 },
+  pickerLabel: { marginTop: spacing.lg, marginBottom: spacing.sm, color: colors.ink, fontFamily: typography.regular, fontSize: 14, fontWeight: '700' },
   dateList: { gap: 8, paddingRight: spacing.md },
   dateOption: { width: 64, height: 64, alignItems: 'center', justifyContent: 'center', gap: 4, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.background },
   dateOptionSelected: { borderColor: colors.yellow, backgroundColor: colors.yellow },
-  dateWeekday: { color: colors.muted, fontFamily: typography.regular, fontSize: 11 },
-  dateNumber: { color: colors.ink, fontFamily: typography.rounded, fontSize: 14, fontWeight: '700' },
+  dateWeekday: { color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
+  dateNumber: { color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
   dateTextSelected: { color: colors.ink },
   timePicker: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 10 },
   timeStepper: { flex: 1, gap: 6 },
-  timeLabel: { textAlign: 'center', color: colors.muted, fontFamily: typography.regular, fontSize: 11 },
+  timeLabel: { textAlign: 'center', color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
   timeControls: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
   timeValue: { minWidth: 34, textAlign: 'center', color: colors.ink, fontFamily: typography.rounded, fontSize: 18, fontWeight: '700' },
   timeColon: { paddingBottom: 13, color: colors.ink, fontSize: 18, fontWeight: '700' },

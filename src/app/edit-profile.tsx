@@ -1,7 +1,8 @@
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -29,14 +30,14 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   preview: { alignItems: 'center', paddingVertical: spacing.lg },
   previewName: { marginTop: spacing.md, color: colors.ink, fontFamily: typography.rounded, fontSize: 18, fontWeight: '800' },
-  previewBio: { maxWidth: 300, marginTop: 6, color: colors.muted, fontSize: 11, lineHeight: 17, textAlign: 'center' },
-  label: { marginTop: spacing.lg, marginBottom: spacing.sm, color: colors.ink, fontSize: 13, fontWeight: '700' },
+  previewBio: { maxWidth: 300, marginTop: 6, color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
+  label: { marginTop: spacing.lg, marginBottom: spacing.sm, color: colors.ink, fontSize: 15, fontWeight: '700' },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badge: { width: 46, height: 46, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 23, backgroundColor: colors.surface },
   badgeActive: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
   badgeText: { fontSize: 21 },
   check: { position: 'absolute', right: -1, bottom: -1, width: 17, height: 17, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: colors.yellow },
-  input: { minHeight: 46, paddingHorizontal: spacing.md, color: colors.ink, fontSize: 13, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
+  input: { minHeight: 46, paddingHorizontal: spacing.md, color: colors.ink, fontSize: 15, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
   bio: { minHeight: 100, paddingTop: spacing.md },
-  counter: { marginTop: 4, color: colors.subtle, fontSize: 9, textAlign: 'right' },
+  counter: { marginTop: 4, color: colors.subtle, fontSize: 12, textAlign: 'right' },
 });

@@ -1,7 +1,8 @@
+import { AppText as Text } from '@/components/app-text';
 import { useState } from 'react';
 import type { ComponentProps, PropsWithChildren } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { distanceKm, formatDistance, googleMapsUrl } from '@/lib/location';
 import { formatPrice } from '@/lib/price';
 import { useLocationStore } from '@/store/location-store';
@@ -48,15 +49,15 @@ const styles = StyleSheet.create({
   container: { marginTop: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.md },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   lastRow: { borderBottomWidth: 0 },
-  label: { width: 56, color: colors.muted, fontSize: 12, lineHeight: 18 },
+  label: { width: 64, color: colors.muted, fontSize: 14, lineHeight: 20 },
   valueArea: { flex: 1, gap: 3 },
-  value: { color: colors.ink, fontSize: 12, fontWeight: '500', lineHeight: 18 },
+  value: { color: colors.ink, fontSize: 15, fontWeight: '500', lineHeight: 20 },
   place: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   placeName: { flexShrink: 1, color: colors.brown },
-  distance: { color: colors.muted, fontSize: 11, lineHeight: 17 },
+  distance: { color: colors.muted, fontSize: 13, lineHeight: 19 },
   locate: { minHeight: 32, justifyContent: 'center', alignSelf: 'flex-start' },
-  locateText: { color: colors.brown, fontSize: 11, fontWeight: '600' },
-  note: { color: colors.muted, fontSize: 10, lineHeight: 16 },
-  attribution: { color: colors.muted, fontSize: 9 },
-  error: { color: colors.danger, fontSize: 11, lineHeight: 17 },
+  locateText: { color: colors.brown, fontSize: 13, fontWeight: '600' },
+  note: { color: colors.muted, fontSize: 13, lineHeight: 19 },
+  attribution: { color: colors.muted, fontSize: 12 },
+  error: { color: colors.danger, fontSize: 13, lineHeight: 19 },
 });

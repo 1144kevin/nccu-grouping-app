@@ -1,9 +1,11 @@
+import { AppText as Text } from '@/components/app-text';
 import { useState } from 'react';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Alert, FlatList, Modal, Pressable, RefreshControl, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Modal, Pressable, RefreshControl, Share, StyleSheet, View } from 'react-native';
 import { AppHeader, Avatar, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { TagChip } from '@/components/tag-chip';
 import { PostInfo } from '@/components/post-location';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -70,7 +72,7 @@ function PostItem({ post }: { post: FeedPost }) {
         <IconButton icon="dots-horizontal" label="貼文選項" onPress={() => setOptionsVisible(true)} />
       </View>
       <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
-      <View style={styles.tags}>{post.tags.map((tag) => <Pressable key={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })}><Text style={styles.tag}>#{tag}</Text></Pressable>)}</View>
+      <View style={styles.tags}>{post.tags.map((tag) => <TagChip key={tag} label={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })} />)}</View>
       <PostInfo post={post} reminder={reminder} />
       <View style={styles.actions}>
         <PrimaryButton disabled={post.isMine} style={StyleSheet.flatten([styles.actionButton, interested && !post.isMine && styles.interestedActionButton])} textColor={interested && !post.isMine ? '#FFFFFF' : undefined} onPress={() => { toggleInterest(post.id); Alert.alert(interested ? '已取消' : '申請已送出', interested ? '你已取消想被揪。' : '主揪會收到你的申請。'); }}>{post.isMine ? '你的貼文' : interested ? '已想被揪' : '想被揪'}</PrimaryButton>
@@ -104,20 +106,19 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.border },
   post: { paddingHorizontal: spacing.lg, paddingVertical: 14 },
   dismissedPost: { minHeight: 52, paddingHorizontal: spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  dismissedText: { flex: 1, color: colors.muted, fontFamily: typography.regular, fontSize: 12 },
+  dismissedText: { flex: 1, color: colors.muted, fontFamily: typography.regular, fontSize: 14 },
   undoButton: { minWidth: 44, minHeight: 44, paddingHorizontal: spacing.sm, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
   undoPressed: { backgroundColor: colors.surface, opacity: 0.62 },
-  undoText: { color: colors.brown, fontFamily: typography.rounded, fontSize: 13, fontWeight: '600' },
+  undoText: { color: colors.brown, fontFamily: typography.rounded, fontSize: 15, fontWeight: '600' },
   authorRow: { flexDirection: 'row', alignItems: 'center' },
   authorText: { flex: 1, paddingLeft: 10 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  authorName: { maxWidth: '70%', color: colors.ink, fontFamily: typography.rounded, fontSize: 14, fontWeight: '700' },
-  level: { color: colors.muted, fontFamily: typography.regular, fontSize: 11 },
-  time: { marginTop: 2, color: colors.muted, fontFamily: typography.regular, fontSize: 11 },
+  authorName: { maxWidth: '70%', color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
+  level: { color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
+  time: { marginTop: 2, color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
   content: { marginTop: 10, color: colors.ink, fontFamily: typography.regular, fontSize: 15, lineHeight: 22 },
   postImage: { width: '100%', aspectRatio: 1.3, marginTop: 10, borderRadius: radius.md, backgroundColor: '#F0E3CE' },
   tags: { marginTop: 9, flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tag: { color: colors.brown, fontFamily: typography.rounded, fontSize: 12, fontWeight: '600' },
   actions: { marginTop: 11, flexDirection: 'row', alignItems: 'center', gap: 8 },
   actionButton: { flex: 1, minHeight: 42, paddingHorizontal: 8 },
   interestedActionButton: { backgroundColor: '#FF9114' },

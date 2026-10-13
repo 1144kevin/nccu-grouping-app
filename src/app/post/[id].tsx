@@ -1,7 +1,8 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { PostInfo } from '@/components/post-location';
@@ -39,16 +40,16 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 100 },
   author: { flexDirection: 'row', alignItems: 'center' },
   authorText: { flex: 1, marginLeft: spacing.md },
-  name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 14, fontWeight: '700' },
-  level: { marginTop: 3, color: colors.muted, fontSize: 10 },
+  name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
+  level: { marginTop: 3, color: colors.muted, fontSize: 13 },
   body: { marginTop: spacing.lg, color: colors.ink, fontFamily: typography.regular, fontSize: 16, lineHeight: 24 },
   image: { width: '100%', aspectRatio: 1.3, marginTop: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface },
   tags: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  tag: { color: colors.brown, fontSize: 12, fontWeight: '600' },
+  tag: { color: colors.brown, fontSize: 14, fontWeight: '600' },
   divider: { height: 1, marginVertical: spacing.xl, backgroundColor: colors.border },
   summary: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface },
-  summaryTitle: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  summaryText: { marginTop: spacing.sm, color: colors.muted, fontSize: 11, lineHeight: 17 },
+  summaryTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  summaryText: { marginTop: spacing.sm, color: colors.muted, fontSize: 15, lineHeight: 23 },
   bottom: { minHeight: 70, paddingHorizontal: spacing.md, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
   joinButton: { flex: 1 },
 });

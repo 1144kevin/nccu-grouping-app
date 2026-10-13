@@ -1,6 +1,7 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, EmptyState, IconButton, Pill, PrimaryButton, Screen, SectionTitle } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -20,7 +21,7 @@ export default function OrderDetailScreen() {
     <Screen>
       <DetailHeader title="拼單詳情" right={<IconButton icon="dots-horizontal" label="拼單選項" onPress={() => Alert.alert('拼單選項', title, [{ text: '分享拼單', onPress: () => Share.share({ message: `政缺一咖拼單：${title}` }) }, { text: '回報問題', onPress: () => router.push('/help') }, { text: '取消', style: 'cancel' }])} />} />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.heading}><View style={styles.emoji}><Text style={styles.emojiText}>{history?.emoji ?? post?.badge ?? '🍱'}</Text></View><View style={styles.headingText}><Text style={styles.title}>{title}</Text><Text style={styles.detail}>{history?.detail ?? `${post?.deadline ?? '今天'} · ${post?.joined ?? 1}/${post?.capacity ?? requests.length + 1} 人`}</Text></View><Pill tone={status === '進行中' ? 'yellow' : 'success'}>{status}</Pill></View>
+        <View style={styles.heading}><View style={styles.emoji}><Text fixedSize style={styles.emojiText}>{history?.emoji ?? post?.badge ?? '🍱'}</Text></View><View style={styles.headingText}><Text style={styles.title}>{title}</Text><Text style={styles.detail}>{history?.detail ?? `${post?.deadline ?? '今天'} · ${post?.joined ?? 1}/${post?.capacity ?? requests.length + 1} 人`}</Text></View><Pill tone={status === '進行中' ? 'yellow' : 'success'}>{status}</Pill></View>
         <View style={styles.timeline}><TimelineStep done label="已建立拼單" /><TimelineStep done={status !== '進行中'} label={status === '進行中' ? '等待成團' : '已確認成團'} /><TimelineStep done={status === '已完成'} label="完成面交" last /></View>
         <SectionTitle action={requests.length ? <Text style={styles.count}>{requests.length} 位申請</Text> : undefined}>團員與申請</SectionTitle>
         <Pressable onPress={() => router.push('/profile')} style={styles.member}><Avatar name="Kevin" badge="🍜" size={42} /><View style={styles.memberText}><Text style={styles.memberName}>Kevin</Text><Text style={styles.memberMeta}>主揪 · 🍜 Lv.5</Text></View><Pill tone="yellow">主揪</Pill></Pressable>
@@ -47,7 +48,7 @@ const styles = StyleSheet.create({
   emojiText: { fontSize: 27 },
   headingText: { flex: 1 },
   title: { color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '800', lineHeight: 21 },
-  detail: { marginTop: 5, color: colors.muted, fontSize: 11 },
+  detail: { marginTop: 5, color: colors.muted, fontSize: 13 },
   timeline: { marginVertical: spacing.xl, padding: spacing.lg, flexDirection: 'row', borderRadius: radius.md, backgroundColor: colors.surface },
   step: { flex: 1, alignItems: 'center' },
   stepMarker: { width: '100%', alignItems: 'center' },
@@ -55,17 +56,17 @@ const styles = StyleSheet.create({
   dotDone: { borderColor: colors.yellow, backgroundColor: colors.yellow },
   line: { position: 'absolute', top: 10, left: '50%', width: '100%', height: 2, backgroundColor: colors.border },
   lineDone: { backgroundColor: colors.yellow },
-  stepText: { marginTop: spacing.sm, color: colors.muted, fontSize: 9, textAlign: 'center' },
+  stepText: { marginTop: spacing.sm, color: colors.muted, fontSize: 12, textAlign: 'center' },
   stepTextDone: { color: colors.ink, fontWeight: '600' },
-  count: { color: colors.muted, fontSize: 11 },
+  count: { color: colors.muted, fontSize: 13 },
   member: { minHeight: 66, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   memberText: { flex: 1 },
-  memberName: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  memberMeta: { marginTop: 3, color: colors.muted, fontSize: 10 },
+  memberName: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  memberMeta: { marginTop: 3, color: colors.muted, fontSize: 13 },
   requestActions: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   accept: { minHeight: 34, paddingHorizontal: spacing.md },
-  empty: { paddingVertical: spacing.xl, color: colors.muted, fontSize: 12, textAlign: 'center' },
+  empty: { paddingVertical: spacing.xl, color: colors.muted, fontSize: 14, textAlign: 'center' },
   infoRow: { minHeight: 66, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  infoTitle: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  infoText: { maxWidth: 350, marginTop: 4, color: colors.muted, fontSize: 11, lineHeight: 17 },
+  infoTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  infoText: { maxWidth: 350, marginTop: 4, color: colors.muted, fontSize: 15, lineHeight: 23 },
 });
