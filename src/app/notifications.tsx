@@ -1,6 +1,7 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { DetailHeader, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -16,16 +17,16 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
   emptyList: { flexGrow: 1 },
-  summary: { paddingVertical: spacing.md, color: colors.muted, fontSize: 11 },
+  summary: { paddingVertical: spacing.md, color: colors.muted, fontSize: 13 },
   row: { minHeight: 82, marginBottom: spacing.sm, padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md },
   unreadRow: { borderColor: '#E8CA54', backgroundColor: '#FFFDF3' },
   icon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 19, backgroundColor: colors.yellowSoft },
   text: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
-  title: { flex: 1, color: colors.ink, fontFamily: typography.rounded, fontSize: 13, fontWeight: '600' },
+  title: { flex: 1, color: colors.ink, fontFamily: typography.rounded, fontSize: 15, fontWeight: '600' },
   unreadTitle: { fontWeight: '800' },
-  time: { color: colors.subtle, fontSize: 9 },
-  body: { marginTop: 5, color: colors.muted, fontSize: 11, lineHeight: 16 },
+  time: { color: colors.subtle, fontSize: 12 },
+  body: { marginTop: 5, color: colors.muted, fontSize: 15, lineHeight: 23 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.yellow },
   pressed: { opacity: 0.65 },
 });

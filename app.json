@@ -41,6 +41,12 @@
       ],
       "expo-secure-store",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "允許政缺一咖取得你的位置，以設定取餐地點及計算與貼文地點的距離。"
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": "允許政缺一咖使用麥克風建立語音拼單。"

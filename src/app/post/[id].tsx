@@ -1,9 +1,11 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
-import { Avatar, DetailHeader, EmptyState, IconButton, Pill, PrimaryButton, Screen } from '@/components/primitives';
+import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Avatar, DetailHeader, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { PostInfo } from '@/components/post-location';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function PostDetailScreen() {
@@ -25,7 +27,7 @@ export default function PostDetailScreen() {
         <Text style={styles.body}>{post.content}</Text>
         {post.imageUrl ? <Image source={post.imageUrl} contentFit="cover" style={styles.image} /> : null}
         <View style={styles.tags}>{post.tags.map((tag) => <Pressable key={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })}><Text style={styles.tag}>#{tag}</Text></Pressable>)}</View>
-        <View style={styles.meta}><Pill icon="clock-outline">{post.deadline}</Pill><Pill icon="account-group-outline">{post.joined}/{post.capacity} 人</Pill>{reminder ? <Pill tone="yellow" icon="bell-ring-outline">已提醒</Pill> : null}</View>
+        <PostInfo post={post} reminder={reminder} />
         <View style={styles.divider} />
         <View style={styles.summary}><Text style={styles.summaryTitle}>加入前請確認</Text><Text style={styles.summaryText}>送出「想被揪」後，主揪可以接受或拒絕申請。被接受後請透過聊天室確認費用、取餐時間與地點。</Text></View>
       </ScrollView>
@@ -38,17 +40,16 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: 100 },
   author: { flexDirection: 'row', alignItems: 'center' },
   authorText: { flex: 1, marginLeft: spacing.md },
-  name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 14, fontWeight: '700' },
-  level: { marginTop: 3, color: colors.muted, fontSize: 10 },
+  name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
+  level: { marginTop: 3, color: colors.muted, fontSize: 13 },
   body: { marginTop: spacing.lg, color: colors.ink, fontFamily: typography.regular, fontSize: 16, lineHeight: 24 },
   image: { width: '100%', aspectRatio: 1.3, marginTop: spacing.lg, borderRadius: radius.md, backgroundColor: colors.surface },
   tags: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  tag: { color: colors.brown, fontSize: 12, fontWeight: '600' },
-  meta: { marginTop: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tag: { color: colors.brown, fontSize: 14, fontWeight: '600' },
   divider: { height: 1, marginVertical: spacing.xl, backgroundColor: colors.border },
   summary: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface },
-  summaryTitle: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  summaryText: { marginTop: spacing.sm, color: colors.muted, fontSize: 11, lineHeight: 17 },
+  summaryTitle: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  summaryText: { marginTop: spacing.sm, color: colors.muted, fontSize: 15, lineHeight: 23 },
   bottom: { minHeight: 70, paddingHorizontal: spacing.md, paddingBottom: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.background },
   joinButton: { flex: 1 },
 });

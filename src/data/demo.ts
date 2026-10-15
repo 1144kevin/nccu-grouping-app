@@ -9,6 +9,7 @@ import type {
 export const initialPosts: FeedPost[] = [
   {
     id: 'croissant',
+    pricePerPerson: 50,
     name: 'huanan_dessert_girl',
     badge: '🍍',
     level: 5,

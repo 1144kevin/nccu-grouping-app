@@ -1,11 +1,12 @@
+import { AppText as Text } from '@/components/app-text';
 import { Avatar } from '@/components/primitives';
 import { selectUnreadNotificationCount, useAppStore } from '@/store/app-store';
 import { useNavigationStore } from '@/store/navigation-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router } from 'expo-router';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const mainItems = [
   { label: '首頁', icon: 'home-outline', href: '/' },
@@ -15,6 +16,7 @@ const mainItems = [
 ] as const;
 
 const supportItems = [
+  { label: 'App 字級', icon: 'format-size', href: '/font-size' },
   { label: '通知中心', icon: 'bell-outline', href: '/notifications' },
   { label: '推薦偏好', icon: 'tune-variant', href: '/preferences' },
   { label: '帳號與隱私', icon: 'shield-account-outline', href: '/settings' },
@@ -22,6 +24,7 @@ const supportItems = [
 ] as const;
 
 export function AppDrawer() {
+  const insets = useSafeAreaInsets();
   const visible = useNavigationStore((state) => state.drawerOpen);
   const close = useNavigationStore((state) => state.closeDrawer);
   const unreadNotifications = useAppStore(selectUnreadNotificationCount);
@@ -35,7 +38,7 @@ export function AppDrawer() {
   return (
     <Modal animationType="fade" onRequestClose={close} transparent visible={visible}>
       <View style={styles.overlay}>
-        <SafeAreaView edges={['top', 'bottom']} style={styles.panel}>
+        <View style={[styles.panel, { paddingTop: Math.max(insets.top, spacing.xxl) + spacing.sm, paddingBottom: insets.bottom }]}>
           <View style={styles.topBar}>
             <View style={styles.brand}>
               <MaterialCommunityIcons name="bowl-mix-outline" size={23} color={colors.ink} />
@@ -73,7 +76,7 @@ export function AppDrawer() {
             ))}
           </ScrollView>
           <Text style={styles.version}>政缺一咖 · Prototype 1.0</Text>
-        </SafeAreaView>
+        </View>
         <Pressable accessibilityLabel="關閉選單背景" onPress={close} style={styles.backdrop} />
       </View>
     </Modal>
@@ -121,7 +124,6 @@ const styles = StyleSheet.create({
   panel: {
     width: '82%',
     maxWidth: 340,
-    paddingTop: spacing.lg,
     backgroundColor: colors.background,
     shadowColor: '#000000',
     shadowOpacity: 0.16,
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   },
   accountText: { flex: 1, marginLeft: spacing.md },
   name: { color: colors.ink, fontFamily: typography.rounded, fontSize: 15, fontWeight: '700' },
-  level: { marginTop: 4, color: colors.brown, fontSize: 11 },
+  level: { marginTop: 4, color: colors.brown, fontSize: 13 },
   items: { paddingHorizontal: spacing.sm },
   item: {
     minHeight: 50,
@@ -161,7 +163,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     borderRadius: radius.md,
   },
-  itemText: { flex: 1, color: colors.ink, fontFamily: typography.regular, fontSize: 14 },
+  itemText: { flex: 1, color: colors.ink, fontFamily: typography.regular, fontSize: 16 },
   pressed: { backgroundColor: colors.surface },
   divider: {
     height: 1,
@@ -178,6 +180,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: colors.yellow,
   },
-  badgeText: { color: colors.ink, fontSize: 10, fontWeight: '700' },
-  version: { marginTop: 'auto', padding: spacing.lg, color: colors.subtle, fontSize: 10 },
+  badgeText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
+  version: { marginTop: 'auto', padding: spacing.lg, color: colors.subtle, fontSize: 13 },
 });

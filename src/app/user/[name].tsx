@@ -1,6 +1,7 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, EmptyState, IconButton, PrimaryButton, Screen, SectionTitle } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -44,20 +45,20 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
   hero: { alignItems: 'center', paddingVertical: spacing.lg },
   name: { marginTop: spacing.md, color: colors.ink, fontFamily: typography.rounded, fontSize: 20, fontWeight: '800' },
-  level: { marginTop: 5, color: colors.brown, fontSize: 12, fontWeight: '700' },
-  meta: { marginTop: 5, color: colors.muted, fontSize: 10 },
+  level: { marginTop: 5, color: colors.brown, fontSize: 14, fontWeight: '700' },
+  meta: { marginTop: 5, color: colors.muted, fontSize: 13 },
   blocked: { minHeight: 40, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderRadius: radius.md, backgroundColor: '#FFF2F2' },
-  blockedText: { color: colors.danger, fontSize: 12 },
+  blockedText: { color: colors.danger, fontSize: 14 },
   actions: { marginTop: spacing.md, flexDirection: 'row', gap: spacing.sm },
   action: { flex: 1 },
   stats: { marginVertical: spacing.xl, paddingVertical: spacing.lg, flexDirection: 'row', borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   stat: { flex: 1, alignItems: 'center' },
   statValue: { color: colors.ink, fontFamily: typography.rounded, fontSize: 17, fontWeight: '800' },
-  statLabel: { marginTop: 4, color: colors.muted, fontSize: 10 },
+  statLabel: { marginTop: 4, color: colors.muted, fontSize: 13 },
   post: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   postIcon: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: '#F2E5CC' },
   postText: { flex: 1 },
-  postTitle: { color: colors.ink, fontSize: 13, fontWeight: '600', lineHeight: 18 },
-  postMeta: { marginTop: 4, color: colors.muted, fontSize: 10 },
-  noPosts: { paddingVertical: spacing.xl, color: colors.muted, textAlign: 'center', fontSize: 12 },
+  postTitle: { color: colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 21 },
+  postMeta: { marginTop: 4, color: colors.muted, fontSize: 13 },
+  noPosts: { paddingVertical: spacing.xl, color: colors.muted, textAlign: 'center', fontSize: 14 },
 });

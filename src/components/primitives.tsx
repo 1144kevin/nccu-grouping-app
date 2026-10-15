@@ -1,9 +1,10 @@
+import { AppText as Text } from '@/components/app-text';
 import { useNavigationStore } from '@/store/navigation-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export function Screen({
@@ -42,7 +43,14 @@ export function AppHeader({
       {title ? (
         <Text style={styles.headerTitle}>{title}</Text>
       ) : (
-        <MaterialCommunityIcons name="bowl-mix-outline" size={26} color={colors.ink} />
+        <Link href="/" asChild>
+          <Pressable
+            accessibilityLabel="返回首頁"
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+          >
+            <MaterialCommunityIcons name="bowl-mix-outline" size={26} color={colors.ink} />
+          </Pressable>
+        </Link>
       )}
       <IconButton
         icon="magnify"
@@ -107,7 +115,7 @@ export function Avatar({ name, badge, size = 48 }: { name: string; badge: string
         { width: size, height: size, borderRadius: size / 2, backgroundColor: palette[index] },
       ]}
     >
-      <Text style={{ fontSize: size * 0.44 }}>{badge}</Text>
+      <Text fixedSize style={{ fontSize: size * 0.44 }}>{badge}</Text>
     </View>
   );
 }
@@ -148,11 +156,13 @@ export function PrimaryButton({
   disabled = false,
   secondary = false,
   style,
+  textColor,
 }: PropsWithChildren<{
   onPress?: () => void;
   disabled?: boolean;
   secondary?: boolean;
   style?: ViewStyle;
+  textColor?: string;
 }>) {
   return (
     <Pressable
@@ -167,7 +177,7 @@ export function PrimaryButton({
         pressed && styles.pressed,
       ]}
     >
-      <Text style={styles.primaryButtonText}>{children}</Text>
+      <Text style={[styles.primaryButtonText, textColor ? { color: textColor } : undefined]}>{children}</Text>
     </Pressable>
   );
 }
@@ -249,7 +259,7 @@ const styles = StyleSheet.create({
   pillYellow: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
   pillDanger: { borderColor: '#F2C9C9', backgroundColor: '#FFF0F0' },
   pillSuccess: { borderColor: '#BFDDCA', backgroundColor: '#EDF8F1' },
-  pillText: { fontFamily: typography.regular, fontSize: 12, color: colors.ink },
+  pillText: { fontFamily: typography.regular, fontSize: 14, color: colors.ink },
   primaryButton: {
     minHeight: 43,
     paddingHorizontal: spacing.lg,
@@ -262,7 +272,7 @@ const styles = StyleSheet.create({
   disabledButton: { backgroundColor: '#E5E5E3' },
   primaryButtonText: {
     fontFamily: typography.rounded,
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
     color: colors.ink,
   },
@@ -285,7 +295,7 @@ const styles = StyleSheet.create({
   emptyText: {
     color: colors.muted,
     fontFamily: typography.regular,
-    fontSize: 14,
+    fontSize: 16,
     textAlign: 'center',
   },
 });

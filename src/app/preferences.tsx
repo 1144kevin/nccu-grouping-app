@@ -1,5 +1,6 @@
+import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Pressable, StyleSheet, View } from 'react-native';
 import { DetailHeader, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -19,14 +20,14 @@ function PreferenceGroup({ icon, title, items, selected, onToggle }: { icon: Rea
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  intro: { color: colors.muted, fontSize: 12, lineHeight: 19 },
+  intro: { color: colors.muted, fontSize: 14, lineHeight: 20 },
   group: { marginTop: spacing.xl },
   heading: { marginBottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   title: { color: colors.ink, fontFamily: typography.rounded, fontSize: 16, fontWeight: '700' },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: { minHeight: 37, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill },
   tagActive: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
-  tagText: { color: colors.ink, fontSize: 12 },
+  tagText: { color: colors.ink, fontSize: 14 },
   note: { marginTop: spacing.xl, padding: spacing.md, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface },
-  noteText: { flex: 1, color: colors.muted, fontSize: 11, lineHeight: 17 },
+  noteText: { flex: 1, color: colors.muted, fontSize: 13, lineHeight: 19 },
 });
