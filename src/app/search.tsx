@@ -5,6 +5,8 @@ import { type Href, router, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CoreSearchScreen } from '@/components/core-search';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 type ResultType = 'post' | 'user' | 'message' | 'order';
@@ -12,6 +14,11 @@ type SearchResult = { id: string; type: ResultType; title: string; detail: strin
 const filterOptions: { label: string; value: 'all' | ResultType }[] = [{ label: '全部', value: 'all' }, { label: '貼文', value: 'post' }, { label: '使用者', value: 'user' }, { label: '訊息', value: 'message' }, { label: '拼單', value: 'order' }];
 
 export default function SearchScreen() {
+  const { query } = useLocalSearchParams<{ query?: string }>();
+  return CORE_API_ENABLED ? <CoreSearchScreen initialQuery={query ?? ''} /> : <DemoSearchScreen />;
+}
+
+function DemoSearchScreen() {
   const params = useLocalSearchParams<{ scope?: string; query?: string }>();
   const posts = useAppStore((state) => state.posts);
   const conversations = useAppStore((state) => state.conversations);

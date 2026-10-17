@@ -5,11 +5,17 @@ import { router } from 'expo-router';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CoreEditProfileScreen } from '@/components/core-edit-profile';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 const badges = ['🍜', '🥐', '🍕', '🧋', '🍱', '🍍'];
 
 export default function EditProfileScreen() {
+  return CORE_API_ENABLED ? <CoreEditProfileScreen /> : <DemoEditProfileScreen />;
+}
+
+function DemoEditProfileScreen() {
   const currentUser = useAppStore((state) => state.currentUser);
   const updateProfile = useAppStore((state) => state.updateProfile);
   const [name, setName] = useState(currentUser.name);

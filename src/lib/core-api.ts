@@ -1,0 +1,219 @@
+import { isAxiosError } from 'axios';
+import { api } from '@/lib/api';
+import type { FeedPost, PostLocation } from '@/types/domain';
+
+export const CORE_API_ENABLED = process.env.EXPO_PUBLIC_CORE_API_ENABLED === 'true';
+export const CORE_SUPABASE_MODE = process.env.EXPO_PUBLIC_CORE_DATA_MODE === 'supabase';
+
+export type CoreUser = {
+  id: string;
+  email: string;
+  display_name: string;
+  created_at: string;
+  bio?: string;
+  badge?: '🍜' | '🥐' | '🍕' | '🧋' | '🍱' | '🍍';
+  version?: number;
+  auth_mode: 'local_development' | 'supabase';
+  email_verified: boolean;
+};
+export type CoreSession = { access_token: string; refresh_token?: string | null; expires_at: string; user: CoreUser };
+export type ConfirmationRequired = { confirmation_required: true; message: 'check_email_to_confirm' };
+export type GoogleStart = { authorize_url: string; flow_id: string; expires_in: number };
+export type CoreProfileInput = { display_name: string; bio: string; badge: NonNullable<CoreUser['badge']>; expected_version: number };
+export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
+export type CorePost = {
+  is_demo?: boolean;
+  id: string;
+  author_id: string;
+  author_name: string;
+  author_badge?: string;
+  content: string;
+  tags: string[];
+  location: PostLocation;
+  price_per_person: string | null;
+  deadline_at: string;
+  capacity: number;
+  joined: number;
+  status: 'open' | 'full' | 'expired' | 'cancelled';
+  my_status: Membership;
+  version?: number;
+  can_edit?: boolean;
+  created_at: string;
+};
+export type CorePostInput = Pick<CorePost, 'content' | 'tags' | 'location' | 'deadline_at' | 'capacity'> & {
+  price_per_person: string | null;
+};
+export type CoreJoin = {
+  id: string;
+  post_id: string;
+  requester_id: string;
+  requester_name: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  created_at: string;
+  decided_at: string | null;
+};
+export type CorePostPage = { items: CorePost[]; next_cursor: string | null };
+export type CoreMessage = { id: string; post_id: string; sender_id: string; sender_name: string; sender_badge: string; content: string; created_at: string };
+export type CoreChatPage = { post: CorePost; messages: CoreMessage[]; next_cursor: string | null; can_send: boolean };
+export type CoreConversationPage = { items: { post: CorePost; last_message: CoreMessage | null }[]; next_cursor: string | null };
+export type CoreChatActivity = { groups: { post_id: string; unread_count: number }[]; total_unread: number; pending_requests: number };
+export type CorePublicUser = { id: string; display_name: string; bio: string; badge: string; created_at: string; active_posts: number };
+export type CoreOrderActivity = { id: string; post_id: string; post_content: string; requester_id: string; requester_name: string; status: 'pending' | 'accepted' | 'rejected' | 'cancelled'; kind: 'hosted_request' | 'my_request'; occurred_at: string; post_cancelled: boolean; post_expired: boolean };
+export type CoreOrderActivityPage = { items: CoreOrderActivity[]; next_cursor: string | null };
+
+export const coreApi = {
+  clock: async () => (await api.get<{ server_time: string }>('/development/clock')).data,
+  orderActivity: async (cursor?: string) => (await api.get<CoreOrderActivityPage>('/notifications', { params: { cursor, limit: 30 } })).data,
+  publicUser: async (id: string) => (await api.get<CorePublicUser>(`/users/${encodeURIComponent(id)}`)).data,
+  userPosts: async (id: string, cursor?: string) => (await api.get<CorePostPage>(`/users/${encodeURIComponent(id)}/posts`, { params: { cursor, limit: 30 } })).data,
+  chatActivity: async () => (await api.get<CoreChatActivity>('/conversations/activity')).data,
+  readChat: async (postId: string, messageId: string) => (await api.post<{ ok: true }>(`/conversations/${encodeURIComponent(postId)}/read`, { message_id: messageId })).data,
+  conversations: async (cursor?: string) => (await api.get<CoreConversationPage>('/conversations', { params: { cursor, limit: 30 } })).data,
+  messages: async (postId: string, cursor?: string) => (await api.get<CoreChatPage>(`/conversations/${encodeURIComponent(postId)}/messages`, { params: { cursor, limit: 30 } })).data,
+  sendMessage: async (postId: string, content: string, key: string) => (await api.post<CoreMessage>(`/conversations/${encodeURIComponent(postId)}/messages`, { content }, { headers: { 'Idempotency-Key': key } })).data,
+  clearDemo: async () => (await api.delete<{ deleted_posts: number; kept_posts: number }>('/development/demo')).data,
+  googleStart: async () => (await api.post<GoogleStart>('/auth/google/start')).data,
+  googleFinish: async (flowId: string, code: string) => (await api.post<CoreSession>('/auth/google/finish', { flow_id: flowId, code })).data,
+  register: async (email: string, password: string, displayName: string) =>
+    (await api.post<CoreSession | ConfirmationRequired>('/auth/register', { email, password, display_name: displayName })).data,
+  login: async (email: string, password: string) =>
+    (await api.post<CoreSession>('/auth/login', { email, password })).data,
+  me: async () => (await api.get<CoreUser>('/auth/me')).data,
+  updateProfile: async (value: CoreProfileInput) => (await api.patch<CoreUser>('/auth/me', value)).data,
+  logout: async () => { await api.post('/auth/logout'); },
+  posts: async (scope: 'feed' | 'hosted' | 'participating' | 'history' = 'feed', cursor?: string, q = '', activeOnly = false) =>
+    (await api.get<CorePostPage>('/posts', { params: { scope, cursor, q, active_only: activeOnly, limit: 30 } })).data,
+  post: async (id: string) => (await api.get<CorePost>(`/posts/${encodeURIComponent(id)}`)).data,
+  create: async (value: CorePostInput, requestKey: string) =>
+    (await api.post<CorePost>('/posts', value, { headers: { 'Idempotency-Key': requestKey } })).data,
+  edit: async (id: string, value: CorePostInput & { expected_version: number }) =>
+    (await api.patch<CorePost>(`/posts/${encodeURIComponent(id)}`, value)).data,
+  requestJoin: async (id: string, expectedVersion = 1) =>
+    (await api.post<CoreJoin>(`/posts/${encodeURIComponent(id)}/join-requests`, { expected_version: expectedVersion })).data,
+  withdraw: async (id: string) =>
+    (await api.delete<CorePost>(`/posts/${encodeURIComponent(id)}/membership`)).data,
+  requests: async (id: string) =>
+    (await api.get<CoreJoin[]>(`/posts/${encodeURIComponent(id)}/join-requests`)).data,
+  decide: async (id: string, status: 'accepted' | 'rejected') =>
+    (await api.patch<CoreJoin>(`/join-requests/${encodeURIComponent(id)}`, { status })).data,
+  cancel: async (id: string) =>
+    (await api.post<CorePost>(`/posts/${encodeURIComponent(id)}/cancel`)).data,
+};
+
+export function toFeedPost(post: CorePost): FeedPost {
+  return {
+    id: post.id, name: post.author_name, badge: post.author_badge ?? '🍱', level: 1,
+    time: new Date(post.created_at).toLocaleString('zh-TW'), content: post.content,
+    tags: post.tags, deadline: new Date(post.deadline_at).toLocaleString('zh-TW'),
+    joined: post.joined, capacity: post.capacity, location: post.location,
+    pricePerPerson: post.price_per_person === null ? undefined : Number(post.price_per_person),
+    isMine: post.my_status === 'host',
+  };
+}
+
+const messages: Record<string, string> = {
+  invalid_formation_input: '請確認公開說明、整數金額、分工與含時區的截止時間；截止需晚於服務時間且不超過配合區間。',
+  terms_revision_conflict: '方案已更新，請重新整理並確認新版，舊版同意不會沿用。',
+  terms_required: '請先提出最終費用與分工方案。',
+  formation_cost_conflict: '費用不可超過共同預算。',
+  formation_cost_note_required: '調整配對時已知價格，需填 5～120 字原因，並由全員確認新版。',
+  formation_deadline_passed: '方案的拼單截止已過，請在邀請有效時修改方案並重新確認。',
+  proposal_already_formed: '這組已成團，請到正式拼單處理退出或取消。',
+  signal_already_consumed: '這筆需求已成團，請到正式拼單處理退出。',
+  demo_cannot_form: '示範人物無法同意，請使用真人帳號測試成團。',
+  explicit_consent_required: '請明確確認費用、分工與公開內容。',
+  terms_revision_limit: '本組修改已達上限，請重新建立需求。',
+  stealth_requires_supabase: '偷揪需要使用 Supabase 開發模式。',
+  intake_incomplete: '分身還需要補充資訊，請先回答問題。',
+  local_model_not_configured: '尚未啟用本機模型，請依開發文件啟動模型與後端。',
+  local_model_unavailable: '本機模型未啟動，請執行 run_local_model.py。',
+  local_model_not_installed: '本機模型尚未下載，請依開發文件完成下載。',
+  local_model_timeout: '本機模型回應逾時，內容仍保留，請稍後重試。',
+  local_model_busy: '本機模型正在處理另一筆需求，請稍後重試。',
+  invalid_local_model_response: '本機模型暫時無法回應，請確認模型服務已啟動。',
+  invalid_local_model_output: '模型未能產生完整資料，請換個說法，或使用手動表單。',
+  create_agent_first: '請先建立並儲存你的分身。',
+  agent_version_conflict: '分身已在其他地方更新，請重新載入已儲存設定。',
+  agent_not_enabled: '分身目前暫停中，請先開啟偷揪並儲存。',
+  agent_quiet_hours: '目前是分身的安靜時段；可在設定中調整後再試。',
+  match_cooldown: '剛剛已尋找過配對，請等 30 秒再試。',
+  active_signal_limit: '最多同時保留 10 筆有效需求，請先撤回不需要的內容。',
+  invalid_signal_window: '時間區間不符：持續 15～1,440 分鐘，且結束時間需在未來 7 天內。',
+  invalid_stealth_input: '請確認需求內容、分類、角色與輸入格式。',
+  invalid_stealth_money: '金額請填 0～100,000 的整數，留白表示尚未確認。',
+  stealth_role_required: '提供資源需要選擇角色；行程需明確勾選願意順路取餐。',
+  idempotency_payload_conflict: '重試內容與先前不同，請重新確認。',
+  stealth_not_found: '找不到這筆偷揪資料，或你無權操作。',
+  proposal_unavailable: '這個配對已失效，可能有人撤回、暫停或已超過期限。',
+  stealth_busy_retry: '分身正在處理其他變更，請稍後再試。',
+  public_profile_not_found: '找不到這位使用者的公開資料。',
+  chat_members_only: '只有主揪與已加入的團員可以使用這個聊天室；退出後便無法再讀取新訊息。',
+  chat_read_only: '這筆拼單已取消，聊天室只能查看紀錄。',
+  chat_rate_limit: '訊息傳得太快，請等一分鐘再試。',
+  chat_requires_supabase: '文字聊天需要使用 Supabase 開發模式。',
+  invalid_chat_input: '訊息需要 1～2,000 字，請確認內容後再傳送。',
+  message_key_payload_conflict: '重試訊息的內容與原本不同，請重新輸入後再傳送。',
+  invalid_email_or_password: '信箱或密碼不正確。',
+  invalid_or_expired_session: '登入已失效，請重新登入。',
+  email_already_registered: '這個信箱已註冊，請改用登入。',
+  core_local_adapter_disabled: '本機後端尚未啟用，請依開發文件啟動。',
+  post_full: '拼單已額滿，請重新整理查看名額。',
+  post_deadline_passed: '已超過截止時間，無法再加入、接受或退出。',
+  post_cancelled: '主揪已取消這筆拼單。',
+  host_only: '只有主揪可以執行這個操作。',
+  host_must_cancel_post: '主揪請使用取消拼單。',
+  join_request_not_pending: '申請狀態已改變，請重新整理。',
+  too_many_auth_attempts: '嘗試次數太多，請等一分鐘再試。',
+  deadline_must_be_within_14_days: '截止時間必須晚於現在，且在未來 14 天內。',
+  idempotency_key_payload_conflict: '這次發布的內容與先前不同，請重新確認後發布。',
+  profile_changed_reload: '個人資料已在其他地方更新，請重新載入後再編輯。',
+  post_changed_reload: '拼單已在其他地方更新，請重新載入後再編輯。',
+  post_has_active_requests: '已有待處理申請或團員，請先處理申請，或取消後重新發布。',
+  supabase_development_not_configured: 'Supabase 開發專案尚未設定，請確認本機後端設定。',
+  supabase_unavailable: '目前無法連接 Supabase，請確認網路後重試。',
+  supabase_operation_failed: '雲端操作未完成，請稍後重試；若持續發生，請檢查開發專案設定。',
+  email_confirmation_required: '請先完成信箱驗證，再回到此頁登入。',
+  email_provider_not_configured: '開發專案尚未設定對外寄信，請使用已驗證的測試帳號。',
+  email_address_invalid: 'Supabase 不接受這個信箱。請使用能收驗證信的真實信箱；example.test 僅供離線測試。',
+  email_send_rate_limit: '驗證信寄送已達限制，請稍後再試。',
+  google_login_not_configured: 'Google 登入尚未啟用。請先完成 Google OAuth 與 Supabase Google Provider 設定。',
+  google_login_requires_supabase: 'Google 登入需要啟動 Supabase 開發模式。',
+  google_login_expired_restart: 'Google 登入已失效或不屬於這個頁籤，請返回登入頁重新開始。',
+  google_login_cancelled: 'Google 登入未完成，請返回登入頁重試。',
+  google_web_only: '這一版 Google 登入先支援本機瀏覽器，iPhone App 登入尚未啟用。',
+  google_login_invalid_response: 'Google 登入設定不符，請檢查開發專案的回呼網址。',
+};
+
+export function coreError(error: unknown): string {
+  if (error instanceof Error && messages[error.message]) return messages[error.message];
+  if (isAxiosError(error)) {
+    if (!error.response) return '無法連接本機後端，請確認伺服器已啟動。';
+    const detail: unknown = error.response.data?.detail;
+    if (typeof detail === 'string' && messages[detail]) return messages[detail];
+    if (error.response.status === 422) {
+      const fields = new Set<string>();
+      if (Array.isArray(detail)) for (const item of detail) {
+        if (item && typeof item === 'object' && 'loc' in item && Array.isArray(item.loc)) {
+          for (const field of item.loc) if (typeof field === 'string') fields.add(field);
+        }
+      }
+      if (fields.has('email')) return '請填寫有效的信箱地址。';
+      if (fields.has('password')) return '密碼需為 10～128 字。';
+      if (fields.has('display_name')) return '顯示名稱需為 1～40 字。';
+      if (fields.has('bio')) return '個人介紹最多 160 字。';
+      if (fields.has('capacity')) return '需求人數需為 2～20 人（含主揪）。';
+      if (fields.has('tags')) return '請填寫 1～10 個標籤，每個最多 40 字。';
+      if (fields.has('price_per_person')) return '每人金額需為 0～999,999.99，最多兩位小數。';
+      if (fields.has('deadline_at')) return '請重新選擇有效的截止時間。';
+      if (fields.has('location')) return '請確認地點名稱與有效座標。';
+      return '填寫內容不符合要求，請檢查後再送出。';
+    }
+    if (error.response.status === 401) return '請重新登入。';
+  }
+  return '操作未完成，請稍後再試。';
+}
+
+// A replay identifier, not an authentication secret. Retain it when retrying the same payload.
+export function newRequestKey(): string {
+  return `post-${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}

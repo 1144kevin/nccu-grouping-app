@@ -53,6 +53,8 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "dev:local": "node ./scripts/local-core.mjs",
+    "dev:supabase": "node ./scripts/local-core.mjs --supabase",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

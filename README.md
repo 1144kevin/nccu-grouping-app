@@ -2,6 +2,22 @@
 
 React Native + Expo 前端。
 
+## 本機程式 + Supabase 開發專案
+
+後端執行 `scripts/run_supabase_core.py`，前端執行 `npm run dev:supabase`，瀏覽 `http://localhost:8081`。登入頁及頂端標示 Supabase 開發版；帳號／拼單存於指定雲端開發專案，程式沒有部署。詳細測試與信箱驗證限制見後端 `docs/CORE_SUPABASE_DEV.md`。原本 `dev:local` 的 SQLite 模式仍保留。
+
+目前可測 Google／信箱登入與自動續期、發布／搜尋／編輯／審核／退出／取消拼單、過往紀錄、公開個人資料、文字聊天室、已讀與真實未讀數量，以及 Drawer 的「拼單動態」。開發資料庫已保留七筆示範拼單及三則示範對話，提供兩步確認的個人示範資料清理入口；其他真實使用者參與的紀錄會保留。
+
+更新前登入的頁籤請自行登出再用 Google 登入一次，取得續期憑證。新增與編輯拼單使用後端提供的資料庫時間，避免裝置時鐘不同造成截止時間錯誤。手機原生 Google 回跳、iPhone 連 Windows 本機 API 與 TestFlight 原生建置仍待完成；目前只監聽 localhost。
+
+新增選單「偷揪 · 我的 AI 分身」：同帳號建立分身，在「我的需求」用免費本機 Qwen3.5 4B 整理中文需求及補問，再明確套用表單、親自儲存。模型對話不存入資料庫。配對後由規則規劃器預填已知費用與自願分工；未知資訊保持待補，可人工修改，改價需填原因且不能超預算。全員逐人同意同一版方案才建立既有拼單與聊天室，改版要求重新確認。預設關閉；可允許示範配對並預覽草案，但示範人物無法同意成團。手動表單與關鍵字提示保留；模型在 Windows 本機執行，尚未整合手機推播。完整啟動及測試方式見後端 `docs/CORE_SUPABASE_DEV.md`。
+
+## 原本登入／拼單的本機 API 模式
+
+後端啟動後執行 `npm run dev:local`，瀏覽 `http://localhost:8081`。支援本機測試信箱登入、個人資料編輯、發布、搜尋、主揪編輯、申請、主揪接受／拒絕與截止前退出。資料存於後端 SQLite，重開不會清除；其餘展示功能仍保留。完整步驟見後端專案的 `docs/CORE_LOCAL.md`。
+
+一般 `npm start` 保留原展示模式（`EXPO_PUBLIC_CORE_API_ENABLED=false`）。SQLite 本機模式人數為 2～20 人（含主揪），不寄驗證信；Supabase 模式提供雲端登入、拼單與文字聊天。媒體上傳、手機推播與檢舉後端尚未串接；展示模式原介面保留。禁止把 Supabase MCP PAT 或 service_role key 放入任何 EXPO_PUBLIC 變數。
+
 ## 開始開發嘍
 
 需要 Node.js 24。安裝依賴後啟動 Expo：
@@ -58,6 +74,8 @@ npm test
 使用者按「開啟定位」後，透過 Expo Location 取得前景定位權限，並在裝置上計算與取餐點的球面直線距離（公里），不是步行或開車里程。位置只保留於記憶體，可按「更新定位」重新取得；拒絕權限、逾時或定位失敗時不顯示公里數。網頁需 HTTPS 或 localhost，原生自訂 development build 加入定位套件及權限設定後需重新建置。
 
 ## TestFlight
+
+以下是後續原生建置參考，本輪沒有執行 EAS 建置或上傳。iOS JavaScript 匯出成功不代表已完成 Xcode 簽署、實機 API 連線或原生 Google 登入；先完成這些整合再使用建置流程。
 
 登入 Expo 與 Apple Developer 帳號後執行：
 

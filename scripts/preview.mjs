@@ -1,9 +1,17 @@
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, realpathSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname, join, normalize } from 'node:path';
+import { extname, isAbsolute, join, normalize, relative, resolve } from 'node:path';
 
 const port = Number(process.env.PORT ?? 7362);
-const root = join(process.cwd(), 'dist');
+const workspace = process.cwd();
+const root = resolve(workspace, process.env.PREVIEW_ROOT ?? 'dist');
+const within = (base, path) => {
+  const part = relative(base, path);
+  return part !== '..' && !part.startsWith('..\\') && !part.startsWith('../') && !isAbsolute(part);
+};
+if (!within(workspace, root) || !existsSync(root) || !within(realpathSync(workspace), realpathSync(root))) {
+  throw new Error('Preview root must be an existing directory inside this project.');
+}
 const contentTypes = {
   '.css': 'text/css',
   '.html': 'text/html; charset=utf-8',
@@ -16,10 +24,14 @@ const contentTypes = {
 };
 
 createServer((request, response) => {
-  const pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname);
+  let pathname;
+  try { pathname = decodeURIComponent(new URL(request.url ?? '/', 'http://localhost').pathname); }
+  catch { response.writeHead(400).end('Invalid path'); return; }
   const requestedPath = normalize(join(root, pathname));
+  if (!within(root, requestedPath)) { response.writeHead(403).end('Forbidden'); return; }
   const candidates = [requestedPath, join(requestedPath, 'index.html'), join(root, 'index.html')];
-  const filePath = candidates.find((candidate) => candidate.startsWith(root) && existsSync(candidate) && statSync(candidate).isFile());
+  const filePath = candidates.find((candidate) => within(root, candidate) && existsSync(candidate)
+    && within(realpathSync(root), realpathSync(candidate)) && statSync(candidate).isFile());
 
   if (!filePath) {
     response.writeHead(404).end('Not found');

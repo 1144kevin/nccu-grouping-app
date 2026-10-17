@@ -4,12 +4,18 @@ import { router } from 'expo-router';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader, Avatar, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CoreOrdersScreen } from '@/components/core-order-screens';
 import type { JoinRequest } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 type OrderTab = 'hosted' | 'interested';
 
 export default function OrdersScreen() {
+  return CORE_API_ENABLED ? <CoreOrdersScreen /> : <DemoOrdersScreen />;
+}
+
+function DemoOrdersScreen() {
   const [tab, setTab] = useState<OrderTab>('hosted');
   return (
     <Screen>

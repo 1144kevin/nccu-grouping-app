@@ -5,8 +5,14 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { DetailHeader, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CoreOrderActivityScreen } from '@/components/core-order-activity';
 
 export default function NotificationsScreen() {
+  return CORE_API_ENABLED && CORE_SUPABASE_MODE ? <CoreOrderActivityScreen /> : <DemoNotificationsScreen />;
+}
+
+function DemoNotificationsScreen() {
   const notifications = useAppStore((state) => state.notifications);
   const markRead = useAppStore((state) => state.markNotificationRead);
   const markAllRead = useAppStore((state) => state.markAllNotificationsRead);

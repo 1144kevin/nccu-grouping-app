@@ -64,7 +64,7 @@ export function AppHeader({
 export function DetailHeader({ title, right }: { title: string; right?: ReactNode }) {
   return (
     <View style={styles.header}>
-      <IconButton icon="chevron-left" label="返回" onPress={() => router.back()} />
+      <IconButton icon="chevron-left" label="返回" onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/'); }} />
       <Text numberOfLines={1} style={styles.headerTitle}>
         {title}
       </Text>

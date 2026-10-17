@@ -1,0 +1,71 @@
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { Avatar, DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
+import { coreApi, coreError, type CoreUser } from '@/lib/core-api';
+import { invalidateCore } from '@/lib/core-hooks';
+import { applyProfileUpdate, useAuthStore } from '@/store/auth-store';
+import { colors, radius, spacing } from '@/theme/tokens';
+
+const badges: NonNullable<CoreUser['badge']>[] = ['🍜', '🥐', '🍕', '🧋', '🍱', '🍍'];
+
+export function CoreEditProfileScreen() {
+  const user = useAuthStore((state) => state.user);
+  if (!user) return null;
+  return <ProfileForm key={user.id} user={user} />;
+}
+
+function ProfileForm({ user }: { user: CoreUser }) {
+  const [name, setName] = useState(user.display_name);
+  const [bio, setBio] = useState(user.bio ?? '');
+  const [badge, setBadge] = useState<NonNullable<CoreUser['badge']>>(user.badge ?? '🍱');
+  const [version, setVersion] = useState(user.version ?? 1);
+  const mutation = useMutation({
+    mutationFn: () => coreApi.updateProfile({ display_name: name.trim(), bio: bio.trim(), badge, expected_version: version }),
+    onSuccess: async (updated) => {
+      if (!applyProfileUpdate(updated)) return;
+      await invalidateCore();
+      if (useAuthStore.getState().user?.id === updated.id) {
+        if (router.canGoBack()) router.back(); else router.replace('/profile');
+      }
+    },
+  });
+  const reload = useMutation({
+    mutationFn: coreApi.me,
+    onSuccess: (updated) => {
+      if (!applyProfileUpdate(updated)) return;
+      setName(updated.display_name); setBio(updated.bio ?? ''); setBadge(updated.badge ?? '🍱');
+      setVersion(updated.version ?? 1); mutation.reset();
+    },
+  });
+  const busy = mutation.isPending || reload.isPending;
+  return <Screen>
+    <DetailHeader title="編輯個人資料" />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <View style={styles.preview}><Avatar name={name || user.display_name} badge={badge} size={78} /></View>
+      <Text style={styles.hint}>顯示名稱、圖示與介紹會出現在公開個人資料；信箱不會公開。</Text>
+      <Text style={styles.label}>圖示</Text>
+      <View style={styles.badges}>{badges.map((item) => <Pressable key={item} accessibilityRole="radio" accessibilityLabel={`圖示 ${item}`} accessibilityState={{ checked: item === badge }} disabled={busy} onPress={() => setBadge(item)} style={[styles.badge, item === badge && styles.selected]}><Text style={{ fontSize: 24 }}>{item}</Text></Pressable>)}</View>
+      <Text style={styles.label}>顯示名稱</Text>
+      <TextInput accessibilityLabel="顯示名稱" value={name} onChangeText={setName} maxLength={40} editable={!busy} style={styles.input} />
+      <Text style={styles.label}>公開個人介紹</Text>
+      <TextInput accessibilityLabel="個人介紹" value={bio} onChangeText={setBio} maxLength={160} multiline editable={!busy} style={[styles.input, { minHeight: 100, textAlignVertical: 'top' }]} />
+      {mutation.error || reload.error ? <View><Text accessibilityRole="alert" style={styles.error}>{coreError(mutation.error ?? reload.error)}</Text><PrimaryButton secondary disabled={busy} onPress={() => reload.mutate()}>重新載入已儲存資料</PrimaryButton></View> : null}
+      <PrimaryButton disabled={busy || !name.trim()} onPress={() => mutation.mutate()}>{busy ? '處理中…' : '儲存變更'}</PrimaryButton>
+    </ScrollView>
+  </Screen>;
+}
+
+const styles = StyleSheet.create({
+  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: 120 },
+  preview: { alignItems: 'center', padding: spacing.md },
+  label: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  hint: { color: colors.muted, fontSize: 13, lineHeight: 21 },
+  input: { minHeight: 46, padding: spacing.md, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, color: colors.ink },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  badge: { minWidth: 46, minHeight: 46, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  selected: { backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
+  error: { color: colors.danger, fontSize: 14 },
+});

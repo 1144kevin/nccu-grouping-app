@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 
 const mainItems = [
   { label: '首頁', icon: 'home-outline', href: '/' },
@@ -57,11 +58,12 @@ export function AppDrawer() {
             <Avatar name={currentUser.name} badge={currentUser.badge} size={52} />
             <View style={styles.accountText}>
               <Text style={styles.name}>{currentUser.name}</Text>
-              <Text style={styles.level}>{currentUser.badge} 五分熟 · Lv.5</Text>
+              <Text style={styles.level}>{CORE_API_ENABLED ? '已登入' : `${currentUser.badge} 五分熟 · Lv.5`}</Text>
             </View>
             <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
           </Pressable>
           <ScrollView contentContainerStyle={styles.items}>
+            {CORE_API_ENABLED && CORE_SUPABASE_MODE ? <DrawerItem label="偷揪 · 我的 AI 分身" icon="robot-outline" onPress={() => navigate('/stealth')} /> : null}
             {mainItems.map((item) => (
               <DrawerItem key={item.label} {...item} onPress={() => navigate(item.href)} />
             ))}
@@ -70,7 +72,8 @@ export function AppDrawer() {
               <DrawerItem
                 key={item.label}
                 {...item}
-                badge={item.href === '/notifications' ? unreadNotifications : undefined}
+                label={item.href === '/notifications' && CORE_API_ENABLED && CORE_SUPABASE_MODE ? '拼單動態' : item.label}
+                badge={item.href === '/notifications' && !CORE_API_ENABLED ? unreadNotifications : undefined}
                 onPress={() => navigate(item.href)}
               />
             ))}

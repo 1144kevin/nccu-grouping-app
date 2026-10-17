@@ -10,10 +10,16 @@ import { sortedConversations } from '@/lib/conversations';
 import { useAppStore } from '@/store/app-store';
 import type { Conversation, InboxType } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CoreInbox } from '@/components/core-chat';
 
 type InboxTab = 'all' | InboxType;
 
 export default function MessagesScreen() {
+  return CORE_API_ENABLED && CORE_SUPABASE_MODE ? <CoreInbox /> : <DemoMessagesScreen />;
+}
+
+function DemoMessagesScreen() {
   const conversations = useAppStore((state) => state.conversations);
   const deleted = useAppStore((state) => state.deletedConversations);
   const restore = useAppStore((state) => state.restoreConversation);

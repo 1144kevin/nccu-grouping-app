@@ -5,8 +5,15 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, EmptyState, IconButton, PrimaryButton, Screen, SectionTitle } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CorePublicProfile } from '@/components/core-public-profile';
 
 export default function UserProfileScreen() {
+  const params = useLocalSearchParams<{ name: string }>();
+  return CORE_API_ENABLED ? <CorePublicProfile id={params.name ?? ''} /> : <DemoUserProfileScreen />;
+}
+
+function DemoUserProfileScreen() {
   const params = useLocalSearchParams<{ name: string }>();
   const name = decodeURIComponent(params.name);
   const allPosts = useAppStore((state) => state.posts);

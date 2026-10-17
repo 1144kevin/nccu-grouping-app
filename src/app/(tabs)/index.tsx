@@ -7,10 +7,35 @@ import { AppHeader, Avatar, EmptyState, IconButton, PrimaryButton, Screen } from
 import { useAppStore } from '@/store/app-store';
 import { TagChip } from '@/components/tag-chip';
 import { PostInfo } from '@/components/post-location';
+import { CORE_API_ENABLED, coreError, toFeedPost, type CorePost } from '@/lib/core-api';
+import { useCorePosts } from '@/lib/core-hooks';
+import { CorePostActions } from '@/components/core-post-actions';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function HomeScreen() {
+  return CORE_API_ENABLED ? <CoreHomeScreen /> : <DemoHomeScreen />;
+}
+
+function CoreHomeScreen() {
+  const query = useCorePosts();
+  return <Screen>
+    <AppHeader searchScope="posts" />
+    <FlatList
+      data={query.posts}
+      keyExtractor={(post) => post.id}
+      renderItem={({ item }) => <PostItem post={toFeedPost(item)} corePost={item} />}
+      ItemSeparatorComponent={() => <View style={styles.divider} />}
+      refreshControl={<RefreshControl refreshing={query.isFetching && !query.isFetchingNextPage} onRefresh={() => { void query.refetch(); }} tintColor={colors.yellow} />}
+      ListHeaderComponent={query.error ? <Text accessibilityRole="alert">{coreError(query.error)}</Text> : null}
+      ListEmptyComponent={<EmptyState icon="text-box-search-outline" title={query.isPending ? '載入拼單中…' : query.error ? '無法取得拼單，請下拉重試' : '目前沒有拼單，建立第一筆吧'} action={<PrimaryButton secondary onPress={() => query.error ? void query.refetch() : router.push('/create')}>{query.error ? '重試' : '建立拼單'}</PrimaryButton>} />}
+      ListFooterComponent={query.hasNextPage ? <PrimaryButton secondary disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }}>載入更多</PrimaryButton> : null}
+      contentContainerStyle={query.posts.length ? styles.feed : styles.emptyFeed}
+    />
+  </Screen>;
+}
+
+function DemoHomeScreen() {
   const posts = useAppStore((state) => state.posts);
   const blocked = useAppStore((state) => state.blockedUserNames);
   const [refreshing, setRefreshing] = useState(false);
@@ -38,7 +63,7 @@ export default function HomeScreen() {
   );
 }
 
-function PostItem({ post }: { post: FeedPost }) {
+function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
   const [optionsVisible, setOptionsVisible] = useState(false);
   const interested = useAppStore((state) => state.interestedPostIds.includes(post.id));
   const toggleInterest = useAppStore((state) => state.toggleInterest);
@@ -47,6 +72,7 @@ function PostItem({ post }: { post: FeedPost }) {
   const restorePost = useAppStore((state) => state.restorePost);
   const reminder = useAppStore((state) => state.reminderPostIds.includes(post.id));
   const toggleReminder = useAppStore((state) => state.toggleReminder);
+  const authorPath = `/user/${encodeURIComponent(corePost?.author_id ?? post.name)}` as const;
 
   if (dismissed) {
     return (
@@ -67,15 +93,17 @@ function PostItem({ post }: { post: FeedPost }) {
   return (
     <View style={styles.post}>
       <View style={styles.authorRow}>
-        <Pressable onPress={() => router.push(`/user/${encodeURIComponent(post.name)}`)}><Avatar name={post.name} badge={post.badge} size={44} /></Pressable>
-        <Pressable onPress={() => router.push(`/user/${encodeURIComponent(post.name)}`)} style={styles.authorText}><View style={styles.nameRow}><Text numberOfLines={1} style={styles.authorName}>{post.name}</Text><Text style={styles.level}>{post.badge} Lv.{post.level}</Text></View><Text style={styles.time}>{post.time}</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`查看 ${post.name} 的公開資料`} onPress={() => router.push(authorPath)}><Avatar name={post.name} badge={post.badge} size={44} /></Pressable>
+        <Pressable onPress={() => router.push(authorPath)} style={styles.authorText}><View style={styles.nameRow}><Text numberOfLines={1} style={styles.authorName}>{post.name}</Text>{!corePost ? <Text style={styles.level}>{post.badge} Lv.{post.level}</Text> : null}</View><Text style={styles.time}>{post.time}</Text></Pressable>
         <IconButton icon="dots-horizontal" label="貼文選項" onPress={() => setOptionsVisible(true)} />
       </View>
       <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
       <View style={styles.tags}>{post.tags.map((tag) => <TagChip key={tag} label={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })} />)}</View>
       <PostInfo post={post} reminder={reminder} />
+      {corePost?.is_demo ? <Text style={styles.time}>示範資料 · 沒有真實訂購</Text> : null}
+      {corePost && corePost.status !== 'open' ? <Text style={styles.time}>{corePost.status === 'cancelled' ? '已取消' : corePost.status === 'expired' ? '已截止' : '已額滿'}</Text> : null}
       <View style={styles.actions}>
-        <PrimaryButton disabled={post.isMine} style={StyleSheet.flatten([styles.actionButton, interested && !post.isMine && styles.interestedActionButton])} textColor={interested && !post.isMine ? '#FFFFFF' : undefined} onPress={() => { toggleInterest(post.id); Alert.alert(interested ? '已取消' : '申請已送出', interested ? '你已取消想被揪。' : '主揪會收到你的申請。'); }}>{post.isMine ? '你的貼文' : interested ? '已想被揪' : '想被揪'}</PrimaryButton>
+        {corePost ? <CorePostActions post={corePost} /> : <PrimaryButton disabled={post.isMine} style={StyleSheet.flatten([styles.actionButton, interested && !post.isMine && styles.interestedActionButton])} textColor={interested && !post.isMine ? '#FFFFFF' : undefined} onPress={() => { toggleInterest(post.id); Alert.alert(interested ? '已取消' : '申請已送出', interested ? '你已取消想被揪。' : '主揪會收到你的申請。'); }}>{post.isMine ? '你的貼文' : interested ? '已想被揪' : '想被揪'}</PrimaryButton>}
         <IconButton icon="share-variant-outline" label="分享貼文" onPress={() => Share.share({ message: `政缺一咖拼單：${post.content}` })} />
       </View>
       <Modal transparent animationType="fade" visible={optionsVisible} onRequestClose={() => setOptionsVisible(false)}>
@@ -86,11 +114,11 @@ function PostItem({ post }: { post: FeedPost }) {
             <Pressable accessibilityRole="button" style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); dismissPost(post.id); }}>
               <Text style={styles.optionText}>沒興趣</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); toggleReminder(post.id); }}>
-              <Text style={styles.optionText}>{reminder ? '取消截止提醒' : '截止前 30 分鐘提醒'}</Text>
+            <Pressable accessibilityRole="button" disabled={!!corePost} accessibilityState={{ disabled: !!corePost }} style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); toggleReminder(post.id); }}>
+              <Text style={styles.optionText}>{corePost ? '截止提醒尚未開放' : reminder ? '取消截止提醒' : '截止前 30 分鐘提醒'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); Alert.alert('檢舉已送出', '管理員將審核這則內容。'); }}>
-              <Text style={[styles.optionText, styles.reportText]}>檢舉貼文</Text>
+            <Pressable accessibilityRole="button" disabled={!!corePost} accessibilityState={{ disabled: !!corePost }} style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); Alert.alert('檢舉已送出', '管理員將審核這則內容。'); }}>
+              <Text style={[styles.optionText, styles.reportText]}>{corePost ? '檢舉功能尚未開放' : '檢舉貼文'}</Text>
             </Pressable>
             <PrimaryButton secondary onPress={() => setOptionsVisible(false)}>取消</PrimaryButton>
           </View>

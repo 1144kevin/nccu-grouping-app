@@ -4,9 +4,16 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, EmptyState, IconButton, Pill, PrimaryButton, Screen, SectionTitle } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CorePostDetail } from '@/components/core-order-screens';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function OrderDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return CORE_API_ENABLED ? <CorePostDetail id={id} /> : <DemoOrderDetailScreen />;
+}
+
+function DemoOrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const history = useAppStore((state) => state.history.find((item) => item.id === id));
   const post = useAppStore((state) => state.posts.find((item) => item.id === id));

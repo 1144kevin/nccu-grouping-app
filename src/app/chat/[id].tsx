@@ -7,8 +7,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CoreGroupChat } from '@/components/core-chat';
 
 export default function ChatScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return CORE_API_ENABLED && CORE_SUPABASE_MODE ? <CoreGroupChat id={id} /> : <DemoChatScreen />;
+}
+
+function DemoChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const conversations = useAppStore((state) => state.conversations);
   const conversation = useMemo(() => conversations.find((item) => item.id === id), [conversations, id]);

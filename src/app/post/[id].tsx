@@ -6,9 +6,16 @@ import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-nat
 import { Avatar, DetailHeader, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { PostInfo } from '@/components/post-location';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CorePostDetail } from '@/components/core-order-screens';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function PostDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return CORE_API_ENABLED ? <CorePostDetail id={id} /> : <DemoPostDetailScreen />;
+}
+
+function DemoPostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const post = useAppStore((state) => state.posts.find((item) => item.id === id));
   const interested = useAppStore((state) => state.interestedPostIds.includes(id));

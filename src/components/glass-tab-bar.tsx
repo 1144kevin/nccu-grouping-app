@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
   solid: { backgroundColor: '#F5F5F3', borderColor: '#DDDCD8' },
   navigation: { overflow: 'visible', flex: 1, minWidth: 0, height: 66, padding: 5, borderWidth: 1, borderColor: 'transparent' },
   navigationBackground: { flex: 1 },
-  track: { overflow: 'visible', flex: 1, flexDirection: 'row', alignItems: 'center', touchAction: 'pan-y', userSelect: 'none' },
+  track: { overflow: 'visible', flex: 1, flexDirection: 'row', alignItems: 'center', touchAction: 'pan-y', userSelect: 'none' } as ViewStyle,
   tab: { overflow: 'visible', zIndex: 1, flex: 1, minWidth: 0, minHeight: 54, borderRadius: 28, alignItems: 'center', justifyContent: 'center', gap: 3 },
   selection: { overflow: 'visible', position: 'absolute', top: 0, bottom: 0 },
   selectionMaterial: { flex: 1, borderRadius: 28, backgroundColor: 'rgba(210,210,205,0.42)', borderColor: 'rgba(255,255,255,0.65)', boxShadow: 'none' },

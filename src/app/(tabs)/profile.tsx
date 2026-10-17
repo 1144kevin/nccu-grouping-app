@@ -5,12 +5,18 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader, Avatar, Pill, Screen, SectionTitle } from '@/components/primitives';
 import { BurgerLevelIcon, type BurgerLevel } from '@/components/burger-level-icon';
 import { useAppStore } from '@/store/app-store';
+import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CoreProfileScreen } from '@/components/core-profile';
 import type { OrderHistory } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 const levels: BurgerLevel[] = [1, 2, 3, 4, 5];
 
 export default function ProfileScreen() {
+  return CORE_API_ENABLED ? <CoreProfileScreen /> : <DemoProfileScreen />;
+}
+
+function DemoProfileScreen() {
   const history = useAppStore((state) => state.history);
   const currentUser = useAppStore((state) => state.currentUser);
   return (
