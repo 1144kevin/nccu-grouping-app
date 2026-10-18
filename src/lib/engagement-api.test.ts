@@ -1,5 +1,6 @@
 import { expect, it, jest } from '@jest/globals';
-import { visibleChatActivity, type AccountPreferences } from './engagement-api';
+import { recommendationCandidates, visibleChatActivity, type AccountPreferences } from './engagement-api';
+import type { CorePost } from './core-api';
 jest.mock('./api', () => ({ api: {} }));
 jest.mock('./core-hooks', () => ({ useCoreScreenFocused: () => false }));
 jest.mock('@/store/auth-store', () => ({ useAuthStore: () => null }));
@@ -14,6 +15,18 @@ const prefs: AccountPreferences = {
     stealthInvites: true,
   },
 };
+
+it('keeps only joinable recommended groups without mutating the latest feed', () => {
+  const records = [
+    { id:'open',status:'open',capacity:3,joined:1 },
+    { id:'full',status:'full',capacity:3,joined:3 },
+    { id:'stale',status:'open',capacity:3,joined:3 },
+    { id:'expired',status:'expired',capacity:3,joined:1 },
+    { id:'cancelled',status:'cancelled',capacity:3,joined:1 },
+  ] as CorePost[];
+  expect(recommendationCandidates(records).map((r)=>r.id)).toEqual(['open']);
+  expect(records).toHaveLength(5);
+});
 const value = {
   groups: [
     { post_id: 'a', unread_count: 3 },

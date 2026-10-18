@@ -1,8 +1,9 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { api } from '@/lib/api';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
-import type { CorePostPage } from '@/lib/core-api';
+import type { CorePost, CorePostPage } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 
 export type NotificationPreferences = {
@@ -78,6 +79,7 @@ export function useCoreRecommendations(active: boolean) {
   const preferences = useAccountPreferences();
   const query = useInfiniteQuery({
     queryKey: ['core', id, 'recommendations', preferences.data?.version],
+    retry: (count, error) => !(isAxiosError(error) && error.response?.status === 409) && count < 1,
     queryFn: ({ pageParam }) => engagementApi.recommendations(pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next_cursor ?? undefined,
@@ -87,7 +89,7 @@ export function useCoreRecommendations(active: boolean) {
   });
   return {
     ...query,
-    posts: query.data?.pages.flatMap((page) => page.items) ?? [],
+    posts: recommendationCandidates(query.data?.pages.flatMap((page) => page.items) ?? []),
     error: preferences.error ?? query.error,
     isPending: !preferences.error && (preferences.isPending || query.isPending),
     refetch: async () => {
@@ -95,6 +97,12 @@ export function useCoreRecommendations(active: boolean) {
       return query.refetch();
     },
   };
+}
+
+export function recommendationCandidates(posts: CorePost[]): CorePost[] {
+  // Defensive display filter also works before the reviewed SQL upgrade is applied.
+  // Admission still uses the authoritative server transaction.
+  return posts.filter((post) => post.status === 'open' && post.joined < post.capacity);
 }
 export function useSavedPostPreferences() {
   const id = useAuthStore((state) => state.user?.id);

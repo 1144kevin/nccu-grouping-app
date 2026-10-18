@@ -23,6 +23,10 @@ export type GoogleStart = { authorize_url: string; flow_id: string; expires_in: 
 export type CoreProfileInput = { display_name: string; bio: string; badge: NonNullable<CoreUser['badge']>; expected_version: number };
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
+  recommendation?: {
+    version: 'rules_v2'; score: number; remaining_seats: number; as_of: string;
+    reasons: { code: 'preferred_tags' | 'preferred_location' | 'remaining_seats' | 'deadline'; text: string }[];
+  } | null;
   is_demo?: boolean;
   image_id?: string|null;
   id: string;
@@ -168,7 +172,7 @@ const messages: Record<string, string> = {
   inbox_preference_limit: '已達聊天室偏好數量上限，請聯絡管理者處理。',
   reminder_post_closed: '這筆拼單已截止或取消，無法新增提醒；仍可取消舊提醒。',
   saved_post_limit: '已達個人貼文偏好數量上限，請聯絡管理者處理。',
-  recommendations_changed_reload: '推薦偏好已更新，請重新整理推薦清單。',
+  recommendations_changed_reload: '偏好、名額或推薦資料已更新，請重新整理推薦清單。',
   intake_incomplete: '分身還需要補充資訊，請先回答問題。',
   local_model_not_configured: '尚未啟用本機模型，請依開發文件啟動模型與後端。',
   local_semantic_not_configured: '尚未啟用本機語義配對，請依開發文件設定並重啟後端；原配對仍可使用。',
