@@ -16,6 +16,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { DraftImageManager } from '@/components/core-post-image';
 import { AccountDeletionPanel } from '@/components/core-account-deletion';
 import { CloudBlockList } from '@/components/core-user-blocks';
+import { CoreConnectionStatus } from '@/components/core-connection-status';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 const options: [keyof NotificationPreferences, string, string][] = [
@@ -96,6 +97,7 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
         {mode === 'settings' ? (
           <>
             <DraftImageManager />
+            <CoreConnectionStatus />
             <CloudBlockList />
             <AccountDeletionPanel />
             <PrimaryButton secondary onPress={() => router.push('/preferences')}>
