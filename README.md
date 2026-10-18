@@ -116,3 +116,13 @@ npm run apple:simulator
 未來可用 `apple:configure -- --profile release --api https://你的API網域/api/v1` 切換真正HTTPS API，再執行 `apple:check`／Mac `apple:prepare-release`；這只準備 App，後端正式公開runtime與部署仍需另行驗收。Simulator／device以Release configuration內嵌JS，改網址或程式後重建，不依賴Metro區網連線。
 
 Supabase連線build停用尚未提供的麥克風／相機／背景音訊權限，保留本人觸發照片選取及定位；展示模式原錄音保留。App帳號設定新增唯讀連線與功能狀態檢查。實機結果請記錄於後端 `docs/DEVICE_ACCEPTANCE.csv`。
+
+## 偷揪語義排序與候選判讀（本機）
+
+後端與免費 Ollama 模型先啟動，後端 `.local/local-ai.env` 需啟用 `STEALTH_SEMANTIC_ENABLED=true`，設定方式見後端 `docs/CORE_SUPABASE_DEV.md`。前端使用 `npm run dev:supabase`，登入原有 Google／Supabase 帳號 → 偷揪 → 偷揪結果。先用原本「讓分身找機會」產生有效配對，再點「AI 語義排序與判讀」。沒有配對時需先建立需求；另一位測試者也需有相容需求，或由本人明確開啟既有示範配對。示範人物仍不能同意或成團。
+
+畫面會依語義順序呈現合法配對，前三組顯示互補／相近／待確認／建議再評估等判讀、理由與待確認事項；相似度不是成功率。其餘組別可能只有向量排序，會明確標示未判讀。新操作只送摘要分析，不會自動建立配對、接受意願、修改方案或送出同意。原始需求、方案編輯及全員同意同一版的交易保留。
+
+分析只能由本人點按，十秒輪詢不呼叫模型。模型忙碌／未設定時保留規則結果；部分判讀失敗不顯示捏造理由。配對版本、確認狀態、期限或權限可見性改變會隱藏舊判讀。切換帳號或離開前景清除分析，忽略晚回應；背景切換不重新掛載方案編輯卡，保留未儲存內容。「回到原配對排序」可隨時恢復規則順序。
+
+本輪驗證：132 項前端測試、TypeScript、變更檔案 ESLint 通過，離線 Web export 成功。瀏覽器當時停在登入頁，沒有使用真人帳號做新一輪端到端驗收，也沒有新增雲端資料；需登入後確認配對與模型服務可用。Apple 模型／iPhone 原生驗收另在 Mac 接續，不部署、不使用付費服務。
