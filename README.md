@@ -99,3 +99,20 @@ npx eas-cli submit --platform ios --profile production
 Supabase 模式個人公開頁可二次確認封鎖／解除；「帳號與隱私」管理本人名單。封鎖立即清掉本人快取，限制雙向貼文、申請、聊天、搜尋、圖片與偷揪互動；已接受團員仍能查看必要紀錄及退出。
 
 同頁可預覽刪除影響，15分鐘內的新登入、10分鐘確認碼與手動輸入 DELETE 都具備才開始清理。清理會移除本人 Auth 與 App 關聯資料、真實圖片；本人主揪／示範批次拼單與聊天室也會移除。中斷後重新登入同帳號可續作，未完成不顯示成功。Google 帳號／原始手機照片／他人副本及備份不承諾即時清除。完整 API、隔離測試與限制見後端 docs/CORE_SUPABASE_DEV.md。保留原展示與 SQLite 模式；沒有部署、付費服務或 push。
+
+## Mac 與 iPhone 交接入口
+
+先讀後端專案 `docs/IPHONE_TESTFLIGHT.md` 的最短流程。Mac 安裝鎖定依賴後：
+
+```bash
+npm ci
+npm run apple:configure -- --profile simulator
+npm run apple:check
+npm run apple:simulator
+```
+
+連線設定僅存在忽略的 `.local/apple-dev.json`。iPhone 內網測試需先備妥受信任TLS、精確裝置白名單與手動啟動後端，再用 `apple:configure -- --profile device --api https://電腦內網IP:8443/api/v1`、`apple:device`。不使用 Expo Go 驗收 Google 原生回跳。這些原生動作在 Windows 會拒絕，不會啟動 EAS、部署或上傳。
+
+未來可用 `apple:configure -- --profile release --api https://你的API網域/api/v1` 切換真正HTTPS API，再執行 `apple:check`／Mac `apple:prepare-release`；這只準備 App，後端正式公開runtime與部署仍需另行驗收。Simulator／device以Release configuration內嵌JS，改網址或程式後重建，不依賴Metro區網連線。
+
+Supabase連線build停用尚未提供的麥克風／相機／背景音訊權限，保留本人觸發照片選取及定位；展示模式原錄音保留。App帳號設定新增唯讀連線與功能狀態檢查。實機結果請記錄於後端 `docs/DEVICE_ACCEPTANCE.csv`。
