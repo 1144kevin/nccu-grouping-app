@@ -1,8 +1,10 @@
 # 政缺一咖 App
 
+推薦 v2 已加入理由、滿團防禦過濾與重新整理入口。後端名額／期限／偏好排序及 120 篇示範資料腳本已驗證，但雲端持久更新尚待授權，目前仍為原 7 篇；沒有推薦 metadata 時不捏造理由。本輪 135 項前端測試、型別、變更檔 lint 與離線 Web export 通過；操作及待套用狀態見後端 `docs/CORE_SUPABASE_DEV.md` 的推薦 v2 說明，沒有部署。
+
 React Native + Expo 前端。
 
-本輪測試111項通過，另有 TypeScript／ESLint、release 設定測試與 Web／iOS 離線資源匯出。完整功能缺口與實機驗收見後端 `docs/RELEASE_READINESS.md`；尚未產出簽章 App 或 TestFlight build。改動保留目前 `kevin_dev`，未自動 commit／push。
+本輪 135 項測試、TypeScript／變更檔 ESLint 與 Web 離線匯出通過；先前 release 設定及 iOS 資源檢查紀錄另見後端 `docs/RELEASE_READINESS.md`。尚未產出簽章 App 或 TestFlight build。改動保留目前 `kevin_dev`，依功能 commit，不 push。
 
 ## 本機程式 + Supabase 開發專案
 
