@@ -2,21 +2,27 @@
 
 React Native + Expo 前端。
 
+本輪測試111項通過，另有 TypeScript／ESLint、release 設定測試與 Web／iOS 離線資源匯出。完整功能缺口與實機驗收見後端 `docs/RELEASE_READINESS.md`；尚未產出簽章 App 或 TestFlight build。改動保留目前 `kevin_dev`，未自動 commit／push。
+
 ## 本機程式 + Supabase 開發專案
 
 後端執行 `scripts/run_supabase_core.py`，前端執行 `npm run dev:supabase`，瀏覽 `http://localhost:8081`。登入頁及頂端標示 Supabase 開發版；帳號／拼單存於指定雲端開發專案，程式沒有部署。詳細測試與信箱驗證限制見後端 `docs/CORE_SUPABASE_DEV.md`。原本 `dev:local` 的 SQLite 模式仍保留。
 
 目前可測 Google／信箱登入與自動續期、發布／搜尋／編輯／審核／退出／取消拼單、過往紀錄、公開個人資料、文字聊天室、已讀與真實未讀數量，以及 Drawer 的「拼單動態」。開發資料庫已保留七筆示範拼單及三則示範對話，提供兩步確認的個人示範資料清理入口；其他真實使用者參與的紀錄會保留。
 
-更新前登入的頁籤請自行登出再用 Google 登入一次，取得續期憑證。新增與編輯拼單使用後端提供的資料庫時間，避免裝置時鐘不同造成截止時間錯誤。手機原生 Google 回跳、iPhone 連 Windows 本機 API 與 TestFlight 原生建置仍待完成；目前只監聽 localhost。
+更新前登入的頁籤請自行登出再用 Google 登入一次，取得續期憑證。新增與編輯拼單使用後端提供的資料庫時間，避免裝置時鐘不同造成截止時間錯誤。手機原生 Google 回跳程式已加入但預設未啟用，需精確 App 回呼 allowlist 與原生開發版本；iPhone 連 Windows 本機 API、簽章與 TestFlight 原生建置仍待完成，目前只監聽 localhost。
+
+新增實際連線功能：帳號通知／推薦偏好、首頁「依我的偏好」規則排序、本人沒興趣／截止提醒、聊天室個人封存與靜音、私人問題回報／檢舉及自己的回報紀錄。截止提醒僅在 App 前景頁面查看，沒有手機推播；回報收到不代表已處置。搜尋可切換公開使用者、目前有權進入之聊天室訊息、自己相關的已結束拼單，不搜尋信箱或陌生人的私人對話。App 進入背景後暫停頁面輪詢與已讀提交。原本展示模式保留。
 
 新增選單「偷揪 · 我的 AI 分身」：同帳號建立分身，在「我的需求」用免費本機 Qwen3.5 4B 整理中文需求及補問，再明確套用表單、親自儲存。模型對話不存入資料庫。配對後由規則規劃器預填已知費用與自願分工；未知資訊保持待補，可人工修改，改價需填原因且不能超預算。全員逐人同意同一版方案才建立既有拼單與聊天室，改版要求重新確認。預設關閉；可允許示範配對並預覽草案，但示範人物無法同意成團。手動表單與關鍵字提示保留；模型在 Windows 本機執行，尚未整合手機推播。完整啟動及測試方式見後端 `docs/CORE_SUPABASE_DEV.md`。
+
+Supabase 發文現可加入單張 JPEG／PNG 附圖（4 MiB、1600萬像素以內），後端轉為縮小且移除 EXIF 的 JPEG，與拼單一起發布。預覽只在本機，發布後其他登入使用者可見；原始照片不會被修改。失敗保留草稿，重試不重複上傳／建單；帳號設定可兩步清理未發布副本。每帳號20份、開發專案100份圖片預留；已發布附圖暫不提供更換或移除。完整權限與後端私人驗證金鑰設定見後端 `docs/CORE_SUPABASE_DEV.md`。iPhone 選圖／HEIC 轉換仍待實機驗證。
 
 ## 原本登入／拼單的本機 API 模式
 
 後端啟動後執行 `npm run dev:local`，瀏覽 `http://localhost:8081`。支援本機測試信箱登入、個人資料編輯、發布、搜尋、主揪編輯、申請、主揪接受／拒絕與截止前退出。資料存於後端 SQLite，重開不會清除；其餘展示功能仍保留。完整步驟見後端專案的 `docs/CORE_LOCAL.md`。
 
-一般 `npm start` 保留原展示模式（`EXPO_PUBLIC_CORE_API_ENABLED=false`）。SQLite 本機模式人數為 2～20 人（含主揪），不寄驗證信；Supabase 模式提供雲端登入、拼單與文字聊天。媒體上傳、手機推播與檢舉後端尚未串接；展示模式原介面保留。禁止把 Supabase MCP PAT 或 service_role key 放入任何 EXPO_PUBLIC 變數。
+一般 `npm start` 保留原展示模式（`EXPO_PUBLIC_CORE_API_ENABLED=false`）。SQLite 本機模式人數為 2～20 人（含主揪），不寄驗證信；Supabase 模式提供雲端登入、拼單、文字聊天與上述帳號功能。語音上傳、手機推播、完整管理回報流程尚未串接；展示模式原介面保留。禁止把 Supabase MCP PAT 或 service_role key 放入任何 EXPO_PUBLIC 變數。
 
 ## 開始開發嘍
 
@@ -74,6 +80,8 @@ npm test
 使用者按「開啟定位」後，透過 Expo Location 取得前景定位權限，並在裝置上計算與取餐點的球面直線距離（公里），不是步行或開車里程。位置只保留於記憶體，可按「更新定位」重新取得；拒絕權限、逾時或定位失敗時不顯示公里數。網頁需 HTTPS 或 localhost，原生自訂 development build 加入定位套件及權限設定後需重新建置。
 
 ## TestFlight
+
+先執行 `npm run ios:preflight`；`npm run ios:preflight:release` 在未設定可達 HTTPS API 時應失敗。`npm run test:release-config` 是離線設定檢查，不會啟動 EAS 或消耗建置額度。`app.config.js` 會在 production profile 阻止把 localhost／展示模式當正式連線版本。完整 Mac、原生 Google 回呼及目前連線限制請讀取後端專案 `docs/IPHONE_TESTFLIGHT.md`。
 
 以下是後續原生建置參考，本輪沒有執行 EAS 建置或上傳。iOS JavaScript 匯出成功不代表已完成 Xcode 簽署、實機 API 連線或原生 Google 登入；先完成這些整合再使用建置流程。
 
