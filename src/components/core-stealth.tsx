@@ -5,11 +5,12 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { StealthFormation } from '@/components/core-stealth-formation';
 import { StealthIntake } from '@/components/core-stealth-intake';
+import { StealthSemanticMatches, StealthSemanticSummary } from '@/components/core-stealth-semantic';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreClock } from '@/lib/core-clock';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
-import { buildStealthSignal, stealthApi, type SignalForm, type StealthAgent, type StealthAgentInput, type StealthCategory, type StealthMatch, type StealthRole, type StealthSignal, type StealthSignalInput } from '@/lib/stealth-api';
+import { buildStealthSignal, stealthApi, type SignalForm, type StealthAgent, type StealthAgentInput, type StealthCategory, type StealthMatch, type StealthRole, type StealthSignal, type StealthSignalInput, type StealthSemanticItem } from '@/lib/stealth-api';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
 
@@ -62,7 +63,7 @@ export function CoreStealthScreen() {
         <ErrorText error={run.error ?? matches.error} />
         {run.data ? <Text accessibilityRole="alert" style={styles.note}>這次新增 {run.data.created} 組機會。相同組合不會重複邀請；安靜時段、每日上限與必要條件都會影響結果。</Text> : null}
         {matches.isPending ? <ActivityIndicator /> : matches.data?.items.length === 0 ? <Text style={styles.note}>尚未找到配對。請確認另一位使用者也有開啟分身，且分類、地點、時間與預算相容。示範拼單不會自動變成偷揪需求。</Text> : null}
-        {[...(matches.data?.items ?? [])].sort((a,b) => Number(a.status === 'unavailable') - Number(b.status === 'unavailable') || b.score - a.score).map((match) => <MatchCard key={match.id} match={match} refresh={invalidate} now={clock.data ? clock.now : undefined} />)}
+        <StealthSemanticMatches key={user?.id} matches={matches.data?.items ?? []} disabled={run.isPending || !agent.data?.enabled || !clock.data} focused={focused} refresh={invalidate} now={clock.data ? clock.now : Date.now} renderMatch={(match, semantic) => <MatchCard key={match.id} match={match} semantic={semantic} refresh={invalidate} now={clock.data ? clock.now : undefined} />} />
       </>}
     </ScrollView>
   </Screen>;
@@ -154,7 +155,7 @@ function SignalCard({ signal, refresh }: { signal: StealthSignal; refresh: () =>
   </View>;
 }
 
-function MatchCard({ match, refresh, now }: { match: StealthMatch; refresh: () => Promise<void>; now?: () => number }) {
+function MatchCard({ match, semantic, refresh, now }: { match: StealthMatch; semantic?: StealthSemanticItem; refresh: () => Promise<void>; now?: () => number }) {
   const mutation = useMutation({ mutationFn: (decision: 'accepted' | 'declined') => stealthApi.decide(match.id,decision), onSettled: refresh });
   return <View testID={`stealth-match-${match.id}`} style={styles.card}>
     <Text style={styles.title}>{match.invitation_text}</Text><Text style={styles.hint}>{match.member_count} 人 · {categories.find(([value]) => value === match.category)?.[1]} · {locations[match.location_id]}</Text>
@@ -164,6 +165,7 @@ function MatchCard({ match, refresh, now }: { match: StealthMatch; refresh: () =
     <Text style={styles.hint}>邀請期限：{new Date(match.expires_at).toLocaleString('zh-TW')}</Text>
     <Text style={styles.body}>每人已知費用：{match.known_cost_twd === null ? '尚未確認' : `NT$ ${match.known_cost_twd}`} · 共同預算上限：{match.budget_max_twd === null ? '未提供' : `NT$ ${match.budget_max_twd}`}</Text>
     <Text style={styles.hint}>條件排序分數 {match.score}／100，屬規則評分，並非成團機率。</Text>
+    {semantic ? <StealthSemanticSummary item={semantic} match={match} /> : null}
     <Text style={styles.label}>為什麼揪你</Text>{[...match.reasons,...match.why_me].map((reason) => <Text key={reason} style={styles.body}>• {reason}</Text>)}
     {match.unknowns.length ? <><Text style={styles.label}>仍需確認</Text>{match.unknowns.map((unknown) => <Text key={unknown} style={styles.hint}>• {unknown}</Text>)}</> : null}
     <Text style={styles.note}>{match.status === 'formed' ? '已正式成團。' : match.status === 'unavailable' ? '這組機會已失效，不再接受意願。' : match.status === 'ready' ? '大家都有意願，還需要確認最終方案。' : match.my_decision === 'accepted' ? '你已表示有意願，仍需確認費用與分工。' : '這是私人配對邀請，先由你決定是否有意願。'}</Text>
