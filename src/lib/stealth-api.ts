@@ -39,6 +39,8 @@ export type StealthDraft = { category_hint: StealthCategory | null; location_hin
 export type StealthIntake = {
   provider: 'ollama_local'; is_llm: true; model: string; ready_for_review: boolean;
   facts: { title: string; kind: StealthSignalInput['kind'] | null; category: StealthCategory | null;
+    acceptable_categories?: StealthCategory[]; cost_needs_clarification?: boolean;
+    evidence?: {budget:string|null;cost:string|null;start:string|null;duration:string|null;roles:string|null};
     location_id: StealthSignalInput['location_id'] | null; delay_minutes: number | null; duration_minutes: number | null;
     budget_max_twd: number | null; budget_unknown: boolean; known_cost_twd: number | null;
     roles: StealthRole[]; roles_confirmed: boolean; tags: string[]; dietary_requirements: string[] };
@@ -63,7 +65,7 @@ export const stealthApi = {
 export function intakeToForm(value: StealthIntake): SignalForm {
   const f = value.facts;
   if (!value.ready_for_review || !f.kind || !f.category || !f.location_id || f.delay_minutes === null || f.duration_minutes === null) throw new Error('intake_incomplete');
-  return { kind: f.kind, category: f.category, location: f.location_id, title: f.title, alternatives: [],
+  return { kind: f.kind, category: f.category, location: f.location_id, title: f.title, alternatives: f.kind==='offer'?[]:[...(f.acceptable_categories??[])],
     delay: String(f.delay_minutes), duration: String(f.duration_minutes), budget: f.budget_max_twd === null ? '' : String(f.budget_max_twd),
     cost: f.known_cost_twd === null ? '' : String(f.known_cost_twd), roles: [...f.roles], tags: f.tags.join('，'),
     requirements: f.dietary_requirements.join('，'), verified: '' };
