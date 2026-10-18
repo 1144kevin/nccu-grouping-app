@@ -23,6 +23,7 @@ export type CoreProfileInput = { display_name: string; bio: string; badge: NonNu
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
   is_demo?: boolean;
+  image_id?: string|null;
   id: string;
   author_id: string;
   author_name: string;
@@ -115,6 +116,22 @@ export function toFeedPost(post: CorePost): FeedPost {
 }
 
 const messages: Record<string, string> = {
+  image_storage_not_configured: '圖片儲存尚未啟用，請先使用文字拼單或檢查本機設定。',
+  image_too_large: '圖片過大，請選擇4MB以內的圖片；上傳後會壓縮成JPEG。',
+  image_dimensions_too_large: '圖片解析度過高，請先選擇較小或裁切後的圖片（最多1600萬像素）。',
+  image_format_not_supported: '請選擇一般JPEG或PNG靜態圖片，暫不支援動畫或其他格式。',
+  invalid_image_input: '無法讀取這張圖片，請重新選擇JPEG或PNG圖片。',
+  image_processing_busy: '正在處理其他圖片，請稍後重試。',
+  image_storage_unavailable: '圖片儲存暫時無法連線，內容仍保留，請稍後重試。',
+  image_storage_access_denied: '目前無法存取這份圖片，請重新整理或檢查登入。',
+  image_upload_incomplete: '圖片上傳或驗證尚未完成，請重試；也可到帳號設定清除未發佈副本後重新選取。',
+  image_upload_conflict: '圖片副本與本次內容不符，請到帳號設定清除未發佈副本後重新選取。',
+  image_key_conflict: '這次圖片或發布內容與先前重試不同，請重新確認。',
+  image_storage_limit: '已達開發版圖片額度（每人20張、專案100張）；請清除未發佈副本或先使用文字拼單。',
+  image_not_found: '圖片不存在或你無權查看。',
+  image_already_published: '這張圖片已綁定已發佈拼單，不能當未發佈副本刪除或重複發布。',
+  image_verification_required: '圖片尚未通過後端驗證，無法發布。',
+  image_delete_incomplete: '圖片副本尚未完整刪除，請重試。',
   invalid_formation_input: '請確認公開說明、整數金額、分工與含時區的截止時間；截止需晚於服務時間且不超過配合區間。',
   terms_revision_conflict: '方案已更新，請重新整理並確認新版，舊版同意不會沿用。',
   terms_required: '請先提出最終費用與分工方案。',

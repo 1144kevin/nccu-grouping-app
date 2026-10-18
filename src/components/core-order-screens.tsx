@@ -6,6 +6,7 @@ import { AppText as Text } from '@/components/app-text';
 import { AppHeader, Avatar, DetailHeader, EmptyState, Pill, PrimaryButton, Screen, SectionTitle } from '@/components/primitives';
 import { PostInfo } from '@/components/post-location';
 import { CorePostActions } from '@/components/core-post-actions';
+import { CorePostImage } from '@/components/core-post-image';
 import { CORE_SUPABASE_MODE, coreApi, coreError, toFeedPost, type CoreJoin, type CorePost } from '@/lib/core-api';
 import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/lib/core-hooks';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -24,6 +25,7 @@ export function CorePostDetail({ id }: { id: string }) {
       <View style={styles.row}><Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} /><Text style={styles.title}>{post.author_name}</Text><Pill>{statusLabels[post.status]}</Pill></View>
       {post.is_demo ? <Text style={styles.note}>示範拼單：僅供操作測試，不會真的訂購或付款。示範人物無法登入；他們當主揪的拼單可測試申請與退出，不會自動接受申請。</Text> : null}
       <Text style={styles.body}>{post.content}</Text>
+      {post.image_id?<CorePostImage imageId={post.image_id}/>:null}
       <Text style={styles.hint}>{post.tags.map((tag) => `#${tag}`).join('　')}</Text>
       <PostInfo post={toFeedPost(post)} />
       {CORE_SUPABASE_MODE && ['host','accepted'].includes(post.my_status) ? <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>進入拼單聊天室</PrimaryButton> : null}

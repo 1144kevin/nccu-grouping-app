@@ -31,7 +31,7 @@ function LocalAuthGate({ children }: PropsWithChildren) {
   }, [user]);
   return <View style={{ flex: 1 }}>
     {user ? <View style={styles.banner}>
-      <View style={{ flex: 1 }}><Text style={styles.bannerText}>{user.auth_mode === 'supabase' ? 'Supabase 開發版' : '本機測試'} · {user.display_name}</Text><Text style={styles.hint}>{user.auth_mode === 'supabase' ? '登入、拼單、聊天與偷揪已連線，其餘為展示版' : '登入與拼單已連線，其餘功能為展示版'}</Text></View>
+      <View style={{ flex: 1 }}><Text style={styles.bannerText}>{user.auth_mode === 'supabase' ? 'Supabase 開發版' : '本機測試'} · {user.display_name}</Text><Text style={styles.hint}>{user.auth_mode === 'supabase' ? '帳號、拼單、圖片、聊天與偷揪已連線；語音尚未串接' : '登入與拼單已連線，其餘功能為展示版'}</Text></View>
       <Pressable accessibilityRole="button" disabled={busy} onPress={() => { void logout(); }}><Text style={styles.link}>登出</Text></Pressable>
     </View> : null}
     {user && error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}

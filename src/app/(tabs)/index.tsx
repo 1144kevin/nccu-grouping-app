@@ -14,6 +14,7 @@ import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { useCorePosts } from '@/lib/core-hooks';
 import { CorePostActions } from '@/components/core-post-actions';
+import { CorePostImage } from '@/components/core-post-image';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
@@ -116,7 +117,7 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
         <Pressable onPress={() => router.push(authorPath)} style={styles.authorText}><View style={styles.nameRow}><Text numberOfLines={1} style={styles.authorName}>{post.name}</Text>{!corePost ? <Text style={styles.level}>{post.badge} Lv.{post.level}</Text> : null}</View><Text style={styles.time}>{post.time}</Text></Pressable>
         <IconButton icon="dots-horizontal" label="貼文選項" onPress={() => setOptionsVisible(true)} />
       </View>
-      <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
+      <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{corePost?.image_id?<CorePostImage imageId={corePost.image_id}/>:post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
       <View style={styles.tags}>{post.tags.map((tag) => <TagChip key={tag} label={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })} />)}</View>
       <PostInfo post={post} reminder={reminder} />
       {updatePreference.error?<Text accessibilityRole="alert" style={{color:colors.danger}}>{coreError(updatePreference.error)}</Text>:null}
