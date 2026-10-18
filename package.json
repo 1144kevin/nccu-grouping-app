@@ -53,6 +53,13 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "apple:configure": "node ./scripts/apple-dev.mjs configure",
+    "apple:check": "node ./scripts/apple-dev.mjs check",
+    "apple:simulator": "node ./scripts/apple-dev.mjs simulator",
+    "apple:device": "node ./scripts/apple-dev.mjs device",
+    "apple:prepare-release": "node ./scripts/apple-dev.mjs prepare-release",
+    "test:apple-profile": "node --test ./scripts/apple-profile.test.cjs",
+    "test:native-permissions": "node ./scripts/verify-native-permissions.mjs",
     "dev:local": "node ./scripts/local-core.mjs",
     "dev:supabase": "node ./scripts/local-core.mjs --supabase",
     "ios:preflight": "node ./scripts/ios-preflight.mjs",

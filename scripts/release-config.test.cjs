@@ -54,3 +54,41 @@ test('dynamic app config retains existing settings and maps only a valid Expo pr
     else process.env.EXPO_PUBLIC_EAS_PROJECT_ID = saved;
   }
 });
+
+test('connected build removes unused camera/mic/background audio; demo preserves recording', () => {
+  const appConfig = require('../app.config.js');
+  const saved = process.env.EXPO_PUBLIC_CORE_API_ENABLED;
+  const input = {
+    ...config,
+    plugins: [
+      ['expo-audio', { microphonePermission: 'demo' }],
+      ['expo-image-picker', { cameraPermission: 'demo' }],
+    ],
+  };
+  try {
+    process.env.EXPO_PUBLIC_CORE_API_ENABLED = 'true';
+    const value = appConfig({ config: input });
+    assert.equal(value.plugins[0][1].microphonePermission, false);
+    assert.equal(value.plugins[0][1].enableBackgroundPlayback, false);
+    assert.equal(value.plugins[1][1].cameraPermission, false);
+    process.env.EXPO_PUBLIC_CORE_API_ENABLED = 'false';
+    assert.equal(appConfig({ config: input }).plugins[0][1].microphonePermission, 'demo');
+  } finally {
+    if (saved === undefined) delete process.env.EXPO_PUBLIC_CORE_API_ENABLED;
+    else process.env.EXPO_PUBLIC_CORE_API_ENABLED = saved;
+  }
+});
+
+test('device build declares local-network purpose without relaxing ATS', () => {
+  const appConfig = require('../app.config.js');
+  const saved = process.env.EXPO_PUBLIC_APP_PROFILE;
+  try {
+    process.env.EXPO_PUBLIC_APP_PROFILE = 'device';
+    const value = appConfig({ config });
+    assert.ok(value.ios.infoPlist.NSLocalNetworkUsageDescription);
+    assert.equal(value.ios.infoPlist.NSAppTransportSecurity, undefined);
+  } finally {
+    if (saved === undefined) delete process.env.EXPO_PUBLIC_APP_PROFILE;
+    else process.env.EXPO_PUBLIC_APP_PROFILE = saved;
+  }
+});

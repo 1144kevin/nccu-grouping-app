@@ -33,7 +33,7 @@ if (!process.env.EXPO_PUBLIC_EAS_PROJECT_ID && !config.extra?.eas?.projectId)
     'No Expo project ID: EAS cloud builds/push need setup. A local Xcode archive does not require EAS.',
   );
 notes.push(
-  'Current backend runner accepts loopback only. No iPhone/TestFlight API connectivity is certified by this check.',
+  'Default backend is loopback-only. Opt-in device runner requires private TLS + exact client IPs. This check does not certify connectivity.',
 );
 notes.push(
   `Supabase Auth must allow the exact native redirect ${IOS_CALLBACK}; backend CORE_GOOGLE_IOS_ENABLED is opt-in.`,
@@ -42,7 +42,7 @@ notes.push(
   'Existing icon is an Expo placeholder; supply final team artwork before public distribution.',
 );
 notes.push(
-  'Manual gates: Apple signing/team, App Store Connect record, real-device OAuth/session/API checks, privacy disclosures, account deletion and UGC blocking/moderation.',
+  'Manual gates: Apple signing/team, App Store Connect record, real-device OAuth/session/API/deletion/blocking checks, privacy disclosures and content moderation.',
 );
 console.log(`Offline iOS ${release ? 'release' : 'development'} preflight`);
 console.log(
