@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { useCorePosts } from '@/lib/core-hooks';
 import { CorePostActions } from '@/components/core-post-actions';
 import { CorePostImage } from '@/components/core-post-image';
+import { CoreRecommendationReasons } from '@/components/core-recommendation-reasons';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
@@ -27,16 +28,17 @@ function CoreHomeScreen() {
   const latest = useCorePosts();
   const recommendations=useCoreRecommendations(recommended);
   const query=recommended?recommendations:latest;
+  const recommendationV2=query.posts.some((post)=>post.recommendation?.version==='rules_v2');
   return <Screen>
     <AppHeader searchScope="posts" />
-    {CORE_SUPABASE_MODE?<View style={{padding:12,gap:8}}><View style={{flexDirection:'row',gap:8}}><PrimaryButton secondary={recommended} onPress={()=>setRecommended(false)}>最新拼單</PrimaryButton><PrimaryButton secondary={!recommended} onPress={()=>setRecommended(true)}>依我的偏好</PrimaryButton></View>{recommended?<Text style={{color:colors.muted,fontSize:13}}>依你儲存的標籤與地點排序進行中拼單，屬規則排序。可到「推薦偏好」調整，沒有偷偷分析聊天。</Text>:null}</View>:null}
+    {CORE_SUPABASE_MODE?<View style={{padding:12,gap:8}}><View style={{flexDirection:'row',gap:8}}><PrimaryButton secondary={recommended} onPress={()=>setRecommended(false)}>最新拼單</PrimaryButton><PrimaryButton secondary={!recommended} onPress={()=>setRecommended(true)}>依我的偏好</PrimaryButton></View>{recommended?<Text style={{color:colors.muted,fontSize:13}}>{recommendationV2?'依標籤、地點偏好、剩餘名額及截止時間排序可加入的拼單。可到「推薦偏好」調整，沒有分析私人聊天。':'依已儲存的偏好顯示拼單；新版名額、期限排序與推薦理由需先完成開發資料庫更新。'}</Text>:null}</View>:null}
     <FlatList
       data={query.posts}
       keyExtractor={(post) => post.id}
       renderItem={({ item }) => <PostItem post={toFeedPost(item)} corePost={item} />}
       ItemSeparatorComponent={() => <View style={styles.divider} />}
       refreshControl={<RefreshControl refreshing={query.isFetching && !query.isFetchingNextPage} onRefresh={() => { void query.refetch(); }} tintColor={colors.yellow} />}
-      ListHeaderComponent={query.error ? <Text accessibilityRole="alert">{coreError(query.error)}</Text> : null}
+      ListHeaderComponent={query.error ? <View><Text accessibilityRole="alert">{coreError(query.error)}</Text>{recommended?<PrimaryButton secondary disabled={query.isFetching} onPress={()=>{void query.refetch();}}>重新整理推薦</PrimaryButton>:null}</View> : null}
       ListEmptyComponent={<EmptyState icon="text-box-search-outline" title={query.isPending ? '載入拼單中…' : query.error ? '無法取得拼單，請下拉重試' : '目前沒有拼單，建立第一筆吧'} action={<PrimaryButton secondary onPress={() => query.error ? void query.refetch() : router.push('/create')}>{query.error ? '重試' : '建立拼單'}</PrimaryButton>} />}
       ListFooterComponent={query.hasNextPage ? <PrimaryButton secondary disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }}>載入更多</PrimaryButton> : null}
       contentContainerStyle={query.posts.length ? styles.feed : styles.emptyFeed}
@@ -120,6 +122,7 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
       <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{corePost?.image_id?<CorePostImage imageId={corePost.image_id}/>:post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
       <View style={styles.tags}>{post.tags.map((tag) => <TagChip key={tag} label={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })} />)}</View>
       <PostInfo post={post} reminder={reminder} />
+      {corePost ? <CoreRecommendationReasons post={corePost} /> : null}
       {updatePreference.error?<Text accessibilityRole="alert" style={{color:colors.danger}}>{coreError(updatePreference.error)}</Text>:null}
       {corePost?.is_demo ? <Text style={styles.time}>示範資料 · 沒有真實訂購</Text> : null}
       {corePost && corePost.status !== 'open' ? <Text style={styles.time}>{corePost.status === 'cancelled' ? '已取消' : corePost.status === 'expired' ? '已截止' : '已額滿'}</Text> : null}
