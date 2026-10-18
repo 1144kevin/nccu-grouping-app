@@ -1,5 +1,6 @@
 import { AppText as Text } from '@/components/app-text';
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Alert, FlatList, Modal, Pressable, RefreshControl, Share, StyleSheet, View } from 'react-native';
@@ -7,7 +8,10 @@ import { AppHeader, Avatar, EmptyState, IconButton, PrimaryButton, Screen } from
 import { useAppStore } from '@/store/app-store';
 import { TagChip } from '@/components/tag-chip';
 import { PostInfo } from '@/components/post-location';
-import { CORE_API_ENABLED, coreError, toFeedPost, type CorePost } from '@/lib/core-api';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreError, toFeedPost, type CorePost } from '@/lib/core-api';
+import { engagementApi, useCoreRecommendations, useSavedPostPreferences, type SavedPostPreference } from '@/lib/engagement-api';
+import { queryClient } from '@/lib/query-client';
+import { useAuthStore } from '@/store/auth-store';
 import { useCorePosts } from '@/lib/core-hooks';
 import { CorePostActions } from '@/components/core-post-actions';
 import type { FeedPost } from '@/types/domain';
@@ -18,9 +22,13 @@ export default function HomeScreen() {
 }
 
 function CoreHomeScreen() {
-  const query = useCorePosts();
+  const [recommended,setRecommended]=useState(false);
+  const latest = useCorePosts();
+  const recommendations=useCoreRecommendations(recommended);
+  const query=recommended?recommendations:latest;
   return <Screen>
     <AppHeader searchScope="posts" />
+    {CORE_SUPABASE_MODE?<View style={{padding:12,gap:8}}><View style={{flexDirection:'row',gap:8}}><PrimaryButton secondary={recommended} onPress={()=>setRecommended(false)}>最新拼單</PrimaryButton><PrimaryButton secondary={!recommended} onPress={()=>setRecommended(true)}>依我的偏好</PrimaryButton></View>{recommended?<Text style={{color:colors.muted,fontSize:13}}>依你儲存的標籤與地點排序進行中拼單，屬規則排序。可到「推薦偏好」調整，沒有偷偷分析聊天。</Text>:null}</View>:null}
     <FlatList
       data={query.posts}
       keyExtractor={(post) => post.id}
@@ -70,22 +78,33 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
   const dismissPost = useAppStore((state) => state.dismissPost);
   const dismissed = useAppStore((state) => state.dismissedPostIds.includes(post.id));
   const restorePost = useAppStore((state) => state.restorePost);
-  const reminder = useAppStore((state) => state.reminderPostIds.includes(post.id));
+  const demoReminder = useAppStore((state) => state.reminderPostIds.includes(post.id));
   const toggleReminder = useAppStore((state) => state.toggleReminder);
+  const actor=useAuthStore((state)=>state.user?.id);
+  const saved=useSavedPostPreferences();
+  const preference=saved.data?.items.find((item)=>item.post_id===post.id);
+  const cloudPreference=!!corePost&&CORE_SUPABASE_MODE;
+  const reminder=cloudPreference?preference?.reminder??false:demoReminder;
+  const updatePreference=useMutation({mutationFn:(value:{hidden:boolean;reminder:boolean})=>engagementApi.savePost(post.id,value),onSuccess:(updated)=>{
+    if(useAuthStore.getState().user?.id!==actor)return;
+    queryClient.setQueryData<{items:SavedPostPreference[]}>(['core',actor,'saved-posts'],(old)=>({items:[...(old?.items.filter((item)=>item.post_id!==updated.post_id)??[]),updated]}));
+  }});
   const authorPath = `/user/${encodeURIComponent(corePost?.author_id ?? post.name)}` as const;
 
-  if (dismissed) {
+  if (cloudPreference?preference?.hidden:!corePost&&dismissed) {
     return (
       <View style={styles.dismissedPost}>
         <Text style={styles.dismissedText} accessibilityLiveRegion="polite">已隱藏這則貼文</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`取消隱藏 ${post.name} 的貼文`}
-          onPress={() => restorePost(post.id)}
+          disabled={updatePreference.isPending}
+          onPress={() => cloudPreference?updatePreference.mutate({hidden:false,reminder}):restorePost(post.id)}
           style={({ pressed }) => [styles.undoButton, pressed && styles.undoPressed]}
         >
           <Text style={styles.undoText}>取消</Text>
         </Pressable>
+        {updatePreference.error?<Text accessibilityRole="alert">{coreError(updatePreference.error)}</Text>:null}
       </View>
     );
   }
@@ -100,6 +119,7 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
       <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
       <View style={styles.tags}>{post.tags.map((tag) => <TagChip key={tag} label={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })} />)}</View>
       <PostInfo post={post} reminder={reminder} />
+      {updatePreference.error?<Text accessibilityRole="alert" style={{color:colors.danger}}>{coreError(updatePreference.error)}</Text>:null}
       {corePost?.is_demo ? <Text style={styles.time}>示範資料 · 沒有真實訂購</Text> : null}
       {corePost && corePost.status !== 'open' ? <Text style={styles.time}>{corePost.status === 'cancelled' ? '已取消' : corePost.status === 'expired' ? '已截止' : '已額滿'}</Text> : null}
       <View style={styles.actions}>
@@ -111,14 +131,14 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
           <Pressable accessibilityRole="button" accessibilityLabel="關閉貼文選項" style={StyleSheet.absoluteFill} onPress={() => setOptionsVisible(false)} />
           <View style={styles.optionsPanel} accessibilityViewIsModal>
             <Text style={styles.optionsTitle}>貼文選項</Text>
-            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); dismissPost(post.id); }}>
+            <Pressable accessibilityRole="button" disabled={!!corePost&&(!cloudPreference||!saved.data||updatePreference.isPending)} style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); if(cloudPreference)updatePreference.mutate({hidden:true,reminder});else dismissPost(post.id); }}>
               <Text style={styles.optionText}>沒興趣</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" disabled={!!corePost} accessibilityState={{ disabled: !!corePost }} style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); toggleReminder(post.id); }}>
-              <Text style={styles.optionText}>{corePost ? '截止提醒尚未開放' : reminder ? '取消截止提醒' : '截止前 30 分鐘提醒'}</Text>
+            <Pressable accessibilityRole="button" disabled={!!corePost&&(!cloudPreference||!saved.data||updatePreference.isPending)} style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); if(cloudPreference)updatePreference.mutate({hidden:preference?.hidden??false,reminder:!reminder});else toggleReminder(post.id); }}>
+              <Text style={styles.optionText}>{corePost ? reminder?'取消 App 內截止提醒':'加入 App 內截止提醒（非推播）' : reminder ? '取消截止提醒' : '截止前 30 分鐘提醒'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" disabled={!!corePost} accessibilityState={{ disabled: !!corePost }} style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); Alert.alert('檢舉已送出', '管理員將審核這則內容。'); }}>
-              <Text style={[styles.optionText, styles.reportText]}>{corePost ? '檢舉功能尚未開放' : '檢舉貼文'}</Text>
+            <Pressable accessibilityRole="button" style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]} onPress={() => { setOptionsVisible(false); if(corePost) router.push({pathname:'/report',params:{kind:'post',targetId:corePost.id}}); else Alert.alert('展示模式', '檢舉不會傳送到後端。'); }}>
+              <Text style={[styles.optionText, styles.reportText]}>檢舉貼文</Text>
             </Pressable>
             <PrimaryButton secondary onPress={() => setOptionsVisible(false)}>取消</PrimaryButton>
           </View>

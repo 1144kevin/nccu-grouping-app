@@ -49,6 +49,7 @@ function RootNavigator() {
       <Stack.Screen name="font-size" />
       <Stack.Screen name="preferences" />
       <Stack.Screen name="stealth" />
+      <Stack.Screen name="report" />
     </Stack.Protected>
     <Stack.Protected guard={CORE_API_ENABLED && !user}>
       <Stack.Screen name="sign-in" />

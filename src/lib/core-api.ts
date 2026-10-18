@@ -60,8 +60,11 @@ export type CoreChatActivity = { groups: { post_id: string; unread_count: number
 export type CorePublicUser = { id: string; display_name: string; bio: string; badge: string; created_at: string; active_posts: number };
 export type CoreOrderActivity = { id: string; post_id: string; post_content: string; requester_id: string; requester_name: string; status: 'pending' | 'accepted' | 'rejected' | 'cancelled'; kind: 'hosted_request' | 'my_request'; occurred_at: string; post_cancelled: boolean; post_expired: boolean };
 export type CoreOrderActivityPage = { items: CoreOrderActivity[]; next_cursor: string | null };
+export type CoreSearchItem = { id:string; kind:'user'|'message'|'history'; title:string; detail:string; post_id:string|null; created_at:string };
+export type CoreSearchPage = { items:CoreSearchItem[]; next_cursor:string|null };
 
 export const coreApi = {
+  search: async (scope:'users'|'messages'|'history', q:string, cursor?:string) => (await api.get<CoreSearchPage>('/search',{params:{scope,q,cursor,limit:30}})).data,
   clock: async () => (await api.get<{ server_time: string }>('/development/clock')).data,
   orderActivity: async (cursor?: string) => (await api.get<CoreOrderActivityPage>('/notifications', { params: { cursor, limit: 30 } })).data,
   publicUser: async (id: string) => (await api.get<CorePublicUser>(`/users/${encodeURIComponent(id)}`)).data,
@@ -124,6 +127,17 @@ const messages: Record<string, string> = {
   explicit_consent_required: '請明確確認費用、分工與公開內容。',
   terms_revision_limit: '本組修改已達上限，請重新建立需求。',
   stealth_requires_supabase: '偷揪需要使用 Supabase 開發模式。',
+  engagement_requires_supabase: '帳號偏好與回報需要 Supabase 開發模式。',
+  invalid_account_input: '設定格式不符，請檢查後再試。',
+  invalid_report_input: '回報需填 10～1,000 字，並選擇有效的對象。',
+  preferences_changed_reload: '偏好已在其他地方更新，請先重新載入已儲存設定。',
+  report_key_conflict: '這次回報與先前重試內容不同，請重新確認。',
+  report_target_unavailable: '無法檢舉此內容，可能已移除或你沒有查看權限。',
+  report_rate_limit: '一小時最多送出五筆回報，請稍後再試。',
+  inbox_preference_limit: '已達聊天室偏好數量上限，請聯絡管理者處理。',
+  reminder_post_closed: '這筆拼單已截止或取消，無法新增提醒；仍可取消舊提醒。',
+  saved_post_limit: '已達個人貼文偏好數量上限，請聯絡管理者處理。',
+  recommendations_changed_reload: '推薦偏好已更新，請重新整理推薦清單。',
   intake_incomplete: '分身還需要補充資訊，請先回答問題。',
   local_model_not_configured: '尚未啟用本機模型，請依開發文件啟動模型與後端。',
   local_model_unavailable: '本機模型未啟動，請執行 run_local_model.py。',

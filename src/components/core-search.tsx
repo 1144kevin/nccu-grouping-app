@@ -3,11 +3,16 @@ import { router } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { DetailHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
-import { coreError } from '@/lib/core-api';
+import { CORE_SUPABASE_MODE, coreError } from '@/lib/core-api';
+import { CloudSearchScreen } from '@/components/cloud-search';
 import { useCorePosts } from '@/lib/core-hooks';
 import { colors, radius, spacing } from '@/theme/tokens';
 
-export function CoreSearchScreen({ initialQuery = '' }: { initialQuery?: string }) {
+export function CoreSearchScreen({ initialQuery = '', initialScope }: { initialQuery?: string; initialScope?:string }) {
+  return CORE_SUPABASE_MODE ? <CloudSearchScreen initialQuery={initialQuery} initialScope={initialScope}/> : <LocalPostSearch initialQuery={initialQuery}/>;
+}
+
+function LocalPostSearch({ initialQuery = '' }: { initialQuery?:string }) {
   const [input, setInput] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
   const [activeOnly, setActiveOnly] = useState(false);

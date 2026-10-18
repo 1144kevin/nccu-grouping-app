@@ -9,6 +9,7 @@ import { CorePostActions } from '@/components/core-post-actions';
 import { CORE_SUPABASE_MODE, coreApi, coreError, toFeedPost, type CoreJoin, type CorePost } from '@/lib/core-api';
 import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/lib/core-hooks';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { ReportButton } from '@/components/core-reports';
 
 const statusLabels = { open: '進行中', full: '已額滿', expired: '已截止', cancelled: '已取消' };
 const decisionLabels = { pending: '待接受', accepted: '已加入', rejected: '已拒絕', cancelled: '已退出／取消申請' };
@@ -29,6 +30,7 @@ export function CorePostDetail({ id }: { id: string }) {
       <Text style={styles.note}>送出申請後，由主揪接受才會占用名額。截止前可取消申請，已加入者退出會釋出名額。費用與取餐請自行協調。</Text>
       {query.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(query.error)}</Text> : null}
       {post.my_status === 'host' ? <HostManagement post={post} /> : <CorePostActions post={post} />}
+      {CORE_SUPABASE_MODE?<ReportButton kind="post" targetId={post.id}/>:null}
     </ScrollView>
   </Screen>;
 }

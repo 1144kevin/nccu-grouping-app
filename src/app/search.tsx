@@ -14,8 +14,8 @@ type SearchResult = { id: string; type: ResultType; title: string; detail: strin
 const filterOptions: { label: string; value: 'all' | ResultType }[] = [{ label: '全部', value: 'all' }, { label: '貼文', value: 'post' }, { label: '使用者', value: 'user' }, { label: '訊息', value: 'message' }, { label: '拼單', value: 'order' }];
 
 export default function SearchScreen() {
-  const { query } = useLocalSearchParams<{ query?: string }>();
-  return CORE_API_ENABLED ? <CoreSearchScreen initialQuery={query ?? ''} /> : <DemoSearchScreen />;
+  const { query, scope } = useLocalSearchParams<{ query?: string; scope?:string }>();
+  return CORE_API_ENABLED ? <CoreSearchScreen initialQuery={query ?? ''} initialScope={scope} /> : <DemoSearchScreen />;
 }
 
 function DemoSearchScreen() {

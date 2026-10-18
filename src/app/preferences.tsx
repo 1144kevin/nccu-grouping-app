@@ -4,11 +4,17 @@ import { ScrollView, Pressable, StyleSheet, View } from 'react-native';
 import { DetailHeader, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CoreAccountPreferences } from '@/components/core-account-preferences';
 
 const categories = ['甜點', '飲料', '便當', '披薩', '宵夜', '早餐', '生活用品', '課程活動'];
 const locations = ['校門口', '東側門', '達賢圖書館', '商學院', '綜合院館', '宿舍區'];
 
 export default function PreferencesScreen() {
+  return CORE_API_ENABLED && CORE_SUPABASE_MODE ? <CoreAccountPreferences mode="recommendations" /> : <DemoPreferencesScreen />;
+}
+
+function DemoPreferencesScreen() {
   const selected = useAppStore((state) => state.preferredTags);
   const toggle = useAppStore((state) => state.togglePreferredTag);
   return <Screen><DetailHeader title="推薦偏好" /><ScrollView contentContainerStyle={styles.content}><Text style={styles.intro}>選擇你常參與的類型與地點，推薦排序會優先顯示相關拼單。</Text><PreferenceGroup icon="silverware-fork-knife" title="感興趣的類型" items={categories} selected={selected} onToggle={toggle} /><PreferenceGroup icon="map-marker-outline" title="常用取餐地點" items={locations} selected={selected} onToggle={toggle} /><View style={styles.note}><MaterialCommunityIcons name="creation-outline" size={18} color={colors.brown} /><Text style={styles.noteText}>偏好只影響排序，不會隱藏其他同校拼單。之後的互動也會持續調整推薦結果。</Text></View></ScrollView></Screen>;

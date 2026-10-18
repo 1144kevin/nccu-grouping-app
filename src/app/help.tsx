@@ -4,6 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CoreHelpScreen } from '@/components/core-reports';
 
 const questions = [
   ['什麼是「想被揪」？', '表示你想加入這筆需求。主揪接受後，雙方可在聊天室確認細節。'],
@@ -12,6 +14,10 @@ const questions = [
 ];
 
 export default function HelpScreen() {
+  return CORE_API_ENABLED && CORE_SUPABASE_MODE ? <CoreHelpScreen /> : <DemoHelpScreen />;
+}
+
+function DemoHelpScreen() {
   const [open, setOpen] = useState<number>();
   const [message, setMessage] = useState('');
   const [sent, setSent] = useState(false);

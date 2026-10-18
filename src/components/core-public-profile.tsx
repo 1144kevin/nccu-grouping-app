@@ -7,6 +7,7 @@ import { coreApi, coreError } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { ReportButton } from '@/components/core-reports';
 
 export function CorePublicProfile({ id }: { id: string }) {
   const viewer = useAuthStore((state) => state.user);
@@ -30,6 +31,7 @@ export function CorePublicProfile({ id }: { id: string }) {
         <Text style={styles.body}>{user.bio || '尚未填寫個人介紹'}</Text>
         <Text style={styles.hint}>加入日期：{new Date(user.created_at).toLocaleDateString('zh-TW')} · 目前有 {user.active_posts} 筆未截止且未取消的拼單</Text>
         {viewer?.id === id ? <PrimaryButton secondary onPress={() => router.push('/edit-profile')}>編輯我的個人資料</PrimaryButton> : <Text style={styles.hint}>加入對方的拼單並獲得接受後，即可透過拼單聊天室協調。</Text>}
+        {viewer?.id!==id?<ReportButton kind="user" targetId={id}/>:null}
         <SectionTitle>公開拼單</SectionTitle>
         {posts.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(posts.error)}</Text> : null}
       </View>}

@@ -4,11 +4,16 @@ import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-na
 import { router } from 'expo-router';
 import { Avatar, DetailHeader, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
-import { CORE_API_ENABLED } from '@/lib/core-api';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CoreAccountPreferences } from '@/components/core-account-preferences';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, spacing, typography } from '@/theme/tokens';
 
 export default function SettingsScreen() {
+  return CORE_API_ENABLED && CORE_SUPABASE_MODE ? <CoreAccountPreferences mode="settings" /> : <DemoSettingsScreen />;
+}
+
+function DemoSettingsScreen() {
   const logout = useAuthStore((state) => state.logout);
   const settings = useAppStore((state) => state.notificationSettings);
   const updateSetting = useAppStore((state) => state.updateNotificationSetting);
