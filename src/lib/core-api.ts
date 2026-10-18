@@ -116,6 +116,11 @@ export function toFeedPost(post: CorePost): FeedPost {
 }
 
 const messages: Record<string, string> = {
+  invalid_block_input: '請選擇有效使用者；不能封鎖自己。',
+  block_limit_reached: '已達500位封鎖上限，請先整理封鎖名單。',
+  user_interaction_blocked: '目前雙方無法互動，可能存在封鎖關係。',
+  blocked_group_interaction: '此群組存在與你的封鎖關係，目前無法發送訊息；仍可查看允許的紀錄與退出。',
+  invalid_safety_input: '操作格式不符，請重新整理後再試。',
   image_storage_not_configured: '圖片儲存尚未啟用，請先使用文字拼單或檢查本機設定。',
   image_too_large: '圖片過大，請選擇4MB以內的圖片；上傳後會壓縮成JPEG。',
   image_dimensions_too_large: '圖片解析度過高，請先選擇較小或裁切後的圖片（最多1600萬像素）。',

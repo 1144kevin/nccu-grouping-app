@@ -14,6 +14,7 @@ import {
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { DraftImageManager } from '@/components/core-post-image';
+import { CloudBlockList } from '@/components/core-user-blocks';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 const options: [keyof NotificationPreferences, string, string][] = [
@@ -94,6 +95,7 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
         {mode === 'settings' ? (
           <>
             <DraftImageManager />
+            <CloudBlockList />
             <PrimaryButton secondary onPress={() => router.push('/preferences')}>
               調整推薦偏好
             </PrimaryButton>

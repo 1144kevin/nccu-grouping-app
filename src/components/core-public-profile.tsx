@@ -8,6 +8,7 @@ import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { ReportButton } from '@/components/core-reports';
+import { CloudBlockButton } from '@/components/core-user-blocks';
 
 export function CorePublicProfile({ id }: { id: string }) {
   const viewer = useAuthStore((state) => state.user);
@@ -19,10 +20,11 @@ export function CorePublicProfile({ id }: { id: string }) {
     initialPageParam: undefined as string | undefined, getNextPageParam: (page) => page.next_cursor ?? undefined,
     enabled: !!viewer && focused && valid && !!profile.data,
   });
-  const user = profile.data;
+  const user = profile.error ? undefined : profile.data;
   const labels = { open: '進行中', full: '已額滿', expired: '已截止', cancelled: '已取消' };
   return <Screen>
     <DetailHeader title="公開個人資料" />
+    {valid && viewer?.id !== id ? <View style={{padding: 16}}><CloudBlockButton id={id} name={profile.data?.display_name}/></View> : null}
     {!valid ? <EmptyState icon="account-question-outline" title="這個連結尚未連接到真實使用者" /> : !user ? profile.isPending ? <ActivityIndicator /> : <View style={styles.content}><Text accessibilityRole="alert" style={styles.error}>{coreError(profile.error)}</Text><PrimaryButton secondary onPress={() => { void profile.refetch(); }}>重新載入</PrimaryButton></View> : <FlatList
       data={posts.data?.pages.flatMap((page) => page.items) ?? []} keyExtractor={(post) => post.id} contentContainerStyle={styles.content}
       ListHeaderComponent={<View style={styles.header}>
