@@ -8,6 +8,7 @@ import { onUnauthorized } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { AccountDeletionRecovery } from '@/components/core-account-deletion';
 
 export function CoreAuthGate({ children }: PropsWithChildren) {
   if (!CORE_API_ENABLED) return children;
@@ -35,7 +36,7 @@ function LocalAuthGate({ children }: PropsWithChildren) {
       <Pressable accessibilityRole="button" disabled={busy} onPress={() => { void logout(); }}><Text style={styles.link}>登出</Text></Pressable>
     </View> : null}
     {user && error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
-    <View style={{ flex: 1 }}>{children}</View>
+    <View style={{ flex: 1 }}>{user?.deletion_pending ? <AccountDeletionRecovery /> : children}</View>
   </View>;
 }
 
@@ -46,6 +47,7 @@ export function CoreLoginScreen() {
 }
 
 function LoginForm() {
+  const accountDeleted = useAuthStore(state => state.accountDeleted);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,6 +77,7 @@ function LoginForm() {
   }
   return <Screen scroll style={styles.form}>
     <Text style={styles.title}>政缺一咖</Text>
+    {accountDeleted ? <Text accessibilityRole="alert" style={styles.hint}>App 帳號已刪除。再次使用 Google 登入會建立新帳號，舊資料不會恢復。</Text> : null}
     <Text style={styles.subtitle}>{mode === 'login' ? CORE_SUPABASE_MODE ? '登入 Supabase 開發帳號' : '登入本機測試帳號' : CORE_SUPABASE_MODE ? '建立 Supabase 開發帳號' : '建立本機測試帳號'}</Text>
     <Text style={styles.hint}>{CORE_SUPABASE_MODE ? '程式在本機執行，帳號與拼單存於 Supabase 開發專案。註冊後需依設定完成信箱驗證，請使用專用測試密碼。' : '帳號只儲存在這台電腦，不會寄送驗證信。請用測試信箱及專用密碼。'}</Text>
     {CORE_SUPABASE_MODE ? <View style={{ gap: spacing.sm }}>

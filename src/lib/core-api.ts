@@ -6,6 +6,7 @@ export const CORE_API_ENABLED = process.env.EXPO_PUBLIC_CORE_API_ENABLED === 'tr
 export const CORE_SUPABASE_MODE = process.env.EXPO_PUBLIC_CORE_DATA_MODE === 'supabase';
 
 export type CoreUser = {
+  deletion_pending?: boolean;
   id: string;
   email: string;
   display_name: string;
@@ -121,6 +122,14 @@ const messages: Record<string, string> = {
   user_interaction_blocked: '目前雙方無法互動，可能存在封鎖關係。',
   blocked_group_interaction: '此群組存在與你的封鎖關係，目前無法發送訊息；仍可查看允許的紀錄與退出。',
   invalid_safety_input: '操作格式不符，請重新整理後再試。',
+  account_deletion_pending: '帳號正在清除，請到帳號設定繼續刪除流程。',
+  account_deletion_reauthentication_required: '刪除帳號前請先登出，再登入同一帳號；需要15分鐘內的新登入。',
+  explicit_account_deletion_required: '請先查看刪除影響，手動輸入 DELETE 並明確確認。',
+  account_deletion_challenge_expired: '刪除確認已過期或不屬於此登入，請重新取得預覽。',
+  invalid_account_deletion_input: '刪除確認格式不符，請重新取得預覽。',
+  account_deletion_not_started: '尚未確認開始刪除，請先取得預覽並確認。',
+  account_deletion_storage_remaining: '仍有圖片或其他儲存檔案待清理，帳號尚未刪除；請重試或聯絡開發者。',
+  account_deletion_cleanup_failed: '圖片清理暫時失敗，帳號尚未完成刪除；重新登入同一帳號可繼續清理。',
   image_storage_not_configured: '圖片儲存尚未啟用，請先使用文字拼單或檢查本機設定。',
   image_too_large: '圖片過大，請選擇4MB以內的圖片；上傳後會壓縮成JPEG。',
   image_dimensions_too_large: '圖片解析度過高，請先選擇較小或裁切後的圖片（最多1600萬像素）。',

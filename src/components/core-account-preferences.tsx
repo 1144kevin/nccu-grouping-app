@@ -14,6 +14,7 @@ import {
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { DraftImageManager } from '@/components/core-post-image';
+import { AccountDeletionPanel } from '@/components/core-account-deletion';
 import { CloudBlockList } from '@/components/core-user-blocks';
 import { colors, radius, spacing } from '@/theme/tokens';
 
@@ -96,6 +97,7 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
           <>
             <DraftImageManager />
             <CloudBlockList />
+            <AccountDeletionPanel />
             <PrimaryButton secondary onPress={() => router.push('/preferences')}>
               調整推薦偏好
             </PrimaryButton>

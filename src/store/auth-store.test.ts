@@ -2,13 +2,27 @@ import { beforeEach, expect, it, jest } from '@jest/globals';
 import { AxiosError, type AxiosResponse } from 'axios';
 import { authToken } from '@/lib/api';
 import { coreApi, type CoreSession } from '@/lib/core-api';
-import { applyProfileUpdate, useAuthStore } from '@/store/auth-store';
+import { applyProfileUpdate, completeAccountDeletion, useAuthStore } from '@/store/auth-store';
 
 jest.mock('@/lib/api', () => ({ authToken: { get: jest.fn(), set: jest.fn(), setSession: jest.fn(), clear: jest.fn() } }));
 jest.mock('@/lib/core-api', () => ({ coreApi: { me: jest.fn(), login: jest.fn(), register: jest.fn(), logout: jest.fn() }, coreError: () => 'test-error' }));
 jest.mock('@/lib/query-client', () => ({ queryClient: { clear: jest.fn() } }));
 
 const session: CoreSession = { access_token: 'synthetic-access-token', expires_at: '2026-10-17T10:00:00Z', user: { id: 'user-a', email: 'a@example.test', display_name: '測試甲', created_at: '2026-10-16T10:00:00Z', auth_mode: 'local_development', email_verified: false } };
+
+it('ignores deletion completion belonging to a different signed-in account', async () => {
+  useAuthStore.setState({ user: session.user });
+  await completeAccountDeletion('another-account');
+  expect(authToken.clear).not.toHaveBeenCalled();
+  expect(useAuthStore.getState().user?.id).toBe(session.user.id);
+});
+
+it('clears the deleted account session and exposes the completed message', async () => {
+  useAuthStore.setState({ user: session.user, busy: true });
+  await completeAccountDeletion(session.user.id);
+  expect(authToken.clear).toHaveBeenCalledTimes(1);
+  expect(useAuthStore.getState()).toMatchObject({ user: null, busy: false, accountDeleted: true });
+});
 
 beforeEach(() => {
   jest.resetAllMocks();

@@ -5,6 +5,7 @@ import { coreApi, coreError, type CoreSession, type CoreUser } from '@/lib/core-
 import { queryClient } from '@/lib/query-client';
 
 type AuthState = {
+  accountDeleted: boolean;
   user: CoreUser | null;
   ready: boolean;
   busy: boolean;
@@ -17,6 +18,7 @@ type AuthState = {
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
+  accountDeleted: false,
   user: null, ready: false, busy: false, error: null,
   acceptGoogleSession: async (session) => {
     if (get().busy || get().user || session.user.auth_mode !== 'supabase') return false;
@@ -25,7 +27,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (session.refresh_token) await authToken.setSession(session);
       else await authToken.set(session.access_token);
       queryClient.clear();
-      set({ user: session.user, ready: true });
+      set({ user: session.user, ready: true, accountDeleted: false });
       return true;
     } catch (error) { set({ error: coreError(error) }); return false; }
     finally { set({ busy: false }); }
@@ -61,7 +63,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (session.refresh_token) await authToken.setSession(session);
       else await authToken.set(session.access_token);
       queryClient.clear();
-      set({ user: session.user, ready: true });
+      set({ user: session.user, ready: true, accountDeleted: false });
       return true;
     } catch (error) { set({ error: coreError(error) }); return false; }
     finally { set({ busy: false }); }
@@ -90,4 +92,12 @@ export function applyProfileUpdate(updated: CoreUser): boolean {
   if (!current || current.id !== updated.id || (updated.version ?? 1) < (current.version ?? 1)) return false;
   useAuthStore.setState({ user: updated });
   return true;
+}
+
+export async function completeAccountDeletion(actor: string): Promise<void> {
+  if (useAuthStore.getState().user?.id !== actor) return;
+  await authToken.clear();
+  if (useAuthStore.getState().user?.id !== actor) return;
+  queryClient.clear();
+  useAuthStore.setState({ user: null, ready: true, busy: false, error: null, accountDeleted: true });
 }
