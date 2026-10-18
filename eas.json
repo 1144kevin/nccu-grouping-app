@@ -12,7 +12,11 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_CORE_API_ENABLED": "true",
+        "EXPO_PUBLIC_CORE_DATA_MODE": "supabase"
+      }
     }
   },
   "submit": {

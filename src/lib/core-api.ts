@@ -75,7 +75,7 @@ export const coreApi = {
   messages: async (postId: string, cursor?: string) => (await api.get<CoreChatPage>(`/conversations/${encodeURIComponent(postId)}/messages`, { params: { cursor, limit: 30 } })).data,
   sendMessage: async (postId: string, content: string, key: string) => (await api.post<CoreMessage>(`/conversations/${encodeURIComponent(postId)}/messages`, { content }, { headers: { 'Idempotency-Key': key } })).data,
   clearDemo: async () => (await api.delete<{ deleted_posts: number; kept_posts: number }>('/development/demo')).data,
-  googleStart: async () => (await api.post<GoogleStart>('/auth/google/start')).data,
+  googleStart: async (client: 'web' | 'ios' = 'web') => (await api.post<GoogleStart>('/auth/google/start', { client })).data,
   googleFinish: async (flowId: string, code: string) => (await api.post<CoreSession>('/auth/google/finish', { flow_id: flowId, code })).data,
   register: async (email: string, password: string, displayName: string) =>
     (await api.post<CoreSession | ConfirmationRequired>('/auth/register', { email, password, display_name: displayName })).data,
@@ -195,6 +195,8 @@ const messages: Record<string, string> = {
   google_login_expired_restart: 'Google 登入已失效或不屬於這個頁籤，請返回登入頁重新開始。',
   google_login_cancelled: 'Google 登入未完成，請返回登入頁重試。',
   google_web_only: '這一版 Google 登入先支援本機瀏覽器，iPhone App 登入尚未啟用。',
+  google_ios_not_configured: 'iPhone Google 登入程式已備妥，尚需設定開發專案的 App 回呼網址並啟用後端設定。',
+  google_native_build_required: '請使用 iPhone 開發版本，Expo Go 無法使用這個 App 專屬登入回呼。',
   google_login_invalid_response: 'Google 登入設定不符，請檢查開發專案的回呼網址。',
 };
 

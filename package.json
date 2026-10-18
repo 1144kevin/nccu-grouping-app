@@ -55,6 +55,9 @@
   "scripts": {
     "dev:local": "node ./scripts/local-core.mjs",
     "dev:supabase": "node ./scripts/local-core.mjs --supabase",
+    "ios:preflight": "node ./scripts/ios-preflight.mjs",
+    "ios:preflight:release": "node ./scripts/ios-preflight.mjs --release",
+    "test:release-config": "node --test ./scripts/release-config.test.cjs",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

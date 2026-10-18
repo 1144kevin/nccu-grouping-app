@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { CORE_API_ENABLED, coreApi, toFeedPost } from '@/lib/core-api';
@@ -12,14 +13,27 @@ export async function invalidateCore() {
 
 export function useCoreScreenFocused() {
   const [focused, setFocused] = useState(false);
-  useFocusEffect(useCallback(() => {
-    setFocused(true);
-    return () => setFocused(false);
-  }, []));
-  return focused;
+  const [foreground, setForeground] = useState(AppState.currentState === 'active');
+  useEffect(() => {
+    const listener = AppState.addEventListener('change', (state) =>
+      setForeground(state === 'active'),
+    );
+    return () => listener.remove();
+  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+  return focused && foreground;
 }
 
-export function useCorePosts(scope: 'feed' | 'hosted' | 'participating' | 'history' = 'feed', q = '', activeOnly = false) {
+export function useCorePosts(
+  scope: 'feed' | 'hosted' | 'participating' | 'history' = 'feed',
+  q = '',
+  activeOnly = false,
+) {
   const user = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
   const query = useInfiniteQuery({
@@ -35,7 +49,9 @@ export function useCorePosts(scope: 'feed' | 'hosted' | 'participating' | 'histo
       const posts = query.data.pages.flatMap((page) => page.items);
       useAppStore.setState({
         posts: posts.map(toFeedPost),
-        interestedPostIds: posts.filter((post) => ['pending', 'accepted'].includes(post.my_status)).map((post) => post.id),
+        interestedPostIds: posts
+          .filter((post) => ['pending', 'accepted'].includes(post.my_status))
+          .map((post) => post.id),
       });
     }
   }, [scope, q, activeOnly, query.data]);

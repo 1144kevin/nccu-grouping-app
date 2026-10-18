@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { PrimaryButton, Screen } from '@/components/primitives';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreError } from '@/lib/core-api';
-import { beginGoogleSignIn } from '@/lib/google-login';
+import { beginGoogleSignIn, clearGoogleCallback } from '@/lib/google-login';
 import { onUnauthorized } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppStore } from '@/store/app-store';
@@ -66,7 +66,11 @@ function LoginForm() {
   }
   async function googleLogin() {
     setGoogleBusy(true); setGoogleError('');
-    try { await beginGoogleSignIn(); }
+    try {
+      const session = await beginGoogleSignIn();
+      if (session && !await useAuthStore.getState().acceptGoogleSession(session)) throw new Error('google_login_expired_restart');
+      if (session) { clearGoogleCallback(); setGoogleBusy(false); }
+    }
     catch (error) { setGoogleError(coreError(error)); setGoogleBusy(false); }
   }
   return <Screen scroll style={styles.form}>
@@ -74,8 +78,8 @@ function LoginForm() {
     <Text style={styles.subtitle}>{mode === 'login' ? CORE_SUPABASE_MODE ? '登入 Supabase 開發帳號' : '登入本機測試帳號' : CORE_SUPABASE_MODE ? '建立 Supabase 開發帳號' : '建立本機測試帳號'}</Text>
     <Text style={styles.hint}>{CORE_SUPABASE_MODE ? '程式在本機執行，帳號與拼單存於 Supabase 開發專案。註冊後需依設定完成信箱驗證，請使用專用測試密碼。' : '帳號只儲存在這台電腦，不會寄送驗證信。請用測試信箱及專用密碼。'}</Text>
     {CORE_SUPABASE_MODE ? <View style={{ gap: spacing.sm }}>
-      <PrimaryButton secondary disabled={busy || googleBusy || Platform.OS !== 'web'} onPress={() => { void googleLogin(); }}>{googleBusy ? '正在前往 Google…' : '使用 Google 帳號登入'}</PrimaryButton>
-      <Text style={styles.hint}>{Platform.OS === 'web' ? '首次使用會建立 App 帳號，無須另外設定 App 密碼。' : 'Google 登入目前先開放本機瀏覽器測試。'}</Text>
+      <PrimaryButton secondary disabled={busy || googleBusy || !['web', 'ios'].includes(Platform.OS)} onPress={() => { void googleLogin(); }}>{googleBusy ? '正在前往 Google…' : '使用 Google 帳號登入'}</PrimaryButton>
+      <Text style={styles.hint}>{Platform.OS === 'web' ? '首次使用會建立 App 帳號，無須另外設定 App 密碼。' : 'iPhone 需使用開發版本，並先完成 App 回呼網址設定。'}</Text>
       {googleError ? <Text accessibilityRole="alert" style={styles.error}>{googleError}</Text> : null}
     </View> : null}
     {mode === 'register' ? <TextInput accessibilityLabel="顯示名稱" placeholder="顯示名稱" value={name} onChangeText={setName} maxLength={40} style={styles.input} /> : null}
