@@ -35,6 +35,16 @@ export type StealthMatch = {
   agent_draft?: StealthAgentTermsDraft | null;
 };
 export type StealthCreated = { signal: StealthSignal; matching: 'completed' | 'paused' | 'quiet' | 'cooldown' | 'unavailable'; new_matches: number };
+export type StealthFactCode = 'location' | 'time' | 'category' | 'shared_tags' | 'offer' | 'pickup_volunteer' | 'cost_unknown' | 'order_missing' | 'pickup_missing' | 'coupon_terms';
+export type StealthSemanticItem = {
+  key: string; similarity: number | null;
+  review: { verdict: 'complementary' | 'similar' | 'uncertain' | 'not_recommended'; reason_codes: StealthFactCode[] } | null;
+  review_model: string | null; review_status: 'not_requested' | 'completed' | 'unavailable'; explanations: string[];
+};
+export type StealthSemanticResult = {
+  ranking: { status: 'completed' | 'unavailable' | 'empty'; embedding_model: string | null; items: StealthSemanticItem[]; warnings: string[]; requires_unanimous_confirmation: true };
+  items: StealthMatch[];
+};
 export type StealthDraft = { category_hint: StealthCategory | null; location_hint: StealthSignalInput['location_id'] | null; title: string; needs_confirmation: string[]; is_llm: false };
 export type StealthIntake = {
   provider: 'ollama_local'; is_llm: true; model: string; ready_for_review: boolean;
@@ -54,6 +64,8 @@ export const stealthApi = {
   create: async (value: StealthSignalInput, key: string) => (await api.post<StealthCreated>(`${root}/signals`, value, { headers: { 'Idempotency-Key': key } })).data,
   revoke: async (id: string) => (await api.delete<StealthSignal>(`${root}/signals/${encodeURIComponent(id)}`)).data,
   matches: async () => (await api.get<{ items: StealthMatch[] }>(`${root}/matches`)).data,
+  // Explicit action only; never call from the ordinary ten-second matches query.
+  semantic: async () => (await api.post<StealthSemanticResult>(`${root}/matches/semantic`, { review_limit: 3 }, { timeout: 380_000 })).data,
   run: async () => (await api.post<{ created: number; is_llm: false }>(`${root}/matches/run`, { max_proposals: 3 })).data,
   decide: async (id: string, decision: 'accepted' | 'declined') => (await api.post<StealthMatch>(`${root}/matches/${encodeURIComponent(id)}/decision`, { decision })).data,
   terms: async (id: string, expected_revision: number, value: StealthTerms) => (await api.put<StealthMatch>(`${root}/matches/${encodeURIComponent(id)}/terms`, { expected_revision, value })).data,
