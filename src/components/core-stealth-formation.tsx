@@ -10,8 +10,11 @@ import { stealthApi, type StealthAgentTermsDraft, type StealthMatch } from '@/li
 import { colors, radius, spacing } from '@/theme/tokens';
 
 export function StealthFormation({ match, refresh, now }: { match: StealthMatch; refresh: () => Promise<void>; now?: () => number }) {
-  const [editing, setEditing] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [editing, setEditing] = useState(!match.terms);
+  const [formRevision, setFormRevision] = useState(match.terms_revision);
+  const [checkedRevision, setChecked] = useState<number | null>(null);
+  const checked = checkedRevision === match.terms_revision;
+  const staleDraft = editing && formRevision !== match.terms_revision;
   const [content, setContent] = useState(match.terms?.content ?? match.agent_draft?.content ?? '偷揪夥伴一起分享餐點，依下列費用與分工協調。');
   const [cost, setCost] = useState(String(match.terms?.cost_per_person_twd ?? match.agent_draft?.cost_per_person_twd ?? match.known_cost_twd ?? ''));
   const [costNote, setCostNote] = useState(match.terms?.cost_change_note ?? '');
@@ -22,10 +25,21 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
   const [deadlineError, setDeadlineError] = useState('');
   const [order, setOrder] = useState(match.terms?.order_member ?? (match.agent_draft ? match.agent_draft.order_member ?? 0 : match.my_member_number));
   const [pickup, setPickup] = useState(match.terms?.pickup_member ?? (match.agent_draft ? match.agent_draft.pickup_member ?? 0 : match.my_member_number));
-  const save = useMutation({ mutationFn: () => stealthApi.terms(match.id, match.terms_revision, { content: content.trim(), cost_per_person_twd: Number(cost), cost_change_note: costNote.trim(), deadline_at: new Date(deadline).toISOString(), order_member: order, pickup_member: pickup }), onSuccess: () => { setEditing(false); setChecked(false); }, onSettled: refresh });
+  const save = useMutation({ mutationFn: () => stealthApi.terms(match.id, formRevision, { content: content.trim(), cost_per_person_twd: Number(cost), cost_change_note: costNote.trim(), deadline_at: new Date(deadline).toISOString(), order_member: order, pickup_member: pickup }), onSuccess: () => { setEditing(false); setChecked(null); }, onSettled: refresh });
   const consent = useMutation({ mutationFn: () => stealthApi.consent(match.id, match.terms_revision), onSettled: refresh });
   const busy = save.isPending || consent.isPending;
   const error = save.error ?? consent.error;
+  const loadCurrentTerms = () => {
+    const value = match.terms;
+    setContent(value?.content ?? match.agent_draft?.content ?? '偷揪夥伴一起分享餐點，依下列費用與分工協調。');
+    setCost(String(value?.cost_per_person_twd ?? match.agent_draft?.cost_per_person_twd ?? match.known_cost_twd ?? ''));
+    setCostNote(value?.cost_change_note ?? '');
+    setDeadline(value?.deadline_at ?? match.agent_draft?.deadline_at ?? match.ends_at);
+    setOrder(value?.order_member ?? match.agent_draft?.order_member ?? 0);
+    setPickup(value?.pickup_member ?? match.agent_draft?.pickup_member ?? 0);
+    setFormRevision(match.terms_revision); setChecked(null); setDeadlineError('');
+    save.reset(); consent.reset(); setEditing(true);
+  };
   const label = (member: number) => `成員 ${member}${member === match.my_member_number ? '（我）' : ''}`;
   const members = Array.from({ length: match.member_count }, (_, i) => i + 1);
   const costChanged = match.known_cost_twd != null && /^\d+$/.test(cost) && Number(cost) !== match.known_cost_twd;
@@ -56,17 +70,21 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
       <Text style={styles.body}>我的分工：{[match.terms.order_member === match.my_member_number ? '下單' : '', match.terms.pickup_member === match.my_member_number ? '取餐' : ''].filter(Boolean).join('、') || '依約參與分食'}。</Text>
       <Text style={styles.body}>同意代表已確認餐點細節、每人金額與自己的分工。全員同意這一版後自動建立公開拼單與團員聊天室，公開說明、主揪、分工者的顯示名稱會供登入用戶查看；私人需求原文不會公開。這不會代為訂餐、付款或扣款。</Text>
       {!editing && !match.my_terms_accepted ? <>
-        <Pressable accessibilityRole="checkbox" accessibilityLabel="我已確認費用、我的分工與公開內容，同意全員確認後自動成團" accessibilityState={{ checked, disabled: busy }} disabled={busy} onPress={() => setChecked(!checked)} style={styles.choice}><Text>{checked ? '✓ ' : ''}我已確認費用、我的分工與公開內容，同意全員確認後自動成團</Text></Pressable>
+        <Pressable accessibilityRole="checkbox" accessibilityLabel="我已確認費用、我的分工與公開內容，同意全員確認後自動成團" accessibilityState={{ checked, disabled: busy }} disabled={busy} onPress={() => setChecked(checked ? null : match.terms_revision)} style={styles.choice}><Text>{checked ? '✓ ' : ''}我已確認費用、我的分工與公開內容，同意全員確認後自動成團</Text></Pressable>
         <PrimaryButton disabled={!checked || busy} onPress={() => consent.mutate()}>{consent.isPending ? '確認中…' : `同意第 ${match.terms_revision} 版並等待成團`}</PrimaryButton>
       </> : match.my_terms_accepted ? <Text style={styles.body}>你已同意這一版，等待其他人。要退出可使用下方「撤回我的意願」；修改方案將要求所有人重新同意。</Text> : null}
-      <PrimaryButton secondary disabled={busy} onPress={() => { setEditing(!editing); setChecked(false); }}>{editing ? '取消編輯' : '修改方案（清除所有舊同意）'}</PrimaryButton>
+      <PrimaryButton secondary disabled={busy} onPress={() => { if (editing) { setEditing(false); setChecked(null); } else loadCurrentTerms(); }}>{editing ? '取消編輯' : '修改方案（清除所有舊同意）'}</PrimaryButton>
     </> : <Text style={styles.body}>分身草案已填入下方，可先修改或補齊再提出。草案尚未送出，也沒有任何人的同意；仍可自行填寫方案。</Text>}
     {!match.terms || editing ? <>
+      {staleDraft ? <>
+        <Text accessibilityRole="alert" style={styles.error}>最新方案已更新，保留你的未送出修改。請先核對新版，再重新編輯；不會自動覆蓋他人方案。</Text>
+        <PrimaryButton secondary disabled={busy} onPress={loadCurrentTerms}>捨棄我的草稿，載入最新方案</PrimaryButton>
+      </> : null}
       {match.agent_draft ? <PrimaryButton secondary disabled={busy} onPress={() => {
         const draft = match.agent_draft!;
         setContent(draft.content); setCost(draft.cost_per_person_twd === null ? '' : String(draft.cost_per_person_twd)); setCostNote('');
         setDeadline(draft.deadline_at); setOrder(draft.order_member ?? 0); setPickup(draft.pickup_member ?? 0);
-        setChecked(false); setDeadlineError('');
+        setChecked(null); setDeadlineError('');
       }}>還原分身草案（取代未儲存修改）</PrimaryButton> : null}
       <TextInput accessibilityLabel="成團公開說明" value={content} onChangeText={setContent} maxLength={300} multiline editable={!busy} style={styles.input} />
       <Text>每人費用（整數；含所有已協調費用）</Text><TextInput accessibilityLabel="成團每人費用" value={cost} onChangeText={setCost} keyboardType="number-pad" maxLength={6} editable={!busy} style={styles.input} />
@@ -82,7 +100,7 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
       <Text>誰負責取餐</Text><View style={styles.row}>{members.map((n) => <PrimaryButton key={n} secondary={pickup !== n} disabled={busy} onPress={() => setPickup(n)}>{label(n)}取餐</PrimaryButton>)}</View>
       {!pickup ? <Text style={styles.body}>尚未指定取餐者，請協調後選擇，並由本人確認。</Text> : null}
       <Text style={styles.body}>金額不能超過共同預算；調整已知價格需說明原因並由全員確認。送出方案不代表任何人已同意，包含提案者在內都要另外確認。</Text>
-      <PrimaryButton disabled={busy || !valid} onPress={() => save.mutate()}>{save.isPending ? '送出中…' : '提出方案，請全員確認'}</PrimaryButton>
+      <PrimaryButton disabled={busy || !valid || staleDraft} onPress={() => save.mutate()}>{save.isPending ? '送出中…' : '提出方案，請全員確認'}</PrimaryButton>
     </> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(error)}</Text> : null}
     <DeadlinePickerModal startDate={deadlineStart} value={draftDeadline} visible={deadlineVisible} onChange={setDraftDeadline} onClose={() => setDeadlineVisible(false)} onApply={() => {

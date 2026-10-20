@@ -13,6 +13,51 @@ const match = { id: 'proposal', created_at: '2026-10-18T07:00:00Z', ends_at: '20
   terms: { content: '大家一起分享披薩與已協調的費用。', cost_per_person_twd: 90, order_member: 2, pickup_member: 3, deadline_at: '2026-10-18T10:00:00Z' } } as StealthMatch;
 const draft: StealthAgentTermsDraft = { provider: 'offline_rules_v1', is_llm: false, content: '一起分享披薩，依全員最後確認的費用與分工處理。', cost_per_person_twd: 90, total_cost_twd: 270, cost_basis: 'known_cost', budget_limit_twd: 120, deadline_at: match.ends_at, order_member: 1, pickup_member: 3, role_suggestions: [{ role: 'order', member_number: 1, candidates: [1], reason: '成員 1 願意下單。' }, { role: 'pickup', member_number: 3, candidates: [3], reason: '成員 3 願意取餐。' }], missing_fields: [], needs_confirmation: ['每個人仍須確認同一版方案。'], ready_to_submit: true };
 afterEach(async () => { await act(async () => { client.clear(); await new Promise((r) => setTimeout(r,0)); }); jest.clearAllMocks(); });
+it('preserves a losing proposal after a conflict refresh and requires explicit reload', async () => {
+  jest.mocked(stealthApi.terms).mockRejectedValueOnce(new Error('terms_revision_conflict'));
+  const refresh = jest.fn(async () => undefined);
+  const screen = await render(<QueryClientProvider client={client}><StealthFormation match={{ ...match, terms: null, terms_revision: 0, agent_draft: draft }} refresh={refresh} /></QueryClientProvider>);
+  await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團公開說明'), '另一人同時送出時，我的草稿必須保留。'); });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
+  await waitFor(() => expect(refresh).toHaveBeenCalled());
+  await screen.rerender(<QueryClientProvider client={client}><StealthFormation match={match} refresh={refresh} /></QueryClientProvider>);
+  expect(screen.getByDisplayValue('另一人同時送出時，我的草稿必須保留。')).toBeTruthy();
+  expect(screen.getByText('操作失敗')).toBeTruthy();
+  expect(screen.getByText('最新方案已更新，保留你的未送出修改。請先核對新版，再重新編輯；不會自動覆蓋他人方案。')).toBeTruthy();
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
+  expect(stealthApi.terms).toHaveBeenCalledTimes(1);
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '捨棄我的草稿，載入最新方案' })); });
+  expect(screen.getByDisplayValue(match.terms!.content)).toBeTruthy();
+  jest.mocked(stealthApi.terms).mockResolvedValueOnce({ ...match, terms_revision: 3 });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
+  await waitFor(() => expect(stealthApi.terms).toHaveBeenLastCalledWith('proposal', 2, expect.objectContaining({ content: match.terms!.content })));
+});
+
+it('does not reuse a checked acknowledgement when polling reveals a new revision', async () => {
+  const refresh = async () => undefined;
+  const screen = await render(<QueryClientProvider client={client}><StealthFormation match={match} refresh={refresh} /></QueryClientProvider>);
+  await act(async () => { await fireEvent.press(screen.getByRole('checkbox')); });
+  await screen.rerender(<QueryClientProvider client={client}><StealthFormation match={{ ...match, terms_revision: 3, terms: { ...match.terms!, cost_per_person_twd: 95 } }} refresh={refresh} /></QueryClientProvider>);
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '同意第 3 版並等待成團' })); });
+  expect(stealthApi.consent).not.toHaveBeenCalled();
+});
+
+it('keeps in-progress edits on remote revision changes but loads current terms when explicitly editing anew', async () => {
+  const refresh = async () => undefined;
+  const screen = await render(<QueryClientProvider client={client}><StealthFormation match={match} refresh={refresh} /></QueryClientProvider>);
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '修改方案（清除所有舊同意）' })); });
+  await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團公開說明'), '保留我的尚未送出修改，不可默默覆蓋。'); });
+  const updated = { ...match, terms_revision: 3, terms: { ...match.terms!, content: '別人已更新的公開方案內容。', cost_per_person_twd: 95 } };
+  await screen.rerender(<QueryClientProvider client={client}><StealthFormation match={updated} refresh={refresh} /></QueryClientProvider>);
+  expect(screen.getByDisplayValue('保留我的尚未送出修改，不可默默覆蓋。')).toBeTruthy();
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
+  expect(stealthApi.terms).not.toHaveBeenCalled();
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '取消編輯' })); });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '修改方案（清除所有舊同意）' })); });
+  expect(screen.getByDisplayValue(updated.terms.content)).toBeTruthy();
+  expect(screen.getByDisplayValue('95')).toBeTruthy();
+});
+
 it('requires explicit cost and role acknowledgement and binds consent to the displayed revision', async () => {
   jest.mocked(stealthApi.consent).mockResolvedValue({ ...match, my_terms_accepted: true });
   const screen = await render(<QueryClientProvider client={client}><StealthFormation match={match} refresh={async () => undefined} /></QueryClientProvider>);

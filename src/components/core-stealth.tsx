@@ -169,7 +169,7 @@ function MatchCard({ match, semantic, refresh, now }: { match: StealthMatch; sem
     <Text style={styles.label}>為什麼揪你</Text>{[...match.reasons,...match.why_me].map((reason) => <Text key={reason} style={styles.body}>• {reason}</Text>)}
     {match.unknowns.length ? <><Text style={styles.label}>仍需確認</Text>{match.unknowns.map((unknown) => <Text key={unknown} style={styles.hint}>• {unknown}</Text>)}</> : null}
     <Text style={styles.note}>{match.status === 'formed' ? '已正式成團。' : match.status === 'unavailable' ? '這組機會已失效，不再接受意願。' : match.status === 'ready' ? '大家都有意願，還需要確認最終方案。' : match.my_decision === 'accepted' ? '你已表示有意願，仍需確認費用與分工。' : '這是私人配對邀請，先由你決定是否有意願。'}</Text>
-    <StealthFormation key={`${match.id}:${match.terms_revision}`} match={match} refresh={refresh} now={now} />
+    <StealthFormation key={match.id} match={match} refresh={refresh} now={now} />
     {match.status !== 'unavailable' && match.status !== 'formed' ? <View style={styles.row}>{match.my_decision !== 'accepted' ? <PrimaryButton disabled={mutation.isPending} onPress={() => mutation.mutate('accepted')}>我有意願</PrimaryButton> : null}<PrimaryButton secondary disabled={mutation.isPending} onPress={() => mutation.mutate('declined')}>{match.my_decision === 'accepted' ? '撤回我的意願' : '這次先不要'}</PrimaryButton></View> : null}
     <ErrorText error={mutation.error} />
   </View>;
