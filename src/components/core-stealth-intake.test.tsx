@@ -85,6 +85,7 @@ it('asks missing questions, carries user turns, and only applies after an explic
     '想吃披薩',
     '正門，一小時後，持續兩小時，預算120，願意分食',
   ]);
+  expect(jest.mocked(stealthApi.intake).mock.calls[1][1]).toEqual(complete.facts);
   expect(apply).not.toHaveBeenCalled();
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '查看理解依據（你的原句）' }));
@@ -122,4 +123,19 @@ it('keeps the original input and manual fallback when the model is offline', asy
   });
   await waitFor(() => expect(screen.getByText(/模型未啟動/)).toBeTruthy());
   expect(screen.getByLabelText('跟分身說需求或補充資訊').props.value).toBe('晚餐');
+});
+
+it('keeps the last summary after a failed follow-up and blocks applying stale facts', async () => {
+  jest.mocked(stealthApi.intake).mockResolvedValueOnce(complete).mockRejectedValueOnce(new Error('offline'));
+  const apply = jest.fn();
+  const screen = await render(<QueryClientProvider client={client}><StealthIntake onApply={apply} disabled={false} /></QueryClientProvider>);
+  await act(async () => { await fireEvent.changeText(screen.getByLabelText('跟分身說需求或補充資訊'), '完整需求'); });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '讓本機分身理解' })); });
+  await waitFor(() => expect(screen.getByText('資訊已足夠整理成待確認表單。')).toBeTruthy());
+  await act(async () => { await fireEvent.changeText(screen.getByLabelText('跟分身說需求或補充資訊'), '預算改80'); });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '補充並重新整理' })); });
+  await waitFor(() => expect(screen.getByText(/最新補充尚未成功/)).toBeTruthy());
+  expect(screen.getByLabelText('跟分身說需求或補充資訊').props.value).toBe('預算改80');
+  expect(screen.getByRole('button', { name: '套用到下方表單，逐項檢查' }).props.accessibilityState.disabled).toBe(true);
+  expect(apply).not.toHaveBeenCalled();
 });

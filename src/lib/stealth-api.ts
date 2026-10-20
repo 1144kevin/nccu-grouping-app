@@ -71,7 +71,7 @@ export const stealthApi = {
   terms: async (id: string, expected_revision: number, value: StealthTerms) => (await api.put<StealthMatch>(`${root}/matches/${encodeURIComponent(id)}/terms`, { expected_revision, value })).data,
   consent: async (id: string, expected_revision: number) => (await api.post<StealthMatch>(`${root}/matches/${encodeURIComponent(id)}/consent`, { expected_revision, agree: true })).data,
   draft: async (text: string) => (await api.post<StealthDraft>(`${root}/draft`, { text })).data,
-  intake: async (turns: string[]) => (await api.post<StealthIntake>(`${root}/intake`, { turns }, { timeout: 100_000 })).data,
+  intake: async (turns: string[], previous?: StealthIntake['facts']) => (await api.post<StealthIntake>(`${root}/intake`, { turns, ...(previous ? { previous } : {}) }, { timeout: 100_000 })).data,
 };
 
 export function intakeToForm(value: StealthIntake): SignalForm {
