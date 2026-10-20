@@ -66,6 +66,7 @@ export const stealthApi = {
   matches: async () => (await api.get<{ items: StealthMatch[] }>(`${root}/matches`)).data,
   // Explicit action only; never call from the ordinary ten-second matches query.
   semantic: async () => (await api.post<StealthSemanticResult>(`${root}/matches/semantic`, { review_limit: 3 }, { timeout: 380_000 })).data,
+  discover: async () => (await api.post<{ created: number; indexed: number }>(`${root}/matches/discover`, {}, { timeout: 120_000 })).data,
   run: async () => (await api.post<{ created: number; is_llm: false }>(`${root}/matches/run`, { max_proposals: 3 })).data,
   decide: async (id: string, decision: 'accepted' | 'declined') => (await api.post<StealthMatch>(`${root}/matches/${encodeURIComponent(id)}/decision`, { decision })).data,
   terms: async (id: string, expected_revision: number, value: StealthTerms) => (await api.put<StealthMatch>(`${root}/matches/${encodeURIComponent(id)}/terms`, { expected_revision, value })).data,

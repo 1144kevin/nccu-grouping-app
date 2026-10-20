@@ -9,7 +9,7 @@ import { stealthApi, type StealthMatch, type StealthSemanticResult } from '@/lib
 jest.mock('expo-router', () => ({ router: {} }));
 jest.mock('@/lib/api', () => ({ api: {} }));
 jest.mock('@/lib/stealth-api', () => ({
-  stealthApi: { semantic: jest.fn(), consent: jest.fn(), terms: jest.fn(), decide: jest.fn() },
+  stealthApi: { discover: jest.fn(), semantic: jest.fn(), consent: jest.fn(), terms: jest.fn(), decide: jest.fn() },
 }));
 jest.mock('@/lib/core-api', () => ({ coreError: () => '本機模型暫不可用，原配對仍可使用' }));
 jest.mock('@/lib/font-size-storage', () => ({
@@ -80,6 +80,16 @@ afterEach(async () => {
   });
   jest.clearAllMocks();
   mockActor = 'self';
+});
+
+it('can discover before any proposal exists and refreshes without granting consent', async () => {
+  jest.mocked(stealthApi.discover).mockResolvedValueOnce({ created: 1, indexed: 1 });
+  const screen = await render(ui([]));
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: 'AI 搜尋新配對機會' })); });
+  await waitFor(() => expect(screen.getByText(/已建立 1 筆需求向量，新增 1 組配對/)).toBeTruthy());
+  expect(refresh).toHaveBeenCalled();
+  expect(stealthApi.consent).not.toHaveBeenCalled();
+  expect(stealthApi.decide).not.toHaveBeenCalled();
 });
 
 it('calls the model only on explicit action and never consents, changes terms or forms a group', async () => {

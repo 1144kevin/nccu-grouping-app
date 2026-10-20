@@ -48,6 +48,11 @@ function StealthSemanticSession({
     generation.current += 1;
   }, [focused]);
   const mounted = useRef(true);
+  const discovery = useMutation({ retry: false, gcTime: 0, mutationFn: async () => {
+    const result = await stealthApi.discover();
+    if (useAuthStore.getState().user?.id === actor) await refresh();
+    return result;
+  } });
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -83,8 +88,14 @@ function StealthSemanticSession({
         <Text style={styles.body}>
           依你的需求與已授權的配對摘要做語義排序，判讀前三組的互補理由與待確認事項。不會替你加入或同意方案。
         </Text>
+        <PrimaryButton secondary disabled={disabled || !actor || !focused || discovery.isPending || request.isPending} onPress={() => { setAnalysis(undefined); discovery.mutate(); }}>
+          {discovery.isPending ? '正在建立需求向量並搜尋…' : 'AI 搜尋新配對機會'}
+        </PrimaryButton>
+        <Text style={styles.hint}>用你已儲存的有效需求搜尋新候選。對方也須建立需求向量；封鎖、預算與時間等限制照常檢查，不會自動成團。</Text>
+        {discovery.data ? <Text style={styles.body}>已建立 {discovery.data.indexed} 筆需求向量，新增 {discovery.data.created} 組配對。若沒有結果，可請測試夥伴也按一次搜尋，再於30秒後重試。</Text> : null}
+        {discovery.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(discovery.error)}</Text> : null}
         <PrimaryButton
-          disabled={disabled || !actor || !focused || !eligible || request.isPending}
+          disabled={disabled || !actor || !focused || !eligible || request.isPending || discovery.isPending}
           onPress={() => {
             if (!actor) return;
             setAnalysis(undefined);
