@@ -152,6 +152,8 @@ const messages: Record<string, string> = {
   image_delete_incomplete: '圖片副本尚未完整刪除，請重試。',
   invalid_formation_input: '請確認公開說明、整數金額、分工與含時區的截止時間；截止需晚於服務時間且不超過配合區間。',
   terms_revision_conflict: '方案已更新，請重新整理並確認新版，舊版同意不會沿用。',
+  device_ai_disabled: '目前裝置連線未啟用本機 AI，可先使用手動表單。',
+  device_ai_rate_limit: '本機 AI 請求太頻繁，請一分鐘後再試。',
   moderation_not_enabled: '回報查核尚未開放。',
   moderator_required: '此帳號沒有回報查核權限。',
   report_version_conflict: '這筆回報已被更新，請重新整理後核對。',
