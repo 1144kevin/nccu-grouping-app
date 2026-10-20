@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { engagementApi, type ReportInput } from '@/lib/engagement-api';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { queryClient } from '@/lib/query-client';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -145,6 +147,8 @@ export function ReportButton({
 }
 export function CoreHelpScreen() {
   const actor = useAuthStore((state) => state.user?.id);
+  const access = useQuery({ queryKey: ['core', actor, 'moderation-access'], enabled: !!actor, retry: false,
+    queryFn: async () => (await api.get<{ can_review: boolean }>('/moderation/access')).data });
   const query = useQuery({
     queryKey: ['core', actor, 'reports'],
     queryFn: engagementApi.reports,
@@ -159,6 +163,7 @@ export function CoreHelpScreen() {
           加入申請需要主揪接受；偷揪要全員確認同一版方案才成團。遇到可疑內容可在貼文、公開個人資料或聊天室檢舉。平台不會代為訂餐或付款。
         </Text>
         <ReportComposer key={actor} kind="feedback" />
+        {access.data?.can_review ? <PrimaryButton secondary onPress={() => router.push('/moderation')}>管理回報</PrimaryButton> : null}
         <Text style={styles.title}>我的近期回報（最多50筆）</Text>
         {query.isPending ? <ActivityIndicator /> : null}
         {query.error ? (
@@ -180,9 +185,10 @@ export function CoreHelpScreen() {
         {query.data?.items.map((item) => (
           <View key={item.id} style={styles.card}>
             <Text style={styles.body}>
-              {item.kind === 'feedback' ? '問題回報' : '內容檢舉'} · 已收到，待查看
+              {item.kind === 'feedback' ? '問題回報' : '內容檢舉'} · {{ received: '已收到，待查看', reviewing: '管理者處理中', resolved: '已結案', dismissed: '查核後不成立' }[item.status]}
             </Text>
             <Text style={styles.body}>{item.detail}</Text>
+            {item.public_response ? <Text style={styles.body}>處理回覆：{item.public_response}</Text> : null}
             <Text style={styles.hint}>
               {new Date(item.created_at).toLocaleString('zh-TW')} · {item.id}
             </Text>

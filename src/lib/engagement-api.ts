@@ -36,7 +36,7 @@ export type ReportInput = {
   platform: 'web' | 'ios' | 'android' | 'unknown';
   app_version: string;
 };
-export type Report = ReportInput & { id: string; status: 'received'; created_at: string };
+export type Report = ReportInput & { id: string; status: 'received' | 'reviewing' | 'resolved' | 'dismissed'; created_at: string; public_response?: string; review_version?: number };
 export const engagementApi = {
   preferences: async () => (await api.get<AccountPreferences>('/account/preferences')).data,
   savePreferences: async (value: Omit<AccountPreferences, 'version'>, expected_version: number) =>

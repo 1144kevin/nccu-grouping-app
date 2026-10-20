@@ -4,7 +4,7 @@
 
 React Native + Expo 前端。
 
-本輪 135 項測試、TypeScript／變更檔 ESLint 與 Web 離線匯出通過；先前 release 設定及 iOS 資源檢查紀錄另見後端 `docs/RELEASE_READINESS.md`。尚未產出簽章 App 或 TestFlight build。改動保留目前 `kevin_dev`，依功能 commit，不 push。
+最新管理頁與回報更新：142 項測試、TypeScript／變更檔 ESLint 通過；先前 Web 離線匯出、release 設定及 iOS 資源檢查紀錄另見後端 `docs/RELEASE_READINESS.md`。尚未產出簽章 App 或 TestFlight build。改動保留目前 `kevin_dev`，依功能 commit，不 push。
 
 ## 本機程式 + Supabase 開發專案
 
@@ -24,7 +24,16 @@ Supabase 發文現可加入單張 JPEG／PNG 附圖（4 MiB、1600萬像素以�
 
 後端啟動後執行 `npm run dev:local`，瀏覽 `http://localhost:8081`。支援本機測試信箱登入、個人資料編輯、發布、搜尋、主揪編輯、申請、主揪接受／拒絕與截止前退出。資料存於後端 SQLite，重開不會清除；其餘展示功能仍保留。完整步驟見後端專案的 `docs/CORE_LOCAL.md`。
 
-一般 `npm start` 保留原展示模式（`EXPO_PUBLIC_CORE_API_ENABLED=false`）。SQLite 本機模式人數為 2～20 人（含主揪），不寄驗證信；Supabase 模式提供雲端登入、拼單、文字聊天與上述帳號功能。語音上傳、手機推播、完整管理回報流程尚未串接；展示模式原介面保留。禁止把 Supabase MCP PAT 或 service_role key 放入任何 EXPO_PUBLIC 變數。
+一般 `npm start` 保留原展示模式（`EXPO_PUBLIC_CORE_API_ENABLED=false`）。SQLite 本機模式人數為 2～20 人（含主揪），不寄驗證信；Supabase 模式提供雲端登入、拼單、文字聊天與上述帳號功能。語音上傳、手機推播尚未串接；展示模式原介面保留。禁止把 Supabase MCP PAT 或 service_role key 放入任何 EXPO_PUBLIC 變數。
+
+## 回報查核
+
+後端明確啟用且資料庫授權的管理者，登入後可在「幫助與回報 → 管理回報」開啟 `/moderation`。
+一般帳號不顯示入口，直接開頁面也由資料庫拒絕。可開始查核、填公開回覆／私有備註、結案或判定不成立；
+可先查看被檢舉目標；取消拼單需二次確認，不刪除歷史或帳號。版本衝突、同鍵重試及私有稽核由後端保護。
+一般回報者會看到自己回報的實際處理狀態與公開回覆；「收到」不代表已處置。
+管理者不由前端角色或信箱網域決定，另有到期時間。訊息遮蔽、平台停權與正式申訴仍未完成。
+Mac 設定及開發專案 migration 見後端 `docs/CORE_SUPABASE_DEV.md`。
 
 ## 開始開發嘍
 
