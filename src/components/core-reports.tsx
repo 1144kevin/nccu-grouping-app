@@ -163,6 +163,8 @@ export function CoreHelpScreen() {
           加入申請需要主揪接受；偷揪要全員確認同一版方案才成團。遇到可疑內容可在貼文、公開個人資料或聊天室檢舉。平台不會代為訂餐或付款。
         </Text>
         <ReportComposer key={actor} kind="feedback" />
+        <PrimaryButton secondary onPress={() => router.push('/appeals')}>申訴與覆核</PrimaryButton>
+        <PrimaryButton secondary onPress={() => router.push('/data-notice')}>內測資料與使用說明</PrimaryButton>
         {access.data?.can_review ? <PrimaryButton secondary onPress={() => router.push('/moderation')}>管理回報</PrimaryButton> : null}
         <Text style={styles.title}>我的近期回報（最多50筆）</Text>
         {query.isPending ? <ActivityIndicator /> : null}

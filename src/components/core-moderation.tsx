@@ -11,13 +11,14 @@ import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 
 type OperatorReport = Pick<Report, 'id' | 'status' | 'review_version' | 'public_response' | 'created_at'> & { payload: ReportInput };
-type Action = 'review' | 'resolve' | 'dismiss' | 'cancel_post';
+type Action = 'review' | 'resolve' | 'dismiss' | 'cancel_post' | 'hide_message';
 export const moderationApi = {
   reports: async () => (await api.get<{ items: OperatorReport[] }>('/moderation/reports')).data,
   review: async (id: string, value: { expected_version: number; action: Action; public_response: string; internal_note: string; request_key: string }) => (await api.post(`/moderation/reports/${id}/review`, value)).data,
 };
 
 function ReviewCard({ report, refresh }: { report: OperatorReport; refresh: () => Promise<unknown> }) {
+  const context = useMutation({ retry: false, gcTime: 0, mutationFn: async () => (await api.get<{ content?: string; unavailable?: boolean }>(`/moderation/reports/${report.id}/context`)).data });
   const [response, setResponse] = useState('');
   const [note, setNote] = useState('');
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -35,6 +36,9 @@ function ReviewCard({ report, refresh }: { report: OperatorReport; refresh: () =
     <Text>{report.id} · {report.status} · 第 {report.review_version ?? 1} 版</Text>
     <Text>{report.payload.kind} · {report.payload.reason}</Text>
     <Text>{report.payload.detail}</Text>
+    {['post', 'message'].includes(report.payload.kind) ? <PrimaryButton secondary disabled={context.isPending} onPress={() => context.mutate()}>查核被檢舉原文</PrimaryButton> : null}
+    {context.data ? <Text>查核原文：{context.data.content ?? '內容已不存在或無法提供。'}</Text> : null}
+    {context.error ? <Text accessibilityRole="alert">{coreError(context.error)}</Text> : null}
     {report.payload.target_id ? <Text>回報目標：{report.payload.target_id}</Text> : null}
     {report.payload.kind === 'post' && report.payload.target_id ? <PrimaryButton secondary onPress={() => router.push({ pathname: '/order/[id]', params: { id: report.payload.target_id! } })}>查看被檢舉拼單</PrimaryButton> : null}
     {report.public_response ? <Text>已回覆：{report.public_response}</Text> : null}
@@ -48,7 +52,8 @@ function ReviewCard({ report, refresh }: { report: OperatorReport; refresh: () =
         <PrimaryButton disabled={!valid} onPress={() => mutation.mutate('resolve')}>記錄處理結果並結案</PrimaryButton>
         <PrimaryButton secondary disabled={!valid} onPress={() => mutation.mutate('dismiss')}>查核後不成立</PrimaryButton>
         {report.payload.kind === 'post' ? <PrimaryButton secondary disabled={!valid} onPress={() => setCancelConfirm(true)}>取消被檢舉拼單…</PrimaryButton> : null}
-        {cancelConfirm ? <><Text>這會取消該拼單、停止加入並使聊天室唯讀；不會刪除帳號或歷史內容。請先核對回報目標及影響。</Text><PrimaryButton disabled={!valid} onPress={() => mutation.mutate('cancel_post')}>確認取消這筆拼單並結案</PrimaryButton><PrimaryButton secondary onPress={() => setCancelConfirm(false)}>保留拼單</PrimaryButton></> : null}
+        {report.payload.kind === 'message' ? <PrimaryButton secondary disabled={!valid} onPress={() => setCancelConfirm(true)}>隱藏被檢舉訊息…</PrimaryButton> : null}
+        {cancelConfirm ? report.payload.kind === 'message' ? <><Text>訊息與聊天室預覽將顯示處置提示，原文保留供查核；不會刪除帳號或自動取消拼單。</Text><PrimaryButton disabled={!valid} onPress={() => mutation.mutate('hide_message')}>確認隱藏這則訊息並結案</PrimaryButton><PrimaryButton secondary onPress={() => setCancelConfirm(false)}>保留訊息</PrimaryButton></> : <><Text>這會取消該拼單、停止加入並使聊天室唯讀；不會刪除帳號或歷史內容。請先核對回報目標及影響。</Text><PrimaryButton disabled={!valid} onPress={() => mutation.mutate('cancel_post')}>確認取消這筆拼單並結案</PrimaryButton><PrimaryButton secondary onPress={() => setCancelConfirm(false)}>保留拼單</PrimaryButton></> : null}
       </>}
     </> : null}
     {mutation.error ? <Text accessibilityRole="alert">{coreError(mutation.error)} 修改已保留，請重新整理核對狀態；不要重複執行不同處置。</Text> : null}
@@ -63,6 +68,7 @@ export function CoreModerationScreen() {
   return <Screen><DetailHeader title="回報查核" /><ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
     <Text>僅限授權管理者。先查核再處理，回覆會提供給回報者，內部備註不會公開。結案紀錄不代表已自動移除內容。</Text>
     <PrimaryButton secondary onPress={() => { void query.refetch(); }}>重新整理回報</PrimaryButton>
+    <PrimaryButton secondary onPress={() => router.push('/appeals')}>查看申訴與覆核</PrimaryButton>
     {query.isPending ? <Text>載入中…</Text> : null}
     {query.error ? <Text accessibilityRole="alert">{coreError(query.error)}</Text> : null}
     {query.data?.items.length === 0 ? <Text>目前沒有回報。</Text> : null}
