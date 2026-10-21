@@ -1,5 +1,9 @@
 # Apple 裝置端需求訪談（2026-10-21）
 
+**2026-10-22正常版接Windows：**先讀相鄰後端 `docs/MAC_CONNECT_WINDOWS.md`。
+`apple:configure --connection`可匯入公開接線包；正常profile固定trial=false，保留登入、儲存與配對。
+本文件下方trial=true指令僅為先前獨立試用紀錄，不適用這次完整連線驗收。
+
 原 App 新增專案內 Expo 原生模組 `modules/apple-intake`，透過 iPhone 的 Foundation Models 產生繁體中文需求摘要與補問。沒有新增 npm 第三方依賴，也不需要 Ollama、Mac 模型或雲端 AI 金鑰。只能在包含這個模組的 iOS 原生版本使用，Expo Go 不包含此模組。
 
 ## 本次範圍
