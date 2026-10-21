@@ -1,5 +1,7 @@
 # 政缺一咖 App
 
+2026-10-22 Expo Go：在 Windows 執行 `npm run expo-go:check`、`npm run dev:expo-go`，以相同 Expo 帳號掃碼，使用信箱與 App 專用密碼。可測拼單、聊天及偷揪，需求訪談使用 Windows 本機模型；Apple AI 與 Google 登入保留原生版。完整步驟見相鄰 backend 的 [`docs/EXPO_GO_IPHONE.md`](../nccu-grouping-backend/docs/EXPO_GO_IPHONE.md)。首次仍須本人信任公開開發CA；不使用tunnel、不部署、不付費。
+
 2026-10-22：已準備正常iPhone App接Windows私人HTTPS後端，支援公開CA／連線檔匯入，正常profile強制關閉訪談試用，保留Apple訪談與完整登入／儲存／配對。Mac步驟見相鄰後端 `docs/MAC_CONNECT_WINDOWS.md`；仍須重新建置與實機驗收，不代表已完成TestFlight。
 
 2026-10-21：iPhone Apple 裝置端需求訪談已完成最小串接，本人確認原 App 有顯示摘要與補問。後續已加入摘要標題編輯、上一輪修改、長度提示及錯誤恢復；須明確採用才更新標題，保留完整手動表單。這份新版已通過本機簽章編譯並更新至 iPhone；實機手動輸入測試通過，AI 兩輪自動測試因 UI 測試授權錯誤中止，尚待完成。不需 API／登入的試用入口不儲存或尋找配對。原生模組不支援 Expo Go，啟用方式、驗收與 Windows 後續工作見 [Apple 訪談說明](docs/APPLE_INTAKE.md)。
