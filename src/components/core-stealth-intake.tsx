@@ -6,8 +6,21 @@ import { PrimaryButton } from '@/components/primitives';
 import { coreError } from '@/lib/core-api';
 import { intakeToForm, stealthApi, type SignalForm, type StealthIntake as IntakeResult } from '@/lib/stealth-api';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { APPLE_INTAKE_ENABLED } from '@/lib/apple-intake';
+import { AppleStealthIntake } from '@/components/apple-stealth-intake';
 
 export function StealthIntake({
+  onApplySummary,
+  ...props
+}: {
+  onApply: (form: SignalForm) => void;
+  disabled: boolean;
+  onApplySummary?: (summary: string) => void;
+}) {
+  return APPLE_INTAKE_ENABLED ? <AppleStealthIntake disabled={props.disabled} onApplySummary={onApplySummary} /> : <LegacyStealthIntake {...props} />;
+}
+
+function LegacyStealthIntake({
   onApply,
   disabled,
 }: {

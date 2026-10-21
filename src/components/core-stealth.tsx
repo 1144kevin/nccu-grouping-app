@@ -104,12 +104,13 @@ export function AgentForm({ initial, refresh }: { initial: StealthAgent | null; 
   </View>;
 }
 
-export function SignalEditor({ now, refresh }: { now: () => number; refresh: () => Promise<void> }) {
+export function SignalEditor({ now, refresh, localOnly = false }: { now: () => number; refresh: () => Promise<void>; localOnly?: boolean }) {
   const [form, setForm] = useState<SignalForm>(defaults);
   const [intakeRevision, setIntakeRevision] = useState(0);
   const frozen = useRef<{ signature: string; value: StealthSignalInput; key: string } | null>(null);
   const change = <K extends keyof SignalForm>(key: K, value: SignalForm[K]) => setForm((previous) => ({ ...previous, [key]: value }));
   const save = useMutation({ mutationFn: () => {
+    if (localOnly) throw new Error('local_draft_only');
     const signature = JSON.stringify(form);
     if (frozen.current?.signature !== signature) frozen.current = { signature, value: buildStealthSignal(form, now()), key: newRequestKey() };
     return stealthApi.create(frozen.current.value, frozen.current.key);
@@ -118,11 +119,11 @@ export function SignalEditor({ now, refresh }: { now: () => number; refresh: () 
   const busy = save.isPending || draft.isPending;
   const stateLabels = { completed: '分身已完成一次尋找，可到偷揪結果查看。', paused: '分身尚未開啟；開啟並儲存後可尋找配對。', quiet: '目前是安靜時段，暫未尋找。', cooldown: '剛剛已尋找過；稍後可到結果頁手動尋找。', unavailable: '需求已保存，這次配對暫時無法完成；稍後可重試尋找。' };
   return <View style={styles.card}>
-    <StealthIntake key={intakeRevision} disabled={busy} onApply={(value) => { frozen.current = null; setForm(value); draft.reset(); save.reset(); }} />
+    <StealthIntake key={intakeRevision} disabled={busy} onApplySummary={(title) => { frozen.current = null; setForm(previous => ({ ...previous, title })); draft.reset(); save.reset(); }} onApply={(value) => { frozen.current = null; setForm(value); draft.reset(); save.reset(); }} />
     <Text style={styles.heading}>告訴分身一件事</Text>
     <View style={styles.row}>{([['need','我需要'],['offer','我擁有'],['plan','我即將做']] as const).map(([value,label]) => <Choice key={value} label={label} checked={form.kind === value} onPress={() => change('kind',value)} disabled={busy} />)}</View>
     <Field label="我的需求或計畫（只有自己可見）" value={form.title} onChange={(value) => change('title',value)} multiline disabled={busy} />
-    <PrimaryButton secondary disabled={!form.title.trim() || busy} onPress={() => draft.mutate()}>整理需求草稿（免費關鍵字提示）</PrimaryButton>
+    {!localOnly ? <PrimaryButton secondary disabled={!form.title.trim() || busy} onPress={() => draft.mutate()}>整理需求草稿（免費關鍵字提示）</PrimaryButton> : null}
     {draft.data ? <Text style={styles.hint}>已提示分類與地點，請自行確認下方欄位。這是關鍵字草稿，不是大型模型理解結果；沒有自動保存。</Text> : null}
     <ErrorText error={draft.error} />
     <Text style={styles.label}>餐點分類</Text><View style={styles.row}>{categories.map(([value,label]) => <Choice key={value} label={label} checked={form.category === value} onPress={() => change('category',value)} disabled={busy} />)}</View>
@@ -139,7 +140,7 @@ export function SignalEditor({ now, refresh }: { now: () => number; refresh: () 
     <Field label="必要飲食條件（逗號分隔，可留白）" value={form.requirements} onChange={(value) => change('requirements',value)} disabled={busy} maxLength={395} />
     <Field label="我已確認的餐點條件（逗號分隔）" value={form.verified} onChange={(value) => change('verified',value)} disabled={busy} maxLength={395} />
     <Text style={styles.hint}>缺少必要飲食資訊就不配對；本人提供的資訊不等於商家認證或過敏安全保證。</Text>
-    <PrimaryButton disabled={!form.title.trim() || busy} onPress={() => save.mutate()}>{save.isPending ? '儲存並尋找中…' : '確認需求並交給分身'}</PrimaryButton>
+    {localOnly ? <Text style={styles.note}>這是本機核對草稿，尚未儲存。正式儲存與配對需連接開發 API 並登入本人帳號。</Text> : <PrimaryButton disabled={!form.title.trim() || busy} onPress={() => save.mutate()}>{save.isPending ? '儲存並尋找中…' : '確認需求並交給分身'}</PrimaryButton>}
     <ErrorText error={save.error} />
     {save.error ? <Text style={styles.hint}>內容仍保留，未更改內容的重試沿用同一筆請求，不重複新增。</Text> : null}
     {save.data ? <Text accessibilityRole="alert" style={styles.note}>需求已存入資料庫。{stateLabels[save.data.matching]}</Text> : null}
