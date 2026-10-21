@@ -4,8 +4,14 @@ import { CoreConnectionStatus } from './core-connection-status';
 import { api } from '@/lib/api';
 import * as appleIntake from '@/lib/apple-intake';
 import * as runtime from '@/lib/app-runtime';
+import { probeApiTransport } from '@/lib/connection-diagnostics';
 
-jest.mock('@/lib/api', () => ({ api: { get: jest.fn() } }));
+jest.mock('@/lib/api', () => ({ api: { defaults: { baseURL: 'https://172.20.10.2:8443/api/v1' }, get: jest.fn() } }));
+jest.mock('@/lib/connection-diagnostics', () => ({
+  connectionEndpoint: () => 'https://172.20.10.2:8443/api/v1',
+  connectionErrorCode: () => 'NETWORK_OR_CLIENT_ERROR',
+  probeApiTransport: jest.fn(async () => 200),
+}));
 jest.mock('@/lib/core-api', () => ({ coreError: () => '暫時無法連線' }));
 jest.mock('@/lib/apple-intake', () => ({ __esModule: true, APPLE_INTAKE_ENABLED: false }));
 jest.mock('@/lib/app-runtime', () => ({ isExpoGo: jest.fn(() => false) }));
@@ -16,6 +22,21 @@ afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
   jest.mocked(runtime.isExpoGo).mockReturnValue(false);
+  jest.mocked(probeApiTransport).mockResolvedValue(200);
+});
+it('identifies an API/client problem after credential-free transport succeeded', async () => {
+  jest.mocked(api.get).mockRejectedValue(new Error('storage failure'));
+  const screen = await render(<CoreConnectionStatus />);
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '檢查目前測試連線' })); });
+  await waitFor(() => expect(screen.getByText(/手機 HTTPS 已通，但 App API 檢查失敗/)).toBeTruthy());
+  expect(screen.getByText(/目前 API：https/)).toBeTruthy();
+});
+it('does not attempt authenticated client setup when native transport fails', async () => {
+  jest.mocked(probeApiTransport).mockRejectedValue(new Error('native failure'));
+  const screen = await render(<CoreConnectionStatus />);
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '檢查目前測試連線' })); });
+  await waitFor(() => expect(screen.getByText(/診斷代碼/)).toBeTruthy());
+  expect(api.get).not.toHaveBeenCalled();
 });
 it('Expo Go never presents configured native OAuth as available', async () => {
   jest.mocked(runtime.isExpoGo).mockReturnValue(true);

@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { coreError } from '@/lib/core-api';
 import { APPLE_INTAKE_ENABLED } from '@/lib/apple-intake';
 import { isExpoGo } from '@/lib/app-runtime';
+import { connectionEndpoint, connectionErrorCode, probeApiTransport } from '@/lib/connection-diagnostics';
 
 type Readiness = {
   data_mode: string;
@@ -19,13 +20,25 @@ export function CoreConnectionStatus() {
   const [result, setResult] = useState<Readiness | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [transport, setTransport] = useState<number | null>(null);
+  const [failureCode, setFailureCode] = useState('');
   async function check() {
     setBusy(true);
     setError('');
     setResult(null);
+    setTransport(null);
+    setFailureCode('');
     try {
+      const status = await probeApiTransport(api.defaults.baseURL);
+      setTransport(status);
+      if (status !== 200) {
+        setFailureCode(`HTTP ${status}`);
+        setError('手機已收到後端回應，請檢查裝置來源限制與後端狀態。');
+        return;
+      }
       setResult((await api.get<Readiness>('/development/readiness')).data);
     } catch (error) {
+      setFailureCode(connectionErrorCode(error));
       setError(coreError(error));
     } finally {
       setBusy(false);
@@ -34,6 +47,7 @@ export function CoreConnectionStatus() {
   return (
     <View style={{ gap: 8 }}>
       <Text>測試連線與功能狀態</Text>
+      <Text>目前 API：{connectionEndpoint(api.defaults.baseURL)}</Text>
       <Text>圖片僅支援拼單單張附圖；語音、聊天附件與手機推播尚未提供。提醒需開啟 App 查看。</Text>
       <PrimaryButton
         secondary
@@ -44,6 +58,7 @@ export function CoreConnectionStatus() {
       >
         {busy ? '正在檢查連線…' : '檢查目前測試連線'}
       </PrimaryButton>
+      {transport !== null ? <Text>手機直接連線：HTTP {transport}（未使用帳密或登入儲存）</Text> : null}
       {result ? (
         <Text accessibilityRole="alert">
           API 已連線。{result.data_mode === 'supabase' ? 'Supabase 模式' : '離線模式'}；
@@ -58,8 +73,8 @@ export function CoreConnectionStatus() {
       ) : null}
       {error ? (
         <Text accessibilityRole="alert">
-          無法確認 API 連線：{error}。請確認測試電腦已啟動服務、裝置連線設定及 HTTPS
-          憑證；登入資料不會因此清除。
+          {transport === 200 ? '手機 HTTPS 已通，但 App API 檢查失敗' : '無法確認 API 連線'}：{error}
+          。診斷代碼：{failureCode}。若 Safari 已正常，請完整關閉 Expo Go 再重開並重試；登入資料不會因此清除。
         </Text>
       ) : null}
     </View>
