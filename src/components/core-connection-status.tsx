@@ -4,12 +4,14 @@ import { AppText as Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
 import { api } from '@/lib/api';
 import { coreError } from '@/lib/core-api';
+import { APPLE_INTAKE_ENABLED } from '@/lib/apple-intake';
 
 type Readiness = {
   data_mode: string;
   google_ios_configured: boolean;
   images_configured: boolean;
   ai_provider: string;
+  semantic_configured?: boolean;
 };
 
 export function CoreConnectionStatus() {
@@ -46,9 +48,10 @@ export function CoreConnectionStatus() {
           API 已連線。{result.data_mode === 'supabase' ? 'Supabase 模式' : '離線模式'}；原生 Google
           登入{result.google_ios_configured ? '已設定，仍需實機驗證' : '尚未啟用'}；圖片
           {result.images_configured ? '已設定' : '未啟用，可先發布文字'}；自然語言
-          {result.ai_provider === 'ollama_local'
+          {APPLE_INTAKE_ENABLED ? '由 iPhone Apple AI 提供訪談摘要，採用前請人工核對' : result.ai_provider === 'ollama_local'
             ? '使用電腦本機模型'
             : '未連接模型，請用手動需求表單'}
+          ；語義配對{result.semantic_configured ? '已設定電腦模型，仍需建立本人需求索引' : '未啟用，可先使用一般配對'}
           。此檢查不驗證登入、資料庫或 TestFlight 可用性。
         </Text>
       ) : null}
