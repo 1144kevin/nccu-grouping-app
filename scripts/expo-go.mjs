@@ -5,13 +5,13 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const require = createRequire(import.meta.url);
-const { expoGoEnv } = require('./expo-go-profile.cjs');
+const { expoGoEnv, expoGoArguments } = require('./expo-go-profile.cjs');
 const { createMetroRelay } = require('./expo-go-relay.cjs');
 const { readDeviceConnection } = require('./device-connection.cjs');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const backend = resolve(root, '../nccu-grouping-backend');
 const args = process.argv.slice(2);
-if (args.some(arg => arg !== '--check')) throw new Error('Only --check is supported; no tunnel or public bind.');
+const cliArgs = expoGoArguments(args);
 if (process.platform !== 'win32') throw new Error('This launcher uses the checked Windows backend; use the native Mac handoff on Mac.');
 const python = resolve(backend, '.venv/Scripts/python.exe');
 const checked = spawnSync(python, ['scripts/device_link.py', 'expo-config'], {
@@ -30,11 +30,12 @@ console.log(`Public CA only: http://${connection.host}:8081/device-ca.cer`);
 console.log(`Before trusting on iPhone, compare CA SHA256: ${createHash('sha256').update(ca).digest('hex')}`);
 console.log('Email/password login; Windows AI retained. Google and Apple on-device AI require the native build.');
 console.log('Metro stays on localhost:18081; private relay accepts only the configured iPhone(s). No tunnel/deployment.');
+if (args.includes('--preview')) console.log('Local preview: production JavaScript without the development debugger; TLS validation unchanged.');
 if (!args.includes('--check')) {
   const relay = createMetroRelay({ ...connection, ca });
   await relay.listen();
   const child = spawn(process.execPath, [resolve(root, 'node_modules/expo/bin/cli'),
-    'start', '--go', '--localhost', '--port', '18081'], { cwd: root, stdio: 'inherit', env, windowsHide: true });
+    ...cliArgs], { cwd: root, stdio: 'inherit', env, windowsHide: true });
   let stopping = false;
   async function stop(code = 0) {
     if (stopping) return;

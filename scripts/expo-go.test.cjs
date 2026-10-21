@@ -3,10 +3,18 @@ const assert = require('node:assert/strict');
 const net = require('node:net');
 const http = require('node:http');
 const { once } = require('node:events');
-const { expoGoEnv } = require('./expo-go-profile.cjs');
+const { expoGoEnv, expoGoArguments } = require('./expo-go-profile.cjs');
 const { createMetroRelay } = require('./expo-go-relay.cjs');
 const good = { host: '172.20.10.2', clients: ['172.20.10.1'],
   api: 'https://172.20.10.2:8443/api/v1', leaf_expires: '2035-01-01T00:00:00Z' };
+
+test('preview changes JS debugger mode without changing connection or opening a tunnel', () => {
+  assert.deepEqual(expoGoArguments(['--preview']),
+    ['start', '--go', '--localhost', '--port', '18081', '--no-dev', '--minify']);
+  assert.equal(expoGoArguments([]).includes('--no-dev'), false);
+  assert.throws(() => expoGoArguments(['--tunnel']));
+  assert.equal(expoGoEnv(good).EXPO_PUBLIC_API_BASE_URL, good.api);
+});
 
 test('Expo Go uses Supabase HTTPS and Windows AI without inheriting trial or public credentials', () => {
   const env = expoGoEnv(good, { PATH: 'keep', EXPO_PUBLIC_SECRET: 'drop',

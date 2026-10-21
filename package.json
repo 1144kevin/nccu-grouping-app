@@ -65,6 +65,7 @@
     "dev:local": "node ./scripts/local-core.mjs",
     "dev:supabase": "node ./scripts/local-core.mjs --supabase",
     "dev:expo-go": "node ./scripts/expo-go.mjs",
+    "preview:expo-go": "node ./scripts/expo-go.mjs --preview",
     "expo-go:check": "node ./scripts/expo-go.mjs --check",
     "test:expo-go": "node --test ./scripts/expo-go.test.cjs",
     "ios:preflight": "node ./scripts/ios-preflight.mjs",

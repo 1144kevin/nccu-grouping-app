@@ -37,4 +37,10 @@ function expoGoEnv(connection, inherited = process.env) {
     EXPO_NO_TELEMETRY: '1',
   };
 }
-module.exports = { validateExpoConnection, expoGoEnv };
+function expoGoArguments(args) {
+  if (args.some(arg => !['--check', '--preview'].includes(arg)))
+    throw new Error('Only --check and --preview are supported; no tunnel or public bind.');
+  return ['start', '--go', '--localhost', '--port', '18081',
+    ...(args.includes('--preview') ? ['--no-dev', '--minify'] : [])];
+}
+module.exports = { validateExpoConnection, expoGoEnv, expoGoArguments };
