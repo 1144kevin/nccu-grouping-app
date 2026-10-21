@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
+import { isExpoGo } from './app-runtime';
 import {
   appleIntakeInputProblem,
   readAppleInterviewDraft,
@@ -9,9 +10,9 @@ import {
 export type { AppleInterviewDraft } from './apple-intake-contract';
 
 export const APPLE_INTAKE_ENABLED =
-  Platform.OS === 'ios' && process.env.EXPO_PUBLIC_APPLE_INTAKE_ENABLED === 'true';
+  Platform.OS === 'ios' && !isExpoGo() && process.env.EXPO_PUBLIC_APPLE_INTAKE_ENABLED === 'true';
 export const APPLE_INTAKE_TRIAL =
-  Platform.OS === 'ios' && process.env.EXPO_PUBLIC_APPLE_INTAKE_TRIAL === 'true';
+  Platform.OS === 'ios' && !isExpoGo() && process.env.EXPO_PUBLIC_APPLE_INTAKE_TRIAL === 'true';
 
 type AppleIntakeModule = {
   availability(): Promise<string>;
@@ -19,7 +20,7 @@ type AppleIntakeModule = {
   cancel(id: string): void;
 };
 const native =
-  Platform.OS === 'ios' ? requireOptionalNativeModule<AppleIntakeModule>('NCCUAppleIntake') : null;
+  Platform.OS === 'ios' && !isExpoGo() ? requireOptionalNativeModule<AppleIntakeModule>('NCCUAppleIntake') : null;
 
 export async function appleIntakeAvailability(): Promise<string> {
   if (!native) return 'native_module_missing';

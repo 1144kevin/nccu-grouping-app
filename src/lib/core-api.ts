@@ -262,7 +262,7 @@ const messages: Record<string, string> = {
 export function coreError(error: unknown): string {
   if (error instanceof Error && messages[error.message]) return messages[error.message];
   if (isAxiosError(error)) {
-    if (!error.response) return '無法連接本機後端，請確認伺服器已啟動。';
+    if (!error.response) return '無法連接本機後端。請確認伺服器已啟動；手機請檢查同一私人網路、本機網路權限與 HTTPS 憑證信任。登入資料會保留，可稍後重試。';
     const detail: unknown = error.response.data?.detail;
     if (typeof detail === 'string' && messages[detail]) return messages[detail];
     if (error.response.status === 422) {

@@ -5,6 +5,7 @@ import { PrimaryButton } from '@/components/primitives';
 import { api } from '@/lib/api';
 import { coreError } from '@/lib/core-api';
 import { APPLE_INTAKE_ENABLED } from '@/lib/apple-intake';
+import { isExpoGo } from '@/lib/app-runtime';
 
 type Readiness = {
   data_mode: string;
@@ -45,8 +46,8 @@ export function CoreConnectionStatus() {
       </PrimaryButton>
       {result ? (
         <Text accessibilityRole="alert">
-          API 已連線。{result.data_mode === 'supabase' ? 'Supabase 模式' : '離線模式'}；原生 Google
-          登入{result.google_ios_configured ? '已設定，仍需實機驗證' : '尚未啟用'}；圖片
+          API 已連線。{result.data_mode === 'supabase' ? 'Supabase 模式' : '離線模式'}；
+          {isExpoGo() ? 'Expo Go 使用信箱登入，Google／Apple 裝置 AI 需原生開發版' : `原生 Google 登入${result.google_ios_configured ? '已設定，仍需實機驗證' : '尚未啟用'}`}；圖片
           {result.images_configured ? '已設定' : '未啟用，可先發布文字'}；自然語言
           {APPLE_INTAKE_ENABLED ? '由 iPhone Apple AI 提供訪談摘要，採用前請人工核對' : result.ai_provider === 'ollama_local'
             ? '使用電腦本機模型'

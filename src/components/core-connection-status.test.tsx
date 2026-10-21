@@ -3,16 +3,30 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { CoreConnectionStatus } from './core-connection-status';
 import { api } from '@/lib/api';
 import * as appleIntake from '@/lib/apple-intake';
+import * as runtime from '@/lib/app-runtime';
 
 jest.mock('@/lib/api', () => ({ api: { get: jest.fn() } }));
 jest.mock('@/lib/core-api', () => ({ coreError: () => '暫時無法連線' }));
 jest.mock('@/lib/apple-intake', () => ({ __esModule: true, APPLE_INTAKE_ENABLED: false }));
+jest.mock('@/lib/app-runtime', () => ({ isExpoGo: jest.fn(() => false) }));
 jest.mock('@/lib/font-size-storage', () => ({
   fontSizeStorage: { getItem: () => null, setItem: jest.fn(), removeItem: jest.fn() },
 }));
 afterEach(() => {
   jest.clearAllMocks();
   jest.restoreAllMocks();
+  jest.mocked(runtime.isExpoGo).mockReturnValue(false);
+});
+it('Expo Go never presents configured native OAuth as available', async () => {
+  jest.mocked(runtime.isExpoGo).mockReturnValue(true);
+  jest.mocked(api.get).mockResolvedValue({ data: {
+    data_mode: 'supabase', google_ios_configured: true, images_configured: true,
+    ai_provider: 'ollama_local', semantic_configured: true,
+  } });
+  const screen = await render(<CoreConnectionStatus />);
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '檢查目前測試連線' })); });
+  await waitFor(() => expect(screen.getByText(/Expo Go 使用信箱登入/)).toBeTruthy());
+  expect(screen.getByText(/使用電腦本機模型/)).toBeTruthy();
 });
 it('distinguishes Apple on-device interviews from backend semantic matching', async () => {
   jest.replaceProperty(appleIntake, 'APPLE_INTAKE_ENABLED', true);

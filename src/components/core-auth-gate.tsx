@@ -11,6 +11,8 @@ import { colors, radius, spacing } from '@/theme/tokens';
 import { AccountDeletionRecovery } from '@/components/core-account-deletion';
 import { APPLE_INTAKE_TRIAL } from '@/lib/apple-intake';
 import { AppleIntakeTrialScreen } from '@/components/apple-intake-trial';
+import { isExpoGo } from '@/lib/app-runtime';
+import { CoreConnectionStatus } from '@/components/core-connection-status';
 
 export function CoreAuthGate({ children }: PropsWithChildren) {
   if (APPLE_INTAKE_TRIAL) return <AppleIntakeTrialScreen />;
@@ -50,6 +52,7 @@ export function CoreLoginScreen() {
 }
 
 function LoginForm() {
+  const expoGo = isExpoGo();
   const accountDeleted = useAuthStore(state => state.accountDeleted);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -83,7 +86,12 @@ function LoginForm() {
     {accountDeleted ? <Text accessibilityRole="alert" style={styles.hint}>App 帳號已刪除。再次使用 Google 登入會建立新帳號，舊資料不會恢復。</Text> : null}
     <Text style={styles.subtitle}>{mode === 'login' ? CORE_SUPABASE_MODE ? '登入 Supabase 開發帳號' : '登入本機測試帳號' : CORE_SUPABASE_MODE ? '建立 Supabase 開發帳號' : '建立本機測試帳號'}</Text>
     <Text style={styles.hint}>{CORE_SUPABASE_MODE ? '程式在本機執行，帳號與拼單存於 Supabase 開發專案。註冊後需依設定完成信箱驗證，請使用專用測試密碼。' : '帳號只儲存在這台電腦，不會寄送驗證信。請用測試信箱及專用密碼。'}</Text>
-    {CORE_SUPABASE_MODE ? <View style={{ gap: spacing.sm }}>
+    {expoGo && CORE_SUPABASE_MODE ? <View style={{ gap: spacing.sm }}>
+      <Text style={styles.hint}>Expo Go 測試：請用信箱與 App 專用密碼登入，可測拼單、聊天與偷揪。Google 登入及 Apple 裝置 AI 留在原生開發版；這裡的需求訪談由電腦本機模型提供。</Text>
+      <Text style={styles.hint}>Google 帳號的密碼不能當作 App 密碼。新信箱仍需完成驗證；不會略過驗證。</Text>
+      <CoreConnectionStatus />
+    </View> : null}
+    {CORE_SUPABASE_MODE && !expoGo ? <View style={{ gap: spacing.sm }}>
       <PrimaryButton secondary disabled={busy || googleBusy || !['web', 'ios'].includes(Platform.OS)} onPress={() => { void googleLogin(); }}>{googleBusy ? '正在前往 Google…' : '使用 Google 帳號登入'}</PrimaryButton>
       <Text style={styles.hint}>{Platform.OS === 'web' ? '首次使用會建立 App 帳號，無須另外設定 App 密碼。' : 'iPhone 需使用開發版本，並先完成 App 回呼網址設定。'}</Text>
       {googleError ? <Text accessibilityRole="alert" style={styles.error}>{googleError}</Text> : null}
