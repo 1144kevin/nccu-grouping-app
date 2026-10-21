@@ -89,6 +89,7 @@ function LoginForm() {
     {expoGo && CORE_SUPABASE_MODE ? <View style={{ gap: spacing.sm }}>
       <Text style={styles.hint}>Expo Go 測試：請用信箱與 App 專用密碼登入，可測拼單、聊天與偷揪。Google 登入及 Apple 裝置 AI 留在原生開發版；這裡的需求訪談由電腦本機模型提供。</Text>
       <Text style={styles.hint}>Google 帳號的密碼不能當作 App 密碼。新信箱仍需完成驗證；不會略過驗證。</Text>
+      <Text style={styles.hint}>原本只用 Google 登入？請先在電腦的帳號設定入口用 Google 登入，再設定 App 密碼。同信箱重複註冊不會替既有帳號設定密碼。</Text>
       <CoreConnectionStatus />
     </View> : null}
     {CORE_SUPABASE_MODE && !expoGo ? <View style={{ gap: spacing.sm }}>

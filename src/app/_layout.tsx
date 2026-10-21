@@ -42,6 +42,7 @@ function RootNavigator() {
       <Stack.Screen name="user/[name]" />
       <Stack.Screen name="search" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="app-password" />
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="edit-post/[id]" />
       <Stack.Screen name="notifications" />

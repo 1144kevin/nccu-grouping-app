@@ -1,4 +1,5 @@
-export const GOOGLE_CALLBACK = 'http://localhost:8081/auth/callback';
+export const GOOGLE_CALLBACK = process.env.EXPO_PUBLIC_ACCOUNT_WEB === 'true'
+  ? 'http://localhost:8082/auth/callback' : 'http://localhost:8081/auth/callback';
 export const GOOGLE_IOS_CALLBACK = 'nccugrouping://auth/callback';
 const AUTHORIZE = 'https://axdwbfhrkbovgrbngrrh.supabase.co/auth/v1/authorize';
 

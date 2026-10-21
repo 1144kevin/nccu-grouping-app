@@ -64,6 +64,7 @@
     "test:native-permissions": "node ./scripts/verify-native-permissions.mjs",
     "dev:local": "node ./scripts/local-core.mjs",
     "dev:supabase": "node ./scripts/local-core.mjs --supabase",
+    "dev:account": "node ./scripts/local-core.mjs --supabase --account",
     "dev:expo-go": "node ./scripts/expo-go.mjs",
     "preview:expo-go": "node ./scripts/expo-go.mjs --preview",
     "expo-go:check": "node ./scripts/expo-go.mjs --check",

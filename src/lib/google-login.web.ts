@@ -6,9 +6,9 @@ let callback: Promise<CoreSession> | null = null;
 
 export async function beginGoogleSignIn(): Promise<void> {
   callback = null;
-  if (window.location.origin !== 'http://localhost:8081') throw new Error('google_login_invalid_response');
+  if (window.location.origin !== new URL(GOOGLE_CALLBACK).origin) throw new Error('google_login_invalid_response');
   window.sessionStorage.removeItem(KEY);
-  const flow = await coreApi.googleStart();
+  const flow = await coreApi.googleStart(process.env.EXPO_PUBLIC_ACCOUNT_WEB === 'true' ? 'web_account' : 'web');
   validateGoogleStart(flow.authorize_url, flow.flow_id);
   window.sessionStorage.setItem(KEY, flow.flow_id);
   window.location.assign(flow.authorize_url);
@@ -23,7 +23,7 @@ export function finishGoogleSignIn(): Promise<CoreSession> {
   callback = Promise.resolve().then(() => {
     const flowId = window.sessionStorage.getItem(KEY);
     window.sessionStorage.removeItem(KEY);
-    if (window.location.origin !== 'http://localhost:8081') throw new Error('google_login_invalid_response');
+    if (window.location.origin !== new URL(GOOGLE_CALLBACK).origin) throw new Error('google_login_invalid_response');
     // Remove the authorization code/error from history before rendering other content.
     window.history.replaceState(null, '', GOOGLE_CALLBACK);
     const value = readGoogleCallback(url, flowId);

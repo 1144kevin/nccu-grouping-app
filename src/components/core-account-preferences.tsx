@@ -97,6 +97,9 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
         {mode === 'settings' ? (
           <>
             <DraftImageManager />
+            <PrimaryButton secondary onPress={() => router.push('/app-password')}>
+              設定 App 密碼（Expo Go 登入）
+            </PrimaryButton>
             <CoreConnectionStatus />
             <CloudBlockList />
             <AccountDeletionPanel />
