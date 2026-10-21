@@ -51,3 +51,5 @@ credentials.json
 coverage/
 *.log
 .local/
+__pycache__/
+*.pyc
