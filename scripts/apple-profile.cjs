@@ -37,8 +37,14 @@ function profileEnv(value) {
     EXPO_PUBLIC_CORE_DATA_MODE: 'supabase',
     EXPO_PUBLIC_API_BASE_URL: value.api,
     EXPO_PUBLIC_APP_PROFILE: value.profile,
+    EXPO_PUBLIC_APPLE_INTAKE_ENABLED: 'true',
     CORE_RELEASE_CHECK: value.profile === 'release' ? 'true' : 'false',
     EXPO_NO_TELEMETRY: '1',
   };
 }
-module.exports = { validateProfile, profileEnv };
+function appleXcodeProblem(output) {
+  const version = output?.match(/Xcode (\d+)\.(\d+)/);
+  if (!version || Number(version[1]) < 27)
+    return 'This App includes Apple intake SDK 27 APIs. Install/select full Xcode 27+ and complete its first launch (tested with Xcode 27.1).';
+}
+module.exports = { validateProfile, profileEnv, appleXcodeProblem };

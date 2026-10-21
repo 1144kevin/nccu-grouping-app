@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
-const { validateProfile, profileEnv } = require('./apple-profile.cjs');
+const { validateProfile, profileEnv, appleXcodeProblem } = require('./apple-profile.cjs');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const file = resolve(root, '.local/apple-dev.json');
 const [action, ...args] = process.argv.slice(2);
@@ -44,19 +44,14 @@ try {
       if (!['simulator', 'device', 'prepare-release'].includes(action))
         throw new Error('Unknown action.');
       if (process.platform !== 'darwin')
-        throw new Error('This action requires Mac + full Xcode 26.4+. Nothing was started.');
+        throw new Error('This action requires Mac + full Xcode 27+. Nothing was started.');
       const expected = action === 'prepare-release' ? 'release' : action;
       if (value.profile !== expected && !(action === 'device' && value.profile === 'release'))
         throw new Error(`Configure the ${expected} profile first.`);
       const xcode = spawnSync('xcodebuild', ['-version'], { encoding: 'utf8' });
-      const match = xcode.stdout?.match(/Xcode (\d+)\.(\d+)/);
-      if (
-        xcode.status !== 0 ||
-        !match ||
-        Number(match[1]) < 26 ||
-        (Number(match[1]) === 26 && Number(match[2]) < 4)
-      )
-        throw new Error('Install/select full Xcode 26.4+ and complete its first launch.');
+      const xcodeProblem = appleXcodeProblem(xcode.stdout);
+      if (xcode.status !== 0 || xcodeProblem)
+        throw new Error(xcodeProblem ?? 'Select full Xcode 27+ and complete its first launch.');
       const cli = resolve(root, 'node_modules/expo/bin/cli');
       if (!existsSync(cli)) throw new Error('Install locked dependencies with npm ci first.');
       const command =

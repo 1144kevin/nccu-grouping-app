@@ -13,6 +13,9 @@ const { releaseProblems, IOS_CALLBACK } = require('./release-config.cjs');
 const release = process.argv.includes('--release');
 const errors = [];
 const notes = [];
+notes.push(
+  'The project-local Apple intake module uses SDK 27 APIs; native builds require full Xcode 27+ (tested with 27.1).',
+);
 for (const asset of [config.icon, config.ios?.icon, config.web?.favicon]) {
   if (!asset || !existsSync(resolve(root, asset)))
     errors.push('A configured app/icon asset is missing.');

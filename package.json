@@ -59,6 +59,7 @@
     "apple:device": "node ./scripts/apple-dev.mjs device",
     "apple:prepare-release": "node ./scripts/apple-dev.mjs prepare-release",
     "test:apple-profile": "node --test ./scripts/apple-profile.test.cjs",
+    "test:apple-intake": "node ./scripts/test-apple-intake.mjs",
     "test:native-permissions": "node ./scripts/verify-native-permissions.mjs",
     "dev:local": "node ./scripts/local-core.mjs",
     "dev:supabase": "node ./scripts/local-core.mjs --supabase",
