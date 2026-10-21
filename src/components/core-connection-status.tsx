@@ -41,8 +41,9 @@ export function CoreConnectionStatus() {
       setResult((await api.get<Readiness>('/development/readiness')).data);
     } catch (error) {
       setFailureCode(connectionErrorCode(error));
-      setNativeMessage(nativeTransportMessage(error));
-      setError(coreError(error));
+      const native = nativeTransportMessage(error);
+      setNativeMessage(native);
+      setError(native ? '手機原生連線失敗，系統原因見上方' : coreError(error).replace(/。+$/, ''));
     } finally {
       setBusy(false);
     }
