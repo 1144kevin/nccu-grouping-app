@@ -1,0 +1,96 @@
+{
+  "prepared_at": "2026-10-20T18:11:31.837237+00:00",
+  "scope": "Apple on-device interview corrections, manual review and failure recovery; two-hour task",
+  "deterministic_checks": {
+    "startedAt": "2026-10-21T15:16:47.745Z",
+    "finishedAt": "2026-10-21T15:16:58.958Z",
+    "platform": "darwin",
+    "node": "v24.22.0",
+    "checks": [
+      {
+        "name": "TypeScript",
+        "status": 0,
+        "elapsedMs": 2873
+      },
+      {
+        "name": "ESLint",
+        "status": 0,
+        "elapsedMs": 2833
+      },
+      {
+        "name": "Interview Jest",
+        "status": 0,
+        "elapsedMs": 5408
+      },
+      {
+        "name": "Build configuration",
+        "status": 0,
+        "elapsedMs": 98
+      }
+    ],
+    "jest": {
+      "suites": 6,
+      "passed": 49,
+      "failed": 0
+    }
+  },
+  "configuration_tests": {
+    "passed": 8,
+    "failed": 0
+  },
+  "handoff_tool_tests": {
+    "passed": 5,
+    "failed": 0
+  },
+  "native_app": {
+    "configuration": "Release",
+    "build": "passed",
+    "deep_signature_verification": "passed",
+    "node": "24.22.0",
+    "xcode": "27.1",
+    "sdk": "iOS27.1",
+    "jobs": 1,
+    "apple_intake_enabled": true,
+    "local_trial": true,
+    "installation": "passed_on_physical_iphone"
+  },
+  "native_ui_runner": {
+    "build": "passed",
+    "tests": 2,
+    "execution": "completed_with_failure",
+    "passed": 1,
+    "failed": 1,
+    "manual_input": "passed",
+    "two_round_apple_interview": "not_completed",
+    "failure": "Not authorized for performing UI testing actions",
+    "failure_stage": "locating_interview_input_before_generation",
+    "initial_attempt": "interrupted_after_harness_input_and_locator_failures",
+    "harness_adjustments": [
+      "dynamic_text_input_query",
+      "largest_scroll_container",
+      "character_by_character_entry_and_exact_value_check"
+    ]
+  },
+  "device_acceptance": {
+    "prior_minimal_build": "owner_confirmed_summary_and_questions_visible",
+    "current_hardening_build": "installed_manual_input_passed_ai_ui_case_pending",
+    "semantic_accuracy": "not_certified",
+    "last_device_check_at": "2026-10-21T15:06:31Z"
+  },
+  "constraints": {
+    "ollama_installed": false,
+    "simulator_started": false,
+    "docker_started": false,
+    "database_modified": false,
+    "deployment_or_upload": false
+  },
+  "source_sha256": {
+    "src/lib/apple-intake-contract.ts": "15322a3f2918df0085b01979335496382547881fab00c382465408194842edbf",
+    "src/lib/apple-intake.ts": "8d09bd30f56a8e0fe57a624d2026509710670362d574cc8698303cf1c0981caa",
+    "src/components/apple-stealth-intake.tsx": "ab14c9b9f236026493e54bab86d27fd481ea6578614e4f67b342e9b137fb81f4",
+    "modules/apple-intake/ios/AppleIntakeModule.swift": "d9e9f89fa5527de8861d9c16fcbef26d8e71a8af2ffa42cf263cc547afaea04c",
+    "tools/apple_intake_ui/AppleIntakeUITests.swift": "2f9b94f44a381d34422661336b3f0a52d5326d7716c5373e9fedd7a9edbb56d2",
+    "tools/build_apple_handoff.py": "bacd076f1b102398805ad15aaa8b9c2e7c1c82e64606370e93761ddf8b1f4a88"
+  },
+  "updated_at": "2026-10-21T15:16:58.958Z"
+}
