@@ -1,5 +1,7 @@
 # 政缺一咖 App
 
+2026-10-22 實機阻塞更新：Expo Go已載入App，但本人測試仍被原生TLS以certificate invalid拒絕；Safari正常、CA序號及日期相符、完整鏈／手機重開／非開發模式均未解決。**不可視為Expo Go全流程已接通**。分段診斷已加入；Mac接續見相鄰backend `docs/MAC_EXPO_GO_TLS_DIAGNOSTIC.md`，維持HTTPS驗證、不部署、不付費、不push。
+
 2026-10-22 Expo Go：在 Windows 執行 `npm run expo-go:check`、`npm run dev:expo-go`，以相同 Expo 帳號掃碼，使用信箱與 App 專用密碼。可測拼單、聊天及偷揪，需求訪談使用 Windows 本機模型；Apple AI 與 Google 登入保留原生版。完整步驟見相鄰 backend 的 [`docs/EXPO_GO_IPHONE.md`](../nccu-grouping-backend/docs/EXPO_GO_IPHONE.md)。首次仍須本人信任公開開發CA；不使用tunnel、不部署、不付費。
 
 2026-10-22：已準備正常iPhone App接Windows私人HTTPS後端，支援公開CA／連線檔匯入，正常profile強制關閉訪談試用，保留Apple訪談與完整登入／儲存／配對。Mac步驟見相鄰後端 `docs/MAC_CONNECT_WINDOWS.md`；仍須重新建置與實機驗收，不代表已完成TestFlight。
