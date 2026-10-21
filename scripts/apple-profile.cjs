@@ -38,6 +38,9 @@ function profileEnv(value) {
     EXPO_PUBLIC_API_BASE_URL: value.api,
     EXPO_PUBLIC_APP_PROFILE: value.profile,
     EXPO_PUBLIC_APPLE_INTAKE_ENABLED: 'true',
+    // A normal build must never inherit the earlier stand-alone interview trial.
+    EXPO_PUBLIC_APPLE_INTAKE_TRIAL: 'false',
+    EAS_BUILD_PROFILE: '',
     CORE_RELEASE_CHECK: value.profile === 'release' ? 'true' : 'false',
     EXPO_NO_TELEMETRY: '1',
   };

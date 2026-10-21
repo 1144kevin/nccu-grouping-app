@@ -10,6 +10,9 @@ module.exports = ({ config }) => {
     throw new Error('The local Apple intake trial requires Apple intake and the connected app shell.');
   }
   const projectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID?.trim();
+  const privateDevice = process.env.EXPO_PUBLIC_CORE_API_ENABLED === 'true' &&
+    process.env.EXPO_PUBLIC_APP_PROFILE === 'device' &&
+    process.env.CORE_RELEASE_CHECK !== 'true' && process.env.EAS_BUILD_PROFILE !== 'production';
   if (
     projectId &&
     !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)
@@ -32,7 +35,7 @@ module.exports = ({ config }) => {
     plugins: [
       ...(config.plugins ?? []).filter((plugin) => {
         const name = Array.isArray(plugin) ? plugin[0] : plugin;
-        return !(process.env.EXPO_PUBLIC_APPLE_INTAKE_TRIAL === 'true' && name === 'expo-notifications');
+        return !((process.env.EXPO_PUBLIC_APPLE_INTAKE_TRIAL === 'true' || privateDevice) && name === 'expo-notifications');
       }).map((plugin) => {
         const name = Array.isArray(plugin) ? plugin[0] : plugin;
         const options = Array.isArray(plugin) ? plugin[1] : {};

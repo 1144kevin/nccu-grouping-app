@@ -6,6 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { validateProfile, profileEnv, appleXcodeProblem } = require('./apple-profile.cjs');
+const { readDeviceConnection } = require('./device-connection.cjs');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const file = resolve(root, '.local/apple-dev.json');
 const [action, ...args] = process.argv.slice(2);
@@ -13,7 +14,9 @@ const option = (key) => (args.includes(key) ? args[args.indexOf(key) + 1] : unde
 try {
   if (action === 'configure') {
     const profile = option('--profile') ?? 'simulator';
-    const value = validateProfile({
+    if (option('--connection') && (option('--profile') || option('--api')))
+      throw new Error('Use --connection alone, or explicit --profile/--api; not both.');
+    const value = option('--connection') ? readDeviceConnection(resolve(option('--connection'))) : validateProfile({
       profile,
       api: option('--api') ?? 'http://127.0.0.1:8000/api/v1',
     });
@@ -29,6 +32,7 @@ try {
     const env = { ...process.env, ...profileEnv(value) };
     if (action === 'check') {
       console.log(`Profile: ${value.profile}; API: ${value.api}`);
+      console.log('Normal app: Apple interview enabled; trial disabled; login/storage/matching retained.');
       console.log(
         'This validates configuration only, not network, certificate trust or cloud readiness.',
       );
@@ -41,11 +45,11 @@ try {
       );
       process.exitCode = result.status ?? 1;
     } else {
-      if (!['simulator', 'device', 'prepare-release'].includes(action))
+      if (!['simulator', 'device', 'prepare-device', 'prepare-release'].includes(action))
         throw new Error('Unknown action.');
       if (process.platform !== 'darwin')
         throw new Error('This action requires Mac + full Xcode 27+. Nothing was started.');
-      const expected = action === 'prepare-release' ? 'release' : action;
+      const expected = action === 'prepare-release' ? 'release' : action === 'prepare-device' ? 'device' : action;
       if (value.profile !== expected && !(action === 'device' && value.profile === 'release'))
         throw new Error(`Configure the ${expected} profile first.`);
       const xcode = spawnSync('xcodebuild', ['-version'], { encoding: 'utf8' });
@@ -57,6 +61,8 @@ try {
       const command =
         action === 'prepare-release'
           ? ['prebuild', '--platform', 'ios']
+          : action === 'prepare-device'
+          ? ['prebuild', '--platform', 'ios', '--no-install']
           : ['run:ios', '--configuration', 'Release', ...(action === 'device' ? ['--device'] : [])];
       const result = spawnSync(process.execPath, [cli, ...command], {
         cwd: root,

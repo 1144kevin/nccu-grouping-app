@@ -13,6 +13,9 @@ test('profiles distinguish simulator, private TLS device and future cloud releas
       .CORE_RELEASE_CHECK,
     'true',
   );
+  for (const profile of ['simulator', 'device', 'release'])
+    assert.equal(profileEnv({ profile, api: 'https://192.168.1.10:8443/api/v1' })
+      .EXPO_PUBLIC_APPLE_INTAKE_TRIAL, 'false');
 });
 test('device profile rejects cleartext, public hosts, missing TLS port and leaked secrets', () => {
   for (const api of [

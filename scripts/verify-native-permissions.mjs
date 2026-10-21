@@ -20,6 +20,7 @@ for (const profile of ['simulator', 'device', 'release']) {
         EAS_BUILD_PROFILE: '',
         EXPO_PUBLIC_CORE_API_ENABLED: 'true',
         EXPO_PUBLIC_CORE_DATA_MODE: 'supabase',
+        EXPO_PUBLIC_APPLE_INTAKE_TRIAL: 'false',
         EXPO_PUBLIC_APP_PROFILE: profile,
         EXPO_PUBLIC_API_BASE_URL:
           profile === 'simulator'
@@ -38,6 +39,8 @@ for (const profile of ['simulator', 'device', 'release']) {
   assert.ok(plist.NSPhotoLibraryUsageDescription);
   assert.ok(plist.NSLocationWhenInUseUsageDescription);
   if (profile === 'device') assert.ok(plist.NSLocalNetworkUsageDescription);
+  if (profile === 'device')
+    assert.equal(config._internal?.modResults?.ios?.entitlements?.['aps-environment'], undefined);
   assert.ok(!plist.UIBackgroundModes?.includes('audio'));
   assert.ok(!plist.NSAppTransportSecurity?.NSAllowsArbitraryLoads);
   assert.ok(!plist.NSAppTransportSecurity?.NSAllowsArbitraryLoadsInWebContent);

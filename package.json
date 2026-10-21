@@ -57,6 +57,7 @@
     "apple:check": "node ./scripts/apple-dev.mjs check",
     "apple:simulator": "node ./scripts/apple-dev.mjs simulator",
     "apple:device": "node ./scripts/apple-dev.mjs device",
+    "apple:prepare-device": "node ./scripts/apple-dev.mjs prepare-device",
     "apple:prepare-release": "node ./scripts/apple-dev.mjs prepare-release",
     "test:apple-profile": "node --test ./scripts/apple-profile.test.cjs",
     "test:apple-intake": "node ./scripts/test-apple-intake.mjs",

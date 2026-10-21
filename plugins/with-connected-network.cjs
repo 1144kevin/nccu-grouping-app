@@ -7,7 +7,7 @@ module.exports = function withConnectedNetwork(config) {
     profile === 'release' ||
     process.env.CORE_RELEASE_CHECK === 'true' ||
     process.env.EAS_BUILD_PROFILE === 'production';
-  if (process.env.EXPO_PUBLIC_APPLE_INTAKE_TRIAL === 'true') {
+  if (process.env.EXPO_PUBLIC_APPLE_INTAKE_TRIAL === 'true' || (profile === 'device' && !release)) {
     config = withEntitlementsPlist(config, (value) => {
       delete value.modResults['aps-environment'];
       return value;
