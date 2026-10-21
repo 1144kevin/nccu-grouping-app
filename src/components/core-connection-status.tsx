@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { coreError } from '@/lib/core-api';
 import { APPLE_INTAKE_ENABLED } from '@/lib/apple-intake';
 import { isExpoGo } from '@/lib/app-runtime';
-import { connectionEndpoint, connectionErrorCode, probeApiTransport } from '@/lib/connection-diagnostics';
+import { connectionEndpoint, connectionErrorCode, nativeTransportMessage, probeApiTransport } from '@/lib/connection-diagnostics';
 
 type Readiness = {
   data_mode: string;
@@ -22,12 +22,14 @@ export function CoreConnectionStatus() {
   const [busy, setBusy] = useState(false);
   const [transport, setTransport] = useState<number | null>(null);
   const [failureCode, setFailureCode] = useState('');
+  const [nativeMessage, setNativeMessage] = useState('');
   async function check() {
     setBusy(true);
     setError('');
     setResult(null);
     setTransport(null);
     setFailureCode('');
+    setNativeMessage('');
     try {
       const status = await probeApiTransport(api.defaults.baseURL);
       setTransport(status);
@@ -39,6 +41,7 @@ export function CoreConnectionStatus() {
       setResult((await api.get<Readiness>('/development/readiness')).data);
     } catch (error) {
       setFailureCode(connectionErrorCode(error));
+      setNativeMessage(nativeTransportMessage(error));
       setError(coreError(error));
     } finally {
       setBusy(false);
@@ -59,6 +62,7 @@ export function CoreConnectionStatus() {
         {busy ? '正在檢查連線…' : '檢查目前測試連線'}
       </PrimaryButton>
       {transport !== null ? <Text>手機直接連線：HTTP {transport}（未使用帳密或登入儲存）</Text> : null}
+      {nativeMessage ? <Text>手機系統回報：{nativeMessage}</Text> : null}
       {result ? (
         <Text accessibilityRole="alert">
           API 已連線。{result.data_mode === 'supabase' ? 'Supabase 模式' : '離線模式'}；

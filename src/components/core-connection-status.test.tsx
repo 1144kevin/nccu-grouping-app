@@ -10,6 +10,7 @@ jest.mock('@/lib/api', () => ({ api: { defaults: { baseURL: 'https://172.20.10.2
 jest.mock('@/lib/connection-diagnostics', () => ({
   connectionEndpoint: () => 'https://172.20.10.2:8443/api/v1',
   connectionErrorCode: () => 'NETWORK_OR_CLIENT_ERROR',
+  nativeTransportMessage: () => '',
   probeApiTransport: jest.fn(async () => 200),
 }));
 jest.mock('@/lib/core-api', () => ({ coreError: () => '暫時無法連線' }));
