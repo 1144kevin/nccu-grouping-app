@@ -41,6 +41,7 @@ export function CoreStealthScreen() {
   const clock = useCoreClock();
   const invalidate = async () => { await queryClient.invalidateQueries({ queryKey: key }); };
   const run = useMutation({ mutationFn: stealthApi.run, onSettled: invalidate });
+  const agentReady = !!agent.data?.enabled && !agent.error;
   return <Screen>
     <DetailHeader title="偷揪 · 我的 AI 分身" right={<IconButton icon="refresh" label="重新整理偷揪資料" onPress={() => { void invalidate(); void clock.refetch(); }} />} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
@@ -59,12 +60,25 @@ export function CoreStealthScreen() {
         {signals.data?.items.map((signal) => <SignalCard key={signal.id} signal={signal} refresh={invalidate} />)}
       </> : <>
         <Text style={styles.note}>建立需求時會嘗試配對；其他人新增相容需求時，你也可能被動收到結果。App 在前景時約每 10 秒更新，沒有手機推播。</Text>
-        <PrimaryButton disabled={run.isPending || !agent.data?.enabled} onPress={() => run.mutate()}>{run.isPending ? '分身尋找中…' : '讓分身找機會'}</PrimaryButton>
-        {!agent.data?.enabled ? <Text style={styles.hint}>請先開啟偷揪並儲存分身。</Text> : null}
+        {agent.error ? <View style={styles.card}>
+          <Text style={styles.note}>無法確認已儲存的分身設定，請重試載入。</Text>
+          <ErrorText error={agent.error} />
+          <PrimaryButton secondary disabled={agent.isFetching} onPress={() => { void agent.refetch(); }}>重試載入分身</PrimaryButton>
+        </View> : agent.isPending ? <Text style={styles.note}>正在載入分身設定，完成後即可尋找機會。</Text> : !agentReady ? <View style={styles.card}>
+          <Text style={styles.heading}>{agent.data ? '你的分身目前已暫停' : '先建立自己的分身'}</Text>
+          <Text style={styles.body}>三個搜尋與分析按鈕需要先啟用分身。請到「我的分身」勾選「開啟偷揪」，再按「儲存我的分身」；只勾選但未儲存不會生效。</Text>
+          <PrimaryButton secondary onPress={() => setTab('agent')}>前往設定並啟用分身</PrimaryButton>
+        </View> : <Text style={styles.hint}>分身已啟用：先用「讓分身找機會」或「AI 搜尋新配對機會」尋找對象，出現有效配對後即可按「AI 語義排序與判讀」。</Text>}
+        {agentReady && !clock.data ? <View style={styles.card}>
+          <Text style={styles.note}>尚未取得服務時間，AI 搜尋與判讀暫停；一般尋找機會仍可使用。</Text>
+          <ErrorText error={clock.error} />
+          <PrimaryButton secondary disabled={clock.isFetching} onPress={() => { void clock.refetch(); }}>重試取得時間</PrimaryButton>
+        </View> : null}
+        <PrimaryButton disabled={run.isPending || !agentReady || !focused} onPress={() => run.mutate()}>{run.isPending ? '分身尋找中…' : '讓分身找機會'}</PrimaryButton>
         <ErrorText error={run.error ?? matches.error} />
         {run.data ? <Text accessibilityRole="alert" style={styles.note}>這次新增 {run.data.created} 組機會。相同組合不會重複邀請；安靜時段、每日上限與必要條件都會影響結果。</Text> : null}
         {matches.isPending ? <ActivityIndicator /> : matches.data?.items.length === 0 ? <Text style={styles.note}>尚未找到配對。請確認另一位使用者也有開啟分身，且分類、地點、時間與預算相容。示範拼單不會自動變成偷揪需求。</Text> : null}
-        <StealthSemanticMatches key={user?.id} matches={matches.data?.items ?? []} disabled={run.isPending || !agent.data?.enabled || !clock.data} focused={focused} refresh={invalidate} now={clock.data ? clock.now : Date.now} renderMatch={(match, semantic) => <MatchCard key={match.id} match={match} semantic={semantic} refresh={invalidate} now={clock.data ? clock.now : undefined} />} />
+        <StealthSemanticMatches key={user?.id} matches={matches.data?.items ?? []} disabled={run.isPending || !agentReady || !clock.data} focused={focused} refresh={invalidate} now={clock.data ? clock.now : Date.now} renderMatch={(match, semantic) => <MatchCard key={match.id} match={match} semantic={semantic} refresh={invalidate} now={clock.data ? clock.now : undefined} />} />
       </>}
     </ScrollView>
   </Screen>;
@@ -74,6 +88,7 @@ export function AgentForm({ initial, refresh }: { initial: StealthAgent | null; 
   const actor = useAuthStore((state) => state.user?.id);
   const [name, setName] = useState(initial?.name ?? '我的偷揪分身');
   const [enabled, setEnabled] = useState(initial?.enabled ?? false);
+  const [savedEnabled, setSavedEnabled] = useState(initial?.enabled ?? false);
   const [includeDemo, setIncludeDemo] = useState(initial?.include_demo ?? false);
   const [avatar, setAvatar] = useState<StealthAgentInput['avatar_key']>(initial?.avatar_key ?? 'cat');
   const [tone, setTone] = useState<StealthAgentInput['tone']>(initial?.tone ?? 'warm');
@@ -84,7 +99,7 @@ export function AgentForm({ initial, refresh }: { initial: StealthAgent | null; 
   const [quietEnd, setQuietEnd] = useState(String(initial?.quiet_end_hour ?? 8));
   const [version, setVersion] = useState(initial?.version ?? 0);
   const save = useMutation({ mutationFn: () => stealthApi.saveAgent({ name: name.trim(), enabled, include_demo: includeDemo, avatar_key: avatar, tone, exploration, daily_invite_limit: Number(limit), timezone: initial?.timezone ?? 'Asia/Taipei', quiet_start_hour: quiet ? Number(quietStart) : null, quiet_end_hour: quiet ? Number(quietEnd) : null, expected_version: version }),
-    onSuccess: async (updated) => { if (useAuthStore.getState().user?.id !== actor) return; setVersion(updated.version); await refresh(); },
+    onSuccess: async (updated) => { if (useAuthStore.getState().user?.id !== actor) return; setVersion(updated.version); setSavedEnabled(updated.enabled); await refresh(); },
   });
   const valid = name.trim().length > 0 && /^\d+$/.test(limit) && Number(limit) >= 1 && Number(limit) <= 10 && (!quiet || (/^\d+$/.test(quietStart) && /^\d+$/.test(quietEnd) && Number(quietStart) <= 23 && Number(quietEnd) <= 23 && Number(quietStart) !== Number(quietEnd)));
   return <View style={styles.card}>
@@ -97,6 +112,7 @@ export function AgentForm({ initial, refresh }: { initial: StealthAgent | null; 
     <Choice label="啟用安靜時段" checked={quiet} onPress={() => setQuiet(!quiet)} disabled={save.isPending} />
     {quiet ? <><Field label="安靜開始時（0～23）" value={quietStart} onChange={setQuietStart} numeric disabled={save.isPending} maxLength={2} /><Field label="安靜結束時（0～23）" value={quietEnd} onChange={setQuietEnd} numeric disabled={save.isPending} maxLength={2} /><Text style={styles.hint}>以分身時區 {initial?.timezone ?? 'Asia/Taipei'} 的服務時間判斷；安靜時段不建立新邀請。</Text></> : null}
     <Choice label="開啟偷揪，允許依已確認需求尋找機會" checked={enabled} onPress={() => setEnabled(!enabled)} disabled={save.isPending} />
+    <Text accessibilityLiveRegion="polite" style={styles.note}>{enabled !== savedEnabled ? '啟用狀態尚未儲存，請按下方「儲存我的分身」才會生效。' : savedEnabled ? '已儲存狀態：偷揪已啟用。' : '已儲存狀態：偷揪未啟用，搜尋與分析按鈕會暫停。'}</Text>
     <Choice label="也接受清楚標示的示範配對（不是真人）" checked={includeDemo} onPress={() => setIncludeDemo(!includeDemo)} disabled={save.isPending} />
     {includeDemo ? <Text style={styles.hint}>示範資源是「正餐／政大正門／晚餐標籤／已知每人 90 元」，可用相容需求體驗。示範人物不會接受意願或回覆；需求不符仍不配對。</Text> : null}
     <Text style={styles.hint}>開啟分身不代表加入拼單；配對後仍需全員確認費用與分工才會成團。暫停或變更探索範圍會使尚未成團的舊配對失效。</Text>
