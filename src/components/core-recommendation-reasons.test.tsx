@@ -48,3 +48,12 @@ it('hides reasons for latest-feed records, full groups and closed groups', async
     expect(screen.queryByTestId('recommendation-reasons-synthetic')).toBeNull();
   }
 });
+
+it('distinguishes embedding comparison from rule reasons without promising a successful group', async () => {
+  const screen = await render(<CoreRecommendationReasons post={{ ...post,
+    semantic_recommendation: { similarity: 0.8, model_id: 'synthetic', combined_score: 64 },
+  }} />);
+  expect(screen.getByText(/已用 AI 比較/)).toBeTruthy();
+  expect(screen.getByText(/不代表符合所有飲食條件/)).toBeTruthy();
+  expect(screen.getByText('• 尚有 1 個名額')).toBeTruthy();
+});

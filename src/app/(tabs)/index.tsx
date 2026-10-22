@@ -16,17 +16,20 @@ import { useCorePosts } from '@/lib/core-hooks';
 import { CorePostActions } from '@/components/core-post-actions';
 import { CorePostImage } from '@/components/core-post-image';
 import { CoreRecommendationReasons } from '@/components/core-recommendation-reasons';
+import { CoreSemanticFeed } from '@/components/core-semantic-feed';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function HomeScreen() {
-  return CORE_API_ENABLED ? <CoreHomeScreen /> : <DemoHomeScreen />;
+  const actor = useAuthStore((state) => state.user?.id);
+  return CORE_API_ENABLED ? <CoreHomeScreen key={actor} /> : <DemoHomeScreen />;
 }
 
 function CoreHomeScreen() {
   const [recommended,setRecommended]=useState(false);
+  const [semantic,setSemantic]=useState(false);
   const latest = useCorePosts();
-  const recommendations=useCoreRecommendations(recommended);
+  const recommendations=useCoreRecommendations(recommended && !semantic);
   const query=recommended?recommendations:latest;
   const recommendationV2=query.posts.some((post)=>post.recommendation?.version==='rules_v2');
   const recommendationHint = query.isPending
@@ -36,8 +39,8 @@ function CoreHomeScreen() {
       : '尚未取得可顯示的新版推薦理由。請重新整理；沒有可加入拼單時，可調整偏好或建立新的拼單。';
   return <Screen>
     <AppHeader searchScope="posts" />
-    {CORE_SUPABASE_MODE?<View style={{padding:12,gap:8}}><View style={{flexDirection:'row',gap:8}}><PrimaryButton secondary={recommended} onPress={()=>setRecommended(false)}>最新拼單</PrimaryButton><PrimaryButton secondary={!recommended} onPress={()=>setRecommended(true)}>依我的偏好</PrimaryButton></View>{recommended?<Text style={{color:colors.muted,fontSize:13}}>{recommendationHint}</Text>:null}</View>:null}
-    <FlatList
+    {CORE_SUPABASE_MODE?<View style={{padding:12,gap:8}}><View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><PrimaryButton secondary={recommended || semantic} onPress={()=>{setRecommended(false);setSemantic(false);}}>最新拼單</PrimaryButton><PrimaryButton secondary={!recommended || semantic} onPress={()=>{setRecommended(true);setSemantic(false);}}>依我的偏好</PrimaryButton><PrimaryButton secondary={!semantic} onPress={()=>setSemantic(true)}>AI 語義推薦</PrimaryButton></View>{recommended && !semantic?<Text style={{color:colors.muted,fontSize:13}}>{recommendationHint}</Text>:null}</View>:null}
+    {semantic ? <CoreSemanticFeed renderPost={(post) => <PostItem post={toFeedPost(post)} corePost={post} />} /> : <FlatList
       data={query.posts}
       keyExtractor={(post) => post.id}
       renderItem={({ item }) => <PostItem post={toFeedPost(item)} corePost={item} />}
@@ -47,7 +50,7 @@ function CoreHomeScreen() {
       ListEmptyComponent={<EmptyState icon="text-box-search-outline" title={query.isPending ? '載入拼單中…' : query.error ? '無法取得拼單，請下拉重試' : '目前沒有拼單，建立第一筆吧'} action={<PrimaryButton secondary onPress={() => query.error ? void query.refetch() : router.push('/create')}>{query.error ? '重試' : '建立拼單'}</PrimaryButton>} />}
       ListFooterComponent={query.hasNextPage ? <PrimaryButton secondary disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }}>載入更多</PrimaryButton> : null}
       contentContainerStyle={query.posts.length ? styles.feed : styles.emptyFeed}
-    />
+    />}
   </Screen>;
 }
 

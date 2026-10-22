@@ -37,6 +37,13 @@ export type ReportInput = {
   app_version: string;
 };
 export type Report = ReportInput & { id: string; status: 'received' | 'reviewing' | 'resolved' | 'dismissed'; created_at: string; public_response?: string; review_version?: number };
+export type SemanticFeedPage = CorePostPage & {
+  status: 'completed' | 'unavailable' | 'empty';
+  candidate_count: number;
+  pool_limit: number;
+  truncated: boolean;
+  preference_version: number;
+};
 export const engagementApi = {
   preferences: async () => (await api.get<AccountPreferences>('/account/preferences')).data,
   savePreferences: async (value: Omit<AccountPreferences, 'version'>, expected_version: number) =>
@@ -49,6 +56,10 @@ export const engagementApi = {
     (await api.post<Report>('/reports', value, { headers: { 'Idempotency-Key': key } })).data,
   recommendations: async (cursor?: string) =>
     (await api.get<CorePostPage>('/recommendations', { params: { limit: 30, cursor } })).data,
+  semanticRecommendations: async (query: string) =>
+    (await api.post<SemanticFeedPage>('/recommendations/semantic', { query }, { timeout: 420_000 })).data,
+  validateSemanticRecommendations: async (ids: string[], preference_version: number) =>
+    (await api.post<CorePostPage>('/recommendations/semantic/validate', { ids, preference_version })).data,
   savedPosts: async () =>
     (await api.get<{ items: SavedPostPreference[] }>('/account/saved-posts')).data,
   savePost: async (id: string, value: { hidden: boolean; reminder: boolean }) =>

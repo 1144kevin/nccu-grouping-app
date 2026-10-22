@@ -23,6 +23,7 @@ export type GoogleStart = { authorize_url: string; flow_id: string; expires_in: 
 export type CoreProfileInput = { display_name: string; bio: string; badge: NonNullable<CoreUser['badge']>; expected_version: number };
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
+  semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {
     version: 'rules_v2'; score: number; remaining_seats: number; as_of: string;
     reasons: { code: 'preferred_tags' | 'preferred_location' | 'remaining_seats' | 'deadline'; text: string }[];

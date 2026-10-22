@@ -5,6 +5,7 @@ import { colors, radius, spacing } from '@/theme/tokens';
 
 export function CoreRecommendationReasons({ post }: { post: CorePost }) {
   const info = post.recommendation;
+  const semantic = post.semantic_recommendation;
   if (
     !info ||
     info.version !== 'rules_v2' ||
@@ -15,13 +16,14 @@ export function CoreRecommendationReasons({ post }: { post: CorePost }) {
   return (
     <View testID={`recommendation-reasons-${post.id}`} style={styles.box}>
       <Text style={styles.title}>為什麼推薦這一團</Text>
+      {semantic ? <Text style={styles.body}>• 已用 AI 比較貼文與需求的語義，並結合原有規則排序。</Text> : null}
       {info.reasons.map((reason) => (
         <Text key={reason.code} style={styles.body}>
           • {reason.text}
         </Text>
       ))}
       <Text style={styles.hint}>
-        依偏好、剩餘名額及截止時間排序，並非成團機率。加入前會重新檢查名額與期限。
+        {semantic ? '語義相似度並非成團機率，也不代表符合所有飲食條件。加入前會重新檢查名額與期限。' : '依偏好、剩餘名額及截止時間排序，並非成團機率。加入前會重新檢查名額與期限。'}
       </Text>
     </View>
   );
