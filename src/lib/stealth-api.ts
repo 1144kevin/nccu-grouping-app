@@ -33,8 +33,12 @@ export type StealthMatch = {
   terms: StealthTerms | null; terms_revision: number; my_member_number: number; host_member_number: number | null;
   confirmed_count: number; my_terms_accepted: boolean; formed_post_id: string | null; formed_at: string | null;
   agent_draft?: StealthAgentTermsDraft | null;
+  coordination_opened?: boolean;
 };
 export type StealthCreated = { signal: StealthSignal; matching: 'completed' | 'paused' | 'quiet' | 'cooldown' | 'unavailable'; new_matches: number };
+export type StealthQuickResult = { created: StealthCreated; sources: string[]; interpretation: 'local_model' | 'keyword_fallback' | 'retry' };
+export type StealthRoomMessage = { id: string; content: string; created_at: string; member_number: number; is_me: boolean };
+export type StealthRoom = { opened: boolean; can_send: boolean; items: StealthRoomMessage[] };
 export type StealthFactCode = 'location' | 'time' | 'category' | 'shared_tags' | 'offer' | 'pickup_volunteer' | 'cost_unknown' | 'order_missing' | 'pickup_missing' | 'coupon_terms';
 export type StealthSemanticItem = {
   key: string; similarity: number | null;
@@ -58,6 +62,10 @@ export type StealthIntake = {
 };
 const root = '/stealth-cloud';
 export const stealthApi = {
+  quickStatus: async () => (await api.get<{ ready: boolean }>(`${root}/quick-status`)).data,
+  quickStart: async (text: string, activate_agent: boolean, key: string) => (await api.post<StealthQuickResult>(`${root}/quick-start`, { text, activate_agent }, { headers: { 'Idempotency-Key': key }, timeout: 120_000 })).data,
+  room: async (id: string) => (await api.get<StealthRoom>(`${root}/matches/${encodeURIComponent(id)}/room`)).data,
+  roomSend: async (id: string, content: string, key: string) => (await api.post<StealthRoomMessage>(`${root}/matches/${encodeURIComponent(id)}/room`, { content }, { headers: { 'Idempotency-Key': key } })).data,
   agent: async () => (await api.get<StealthAgent | null>(`${root}/agent`)).data,
   saveAgent: async (value: StealthAgentInput) => (await api.put<StealthAgent>(`${root}/agent`, value)).data,
   signals: async () => (await api.get<{ items: StealthSignal[] }>(`${root}/signals`)).data,
