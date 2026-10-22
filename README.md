@@ -1,6 +1,6 @@
 # 政缺一咖 App
 
-2026-10-22 最新實機進度：本人已完成 Supabase 回跳設定、設定 App 密碼，並以同帳號成功登入 Expo Go。已統一表單的 iOS 鍵盤 inset，並量測聊天室／標籤視窗的避讓位置，不新增原生依賴；206項前端測試、型別、lint及 iOS JS 編譯通過，鍵盤仍待本人實機確認。接著依 [拼單、聊天室與偷揪完整驗收](../nccu-grouping-backend/docs/IPHONE_FULL_FLOW_TEST.md) 測試。電腦帳號入口維持 `npm run dev:account`（localhost8082），[帳號交接文件](../nccu-grouping-backend/docs/EXPO_GO_ACCOUNT_SETUP.md) 保留；不部署、不付費、不push。
+2026-10-22 最新實機進度：本人已完成 Supabase 回跳設定、設定 App 密碼，並以同帳號成功登入 Expo Go。已統一表單的 iOS 鍵盤 inset，並量測聊天室／標籤視窗的避讓位置，不新增原生依賴；206項前端測試、型別、lint及 iOS JS 編譯通過。本人重新載入後已確認輸入框不再被鍵盤遮住；其他畫面與完整流程仍需逐項驗收。接著依 [拼單、聊天室與偷揪完整驗收](../nccu-grouping-backend/docs/IPHONE_FULL_FLOW_TEST.md) 測試。電腦帳號入口維持 `npm run dev:account`（localhost8082），[帳號交接文件](../nccu-grouping-backend/docs/EXPO_GO_ACCOUNT_SETUP.md) 保留；不部署、不付費、不push。
 
 2026-10-22 Expo Go：在 Windows 執行 `npm run expo-go:check`、`npm run dev:expo-go`，以相同 Expo 帳號掃碼，使用信箱與 App 專用密碼。可測拼單、聊天及偷揪，需求訪談使用 Windows 本機模型；Apple AI 與 Google 登入保留原生版。完整步驟見相鄰 backend 的 [`docs/EXPO_GO_IPHONE.md`](../nccu-grouping-backend/docs/EXPO_GO_IPHONE.md)。首次仍須本人信任公開開發CA；不使用tunnel、不部署、不付費。
 
