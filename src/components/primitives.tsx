@@ -4,7 +4,8 @@ import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export function Screen({

@@ -2,7 +2,8 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
-import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { Avatar, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';

@@ -1,7 +1,8 @@
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';

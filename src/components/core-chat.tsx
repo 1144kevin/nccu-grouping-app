@@ -5,14 +5,13 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardViewport } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import {
   AppHeader,
@@ -326,10 +325,7 @@ export function CoreGroupChat({ id }: { id: string }) {
         </View>
       ) : (
         <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          >
+          <KeyboardViewport>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="查看這筆拼單"
@@ -351,6 +347,8 @@ export function CoreGroupChat({ id }: { id: string }) {
               </Text>
             ) : null}
             <FlatList
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               inverted
               data={messages}
               keyExtractor={(message) => message.id}
@@ -422,7 +420,7 @@ export function CoreGroupChat({ id }: { id: string }) {
             ) : (
               <Text style={styles.note}>拼單已取消，聊天室只供查看紀錄。</Text>
             )}
-          </KeyboardAvoidingView>
+          </KeyboardViewport>
         </SafeAreaView>
       )}
     </Screen>

@@ -2,7 +2,8 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { useEffect, useMemo, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardViewport } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
@@ -51,10 +52,10 @@ function DemoChatScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}><IconButton icon="chevron-left" label="返回" onPress={() => router.back()} /><Pressable onPress={() => router.push(`/user/${encodeURIComponent(conversation.name)}`)}><Avatar name={conversation.name} badge={conversation.badge} size={41} /></Pressable><Pressable onPress={() => router.push(`/user/${encodeURIComponent(conversation.name)}`)} style={styles.headerName}><Text numberOfLines={1} style={styles.name}>{conversation.name}{muted ? '　🔕' : ''}</Text><Text style={styles.level}>{conversation.badge} Lv.{conversation.level}</Text></Pressable><IconButton icon="dots-vertical" label="對話選項" onPress={openOptions} /></View>
       <Text style={styles.date}>5月24日下午4:23</Text><Text style={styles.warning}>⚠ 請留意聊天室中潛在的詐騙行為</Text>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={8}>
+      <KeyboardViewport>
         <FlatList inverted data={[...conversation.messages].reverse()} keyExtractor={(item) => item.id} contentContainerStyle={styles.messages} renderItem={({ item }) => <View style={[styles.bubbleWrap, item.mine && styles.mineWrap]}><View style={[styles.bubble, item.mine && styles.mineBubble]}><Text style={styles.messageText}>{item.text}</Text></View><Text style={styles.sentAt}>{item.sentAt}</Text></View>} />
         {blocked ? <View style={styles.blocked}><Text style={styles.blockedText}>你已封鎖這位使用者</Text><Pressable onPress={() => toggleBlocked(conversation.name)}><Text style={styles.unblock}>解除封鎖</Text></Pressable></View> : <View style={styles.composer}><IconButton icon="plus" label="新增附件" onPress={attach} /><TextInput value={text} onChangeText={setText} onSubmitEditing={send} returnKeyType="send" placeholder="訊息……" placeholderTextColor={colors.subtle} style={styles.input} /><IconButton icon="send" label="送出訊息" disabled={!text.trim()} color={colors.yellow} onPress={send} /></View>}
-      </KeyboardAvoidingView>
+      </KeyboardViewport>
     </SafeAreaView>
   );
 }

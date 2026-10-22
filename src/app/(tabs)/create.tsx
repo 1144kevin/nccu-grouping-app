@@ -11,17 +11,8 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Alert, Image, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardScrollView as ScrollView, KeyboardViewport } from '@/components/keyboard-layout';
 import { z } from 'zod';
 import { IconButton, PrimaryButton, SectionTitle, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
@@ -331,10 +322,7 @@ function CreateForm({
           <Text style={styles.publishText}>{isSubmitting ? '發布中…' : '發布'}</Text>
         </Pressable>
       </View>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           {clockDrift ? (
             <Text style={{ color: colors.muted, fontSize: 13 }}>
@@ -572,7 +560,7 @@ function CreateForm({
             ) : null}
           </SettingField>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
       <DeadlinePickerModal
         startDate={deadlineStartDate}
         value={draftDeadline}
@@ -587,37 +575,39 @@ function CreateForm({
         visible={tagModalVisible}
         onRequestClose={() => setTagModalVisible(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setTagModalVisible(false)}>
-          <Pressable style={styles.modalSheet} onPress={() => undefined}>
-            <Text style={styles.modalTitle}>新增主題標籤</Text>
-            <TextInput
-              autoFocus
-              maxLength={12}
-              value={customTag}
-              onChangeText={setCustomTag}
-              onSubmitEditing={addCustomTag}
-              placeholder="例如：宵夜"
-              placeholderTextColor={colors.subtle}
-              style={styles.modalInput}
-            />
-            <View style={styles.modalActions}>
-              <PrimaryButton
-                secondary
-                style={styles.modalButton}
-                onPress={() => setTagModalVisible(false)}
-              >
-                取消
-              </PrimaryButton>
-              <PrimaryButton
-                disabled={!customTag.trim()}
-                style={styles.modalButton}
-                onPress={addCustomTag}
-              >
-                加入
-              </PrimaryButton>
-            </View>
+        <KeyboardViewport>
+          <Pressable style={styles.modalBackdrop} onPress={() => setTagModalVisible(false)}>
+            <Pressable style={styles.modalSheet} onPress={() => undefined}>
+              <Text style={styles.modalTitle}>新增主題標籤</Text>
+              <TextInput
+                autoFocus
+                maxLength={12}
+                value={customTag}
+                onChangeText={setCustomTag}
+                onSubmitEditing={addCustomTag}
+                placeholder="例如：宵夜"
+                placeholderTextColor={colors.subtle}
+                style={styles.modalInput}
+              />
+              <View style={styles.modalActions}>
+                <PrimaryButton
+                  secondary
+                  style={styles.modalButton}
+                  onPress={() => setTagModalVisible(false)}
+                >
+                  取消
+                </PrimaryButton>
+                <PrimaryButton
+                  disabled={!customTag.trim()}
+                  style={styles.modalButton}
+                  onPress={addCustomTag}
+                >
+                  加入
+                </PrimaryButton>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardViewport>
       </Modal>
     </Screen>
   );

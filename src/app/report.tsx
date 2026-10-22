@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ScrollView } from 'react-native';
+import {  } from 'react-native';
+import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, EmptyState, Screen } from '@/components/primitives';
 import { ReportComposer } from '@/components/core-reports';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
