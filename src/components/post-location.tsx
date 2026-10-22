@@ -3,7 +3,8 @@ import { useState } from 'react';
 import type { ComponentProps, PropsWithChildren } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
-import { distanceKm, formatDistance, googleMapsUrl } from '@/lib/location';
+import { distanceKm, formatDistance, googleMapsDirectionsUrl } from '@/lib/location';
+import { splitPickupAddress } from '@/lib/pickup-details';
 import { formatPrice } from '@/lib/price';
 import { useLocationStore } from '@/store/location-store';
 import type { FeedPost } from '@/types/domain';
@@ -17,11 +18,12 @@ export function PostInfo({ post, reminder = false }: { post: FeedPost; reminder?
   const { coordinates, loading, error, requestLocation } = useLocationStore();
   const [mapError, setMapError] = useState('');
   const location = post.location;
+  const details = splitPickupAddress(location?.address);
 
   async function openMap() {
     if (!location) return;
     setMapError('');
-    try { await Linking.openURL(googleMapsUrl(location)); }
+    try { await Linking.openURL(googleMapsDirectionsUrl(location)); }
     catch { setMapError('無法開啟 Google Maps，請稍後再試。'); }
   }
 
@@ -33,7 +35,9 @@ export function PostInfo({ post, reminder = false }: { post: FeedPost; reminder?
       <InfoRow icon="map-marker-outline" label="取餐地點" last>
         {location ? <>
           <Pressable accessibilityRole="link" accessibilityLabel={`在 Google Maps 開啟 ${location.name}`} onPress={openMap} style={styles.place}><Text style={[styles.value, styles.placeName]}>{location.name}</Text><MaterialCommunityIcons name="open-in-new" size={13} color={colors.brown} /></Pressable>
-          {location.address && location.address !== location.name ? <Text style={styles.note}>{location.address}</Text> : null}
+          {details.address && details.address !== location.name ? <Text style={styles.note}>{details.address}</Text> : null}
+          {details.note ? <Text style={styles.note}>取餐說明：{details.note}</Text> : null}
+          <Pressable accessibilityRole="link" onPress={openMap} style={styles.locate}><Text style={styles.locateText}>用 Google Maps 導航</Text></Pressable>
           <Text style={styles.distance}>{coordinates ? `${formatDistance(distanceKm(coordinates, location))} · 直線` : loading ? '定位中…' : '開啟定位以查看距離'}</Text>
           <Pressable accessibilityRole="button" disabled={loading} onPress={() => void requestLocation()} style={styles.locate}><Text style={styles.locateText}>{coordinates ? '更新定位' : '開啟定位'}</Text></Pressable>
           {coordinates ? <Text style={styles.note}>依最近一次定位估算</Text> : null}

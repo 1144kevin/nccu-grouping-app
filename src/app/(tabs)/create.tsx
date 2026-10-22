@@ -18,7 +18,6 @@ import { IconButton, PrimaryButton, SectionTitle, Screen } from '@/components/pr
 import { useAppStore } from '@/store/app-store';
 import { useAuthStore } from '@/store/auth-store';
 import { LocationPicker } from '@/components/location-picker';
-import { LocalLocationPicker } from '@/components/local-location-picker';
 import {
   DeadlinePickerModal,
   createInitialDeadline,
@@ -541,17 +540,14 @@ function CreateForm({
                 control={control}
                 name="location"
                 render={({ field: { onChange, value } }) =>
-                  CORE_API_ENABLED ? (
-                    <LocalLocationPicker
+                    <LocationPicker
                       key={locationKey}
                       value={value}
+                      disabled={isSubmitting}
                       onChange={(next) => {
                         if (!publishing.current) onChange(next);
                       }}
                     />
-                  ) : (
-                    <LocationPicker key={locationKey} value={value} onChange={onChange} />
-                  )
                 }
               />
             </View>

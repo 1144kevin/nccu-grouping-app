@@ -6,7 +6,7 @@ import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { DeadlinePickerModal, formatDeadline, startOfDay } from '@/components/deadline-picker';
-import { LocalLocationPicker } from '@/components/local-location-picker';
+import { LocationPicker } from '@/components/location-picker';
 import { coreApi, coreError, type CorePost } from '@/lib/core-api';
 import { invalidateCore, useCorePost } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
@@ -81,7 +81,7 @@ function PostForm({ post, now, clockDrift }: { post: CorePost; now: () => number
       <Text style={styles.label}>每人預估金額（留白為待確認）</Text><TextInput accessibilityLabel="拼單金額" value={price} onChangeText={setPrice} keyboardType="decimal-pad" editable={!busy && allowed} style={styles.input} />
       <PrimaryButton secondary disabled={busy || !allowed} onPress={() => { setDeadlineStartDate(startOfDay(now())); setDraftDeadline(new Date(deadline)); setDeadlineVisible(true); }}>截止：{formatDeadline(deadline)}</PrimaryButton>
       {deadlineError ? <Text accessibilityRole="alert" style={styles.error}>{deadlineError}</Text> : null}
-      <Text style={styles.label}>取餐地點</Text><LocalLocationPicker key={locationKey} value={location} onChange={setLocation} />
+      <Text style={styles.label}>取餐地點</Text><LocationPicker key={locationKey} value={location} onChange={setLocation} disabled={busy || !allowed} />
       {mutation.error || reload.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(mutation.error ?? reload.error)}</Text> : null}
       <PrimaryButton disabled={busy || !allowed || !valid} onPress={() => mutation.mutate()}>{busy ? '處理中…' : '儲存拼單變更'}</PrimaryButton>
       <PrimaryButton secondary disabled={busy} onPress={() => reload.mutate()}>重新載入已儲存內容</PrimaryButton>

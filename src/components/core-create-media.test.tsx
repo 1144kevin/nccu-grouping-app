@@ -26,7 +26,10 @@ jest.mock('expo-image-picker', () => ({
     assets: [{ uri: 'synthetic://image', base64: 'YQ==', width: 480, height: 320 }],
   }),
 }));
-jest.mock('@/components/location-picker', () => ({ LocationPicker: () => null }));
+jest.mock('@/components/location-picker', () => ({ LocationPicker: ({ onChange }: { onChange: (p: unknown) => void }) => {
+  const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
+  return <Button title="確認測試取餐點" onPress={() => onChange({ name: '測試取餐點', latitude: 24.987, longitude: 121.576, address: '\n取餐說明：右側桌子' })} />;
+} }));
 jest.mock('@/components/deadline-picker', () => ({
   DeadlinePickerModal: () => null,
   createInitialDeadline: (n: number) => new Date(n + 3_600_000),
@@ -71,7 +74,7 @@ async function filledForm() {
     );
   });
   await act(async () => {
-    await fireEvent.press(screen.getByRole('button', { name: '使用政大正門測試地點' }));
+    await fireEvent.press(screen.getByRole('button', { name: '確認測試取餐點' }));
   });
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '新增圖片' }));

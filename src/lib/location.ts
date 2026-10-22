@@ -39,6 +39,10 @@ export function googleMapsUrl(location: Coordinates): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.latitude},${location.longitude}`)}`;
 }
 
+export function googleMapsDirectionsUrl(location: Coordinates): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${location.latitude},${location.longitude}`)}&travelmode=walking`;
+}
+
 export function distanceKm(from: Coordinates, to: Coordinates): number {
   const radians = (degrees: number) => degrees * Math.PI / 180;
   const a = Math.sin(radians(to.latitude - from.latitude) / 2) ** 2
