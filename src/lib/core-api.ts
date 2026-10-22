@@ -186,6 +186,8 @@ const messages: Record<string, string> = {
   invalid_account_input: '設定格式不符，請檢查後再試。',
   invalid_report_input: '回報需填 10～1,000 字，並選擇有效的對象。',
   preferences_changed_reload: '偏好已在其他地方更新，請先重新載入已儲存設定。',
+  quick_category_unclear: '分身還不確定你想揪什麼，請加上餐點或店名，例如「想喝50嵐」或「想吃披薩」。',
+  coordination_waiting_for_all: '還在等其他夥伴同意，全部同意後就可以聊天。',
   report_key_conflict: '這次回報與先前重試內容不同，請重新確認。',
   report_target_unavailable: '無法檢舉此內容，可能已移除或你沒有查看權限。',
   report_rate_limit: '一小時最多送出五筆回報，請稍後再試。',

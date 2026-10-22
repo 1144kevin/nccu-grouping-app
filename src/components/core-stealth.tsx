@@ -5,6 +5,7 @@ import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { StealthFormation } from '@/components/core-stealth-formation';
+import { QuickStealthScreen } from '@/components/quick-stealth';
 import { StealthIntake } from '@/components/core-stealth-intake';
 import { StealthSemanticMatches, StealthSemanticSummary } from '@/components/core-stealth-semantic';
 import { coreError, newRequestKey } from '@/lib/core-api';
@@ -30,6 +31,11 @@ function Choice({ label, checked, onPress, disabled = false }: { label: string; 
 function ErrorText({ error }: { error: unknown }) { return error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(error)}</Text> : null; }
 
 export function CoreStealthScreen() {
+  const [advanced, setAdvanced] = useState(false);
+  return advanced ? <AdvancedStealthScreen onQuick={() => setAdvanced(false)} /> : <QuickStealthScreen onAdvanced={() => setAdvanced(true)} />;
+}
+
+export function AdvancedStealthScreen({ onQuick }: { onQuick?: () => void } = {}) {
   const user = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
   const [tab, setTab] = useState<'agent' | 'signals' | 'matches'>('agent');
@@ -44,6 +50,7 @@ export function CoreStealthScreen() {
   const agentReady = !!agent.data?.enabled && !agent.error;
   return <Screen>
     <DetailHeader title="偷揪 · 我的 AI 分身" right={<IconButton icon="refresh" label="重新整理偷揪資料" onPress={() => { void invalidate(); void clock.refetch(); }} />} />
+    {onQuick ? <PrimaryButton secondary onPress={onQuick}>回到一句話偷揪</PrimaryButton> : null}
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <View style={styles.hero}><Text style={styles.heading}>不用發文，也能被揪</Text><Text style={styles.body}>告訴分身你需要什麼、擁有什麼，或接下來願意做什麼，讓它找出兩到三人的互補機會。</Text><Text style={styles.hint}>免費開發模式：本機模型理解與補問，規則檢查配對及費用分工。原始需求只供本人查看；全員確認同一版方案才成團，沒有代為訂購或付款。</Text></View>
       {clock.data && Math.abs(clock.data.driftMs) > 60_000 ? <Text style={styles.hint}>裝置時間與服務不同，需求與邀請期限以服務時間為準。載入時服務時間：{new Date(clock.data.serverMs).toLocaleString('zh-TW')}</Text> : null}

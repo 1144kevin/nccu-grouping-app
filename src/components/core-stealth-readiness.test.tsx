@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { CoreStealthScreen } from './core-stealth';
+import { AdvancedStealthScreen as CoreStealthScreen } from './core-stealth';
 import { queryClient } from '@/lib/query-client';
 import { stealthApi, type StealthAgent } from '@/lib/stealth-api';
 
