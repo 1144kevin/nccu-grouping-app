@@ -1,5 +1,7 @@
 # 政缺一咖 App
 
+2026-10-22 偷揪按鈕排查：結果頁現在會區分「分身尚未建立／已暫停」、「設定載入失敗」與「服務時間尚未取得」，並提供設定入口或重試。若三個按鈕都是灰色，先到「我的分身」勾選「開啟偷揪」，再按「儲存我的分身」；未儲存會顯示提示，不會自動替你啟用。儲存後前兩個搜尋按鈕可使用；「AI 語義排序與判讀」仍須先有有效配對。已在現有 Web 帳號確認停用原因與設定入口；啟用儲存、載入重試與時間失敗情境由隔離元件測試驗證。49 組／210 項前端測試、型別、變更檔 lint 與 iOS JS 編譯通過；未變更本人分身設定或全員確認機制，不部署、不付費、不 push。Expo Go 請重新載入後依上述步驟操作。
+
 2026-10-22 最新實機進度：本人已完成 Supabase 回跳設定、設定 App 密碼，並以同帳號成功登入 Expo Go。已統一表單的 iOS 鍵盤 inset，並量測聊天室／標籤視窗的避讓位置，不新增原生依賴；206項前端測試、型別、lint及 iOS JS 編譯通過。本人重新載入後已確認輸入框不再被鍵盤遮住；其他畫面與完整流程仍需逐項驗收。接著依 [拼單、聊天室與偷揪完整驗收](../nccu-grouping-backend/docs/IPHONE_FULL_FLOW_TEST.md) 測試。電腦帳號入口維持 `npm run dev:account`（localhost8082），[帳號交接文件](../nccu-grouping-backend/docs/EXPO_GO_ACCOUNT_SETUP.md) 保留；不部署、不付費、不push。
 
 2026-10-22 Expo Go：在 Windows 執行 `npm run expo-go:check`、`npm run dev:expo-go`，以相同 Expo 帳號掃碼，使用信箱與 App 專用密碼。可測拼單、聊天及偷揪，需求訪談使用 Windows 本機模型；Apple AI 與 Google 登入保留原生版。完整步驟見相鄰 backend 的 [`docs/EXPO_GO_IPHONE.md`](../nccu-grouping-backend/docs/EXPO_GO_IPHONE.md)。首次仍須本人信任公開開發CA；不使用tunnel、不部署、不付費。
