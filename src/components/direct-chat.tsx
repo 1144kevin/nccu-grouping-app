@@ -1,3 +1,4 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -83,6 +84,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           <View style={styles.peer}>
             <Avatar name={page.thread.peer_name} badge={page.thread.peer_badge} size={34} />
             <Text style={styles.peerName}>{page.thread.peer_name}</Text>
+            <ReputationBadge level={page.thread.peer_level} />
           </View>
         ) : null}
         {query.error ? (
@@ -124,7 +126,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             }
             renderItem={({ item }) => (
               <View style={[styles.message, item.sender_id === actor && styles.mine]}>
-                <Text style={styles.sender}>{item.sender_name}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Avatar name={item.sender_name} badge={item.sender_badge} size={26} />
+                  <Text style={styles.sender}>{item.sender_name}</Text>
+                  <ReputationBadge level={item.sender_level} />
+                </View>
                 <View style={[styles.bubble, item.sender_id === actor && styles.mineBubble]}>
                   <Text style={styles.body}>{item.content}</Text>
                 </View>

@@ -1,15 +1,9 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import {
-  ActivityIndicator,
-  Pressable,
-
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   Avatar,
@@ -73,13 +67,20 @@ export function CoreOrderDetail({ id }: { id: string }) {
   const completed = summary.data?.completed ?? false;
   const formed = summary.data?.formed ?? post.joined > 1;
   const members = summary.data?.members ?? [
-    { id: post.author_id, name: post.author_name, badge: post.author_badge ?? '🍱', host: true },
+    {
+      id: post.author_id,
+      name: post.author_name,
+      badge: post.author_badge ?? '🍱',
+      level: post.author_level,
+      host: true,
+    },
     ...(requests.data
       ?.filter((r) => r.status === 'accepted')
       .map((r) => ({
         id: r.requester_id,
         name: r.requester_name,
         badge: r.requester_badge ?? '🍱',
+        level: r.requester_level,
         host: false,
       })) ?? []),
   ];
@@ -102,7 +103,11 @@ export function CoreOrderDetail({ id }: { id: string }) {
         refreshControl={
           <PullRefreshControl
             onRefresh={() => {
-              return Promise.all([postQuery.refetch(), summary.refetch(), ...(post?.my_status === 'host' ? [requests.refetch()] : [])]);
+              return Promise.all([
+                postQuery.refetch(),
+                summary.refetch(),
+                ...(post?.my_status === 'host' ? [requests.refetch()] : []),
+              ]);
             }}
           />
         }
@@ -150,6 +155,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
             <Avatar name={member.name} badge={member.badge} size={42} />
             <View style={{ flex: 1 }}>
               <Text style={styles.memberName}>{member.name}</Text>
+              <ReputationBadge level={member.level} />
               <Text style={styles.detail}>{member.host ? '主揪' : '團員'}</Text>
             </View>
             <Pill tone={member.host ? 'yellow' : 'success'}>{member.host ? '主揪' : '已加入'}</Pill>
@@ -203,8 +209,12 @@ export function CoreOrderDetail({ id }: { id: string }) {
             進入群組聊天室
           </PrimaryButton>
         ) : null}
-        {post.my_status === 'host' ? <PrimaryButton secondary onPress={() => router.push(`/post/${post.id}`)}>管理貼文</PrimaryButton> : null}
-      <MessageHostButton post={post} />
+        {post.my_status === 'host' ? (
+          <PrimaryButton secondary onPress={() => router.push(`/post/${post.id}`)}>
+            管理貼文
+          </PrimaryButton>
+        ) : null}
+        <MessageHostButton post={post} />
       </ScrollView>
     </Screen>
   );

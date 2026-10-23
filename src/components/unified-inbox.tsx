@@ -1,3 +1,4 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useCallback, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -359,6 +360,7 @@ function InboxRow({
               : item.peer_name}
             {item.muted ? ' · 靜音' : ''}
           </Text>
+          <ReputationBadge level={item.peer_level ?? item.post.author_level} />
         </View>
       </Pressable>
       <IconButton

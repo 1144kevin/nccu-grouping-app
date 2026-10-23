@@ -1,3 +1,4 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -397,7 +398,7 @@ function SearchResult({ item }: { item: CoreSearchItem }) {
       style={({ pressed }) => [styles.resultRow, pressed && styles.pressed]}
     >
       {item.kind === 'user' || item.kind === 'message' ? (
-        <Avatar name={item.title} badge="🍱" size={44} />
+        <Avatar name={item.title} badge={item.badge ?? '🍱'} size={44} />
       ) : (
         <View style={styles.resultIcon}>
           <MaterialCommunityIcons name="clipboard-text-outline" size={22} color={colors.brown} />
@@ -407,6 +408,7 @@ function SearchResult({ item }: { item: CoreSearchItem }) {
         <Text numberOfLines={1} style={styles.resultTitle}>
           {item.title}
         </Text>
+        {item.kind !== 'history' ? <ReputationBadge level={item.level} /> : null}
         <Text numberOfLines={2} style={styles.resultDetail}>
           {item.detail}
         </Text>

@@ -1,3 +1,4 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -91,7 +92,7 @@ export function CorePostDetail({ id }: { id: string }) {
           >
             <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={46} />
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.title}>{post.author_name}</Text>
+              <View style={styles.row}><Text style={styles.title}>{post.author_name}</Text><ReputationBadge level={post.author_level} /></View>
               <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
             </View>
           </Pressable>
@@ -366,7 +367,7 @@ function HostManagement({ post }: { post: CorePost }) {
       </SectionTitle>
       <View style={styles.member}>
         <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={42} />
-        <Text style={styles.title}>{post.author_name}</Text>
+        <View style={styles.row}><Text style={styles.title}>{post.author_name}</Text><ReputationBadge level={post.author_level} /></View>
         <Pill tone="yellow">主揪</Pill>
       </View>
       {query.isPending ? <ActivityIndicator /> : null}
@@ -438,9 +439,9 @@ export function RequestCard({ request, closed }: { request: CoreJoin; closed: bo
           accessibilityRole="button"
           onPress={() => router.push(`/user/${request.requester_id}`)}
         >
-          <Text style={styles.requestName}>{request.requester_name}</Text>
+          <View style={styles.row}><Text style={styles.requestName}>{request.requester_name}</Text><ReputationBadge level={request.requester_level} /></View>
         </Pressable>
-        <Text style={styles.hint}>{request.requester_level ? `${request.requester_badge ?? '🍱'} Lv.${request.requester_level} · ` : ''}{shortDate(request.created_at)}</Text>
+        <Text style={styles.hint}>{shortDate(request.created_at)}</Text>
       </View>
       {request.status === 'pending' && !closed ? (
         <View style={styles.row}>

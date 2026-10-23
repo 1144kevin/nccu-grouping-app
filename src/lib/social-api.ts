@@ -12,6 +12,7 @@ export type ThreadMessage = {
   sender_id: string;
   sender_name: string;
   sender_badge: string;
+  sender_level?: number;
   content: string;
   created_at: string;
 };
@@ -22,6 +23,7 @@ export type InboxThread = {
   peer_id: string;
   peer_name: string;
   peer_badge: string;
+  peer_level?: number;
   last_message: ThreadMessage | null;
   updated_at: string;
   unread_count: number;
@@ -33,7 +35,7 @@ export type InboxThread = {
 export type InboxPage = { items: InboxThread[]; next_cursor: string | null; total_unread: number };
 export type OrderSummary = {
   post: CorePost;
-  members: { id: string; name: string; badge: string; host: boolean }[];
+  members: { id: string; name: string; badge: string; level?: number; host: boolean }[];
   formed: boolean;
   completed: boolean;
   confirmed_count: number;

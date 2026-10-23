@@ -17,23 +17,43 @@ export type CoreUser = {
   auth_mode: 'local_development' | 'supabase';
   email_verified: boolean;
 };
-export type CoreSession = { access_token: string; refresh_token?: string | null; expires_at: string; user: CoreUser };
-export type ConfirmationRequired = { confirmation_required: true; message: 'check_email_to_confirm' };
+export type CoreSession = {
+  access_token: string;
+  refresh_token?: string | null;
+  expires_at: string;
+  user: CoreUser;
+};
+export type ConfirmationRequired = {
+  confirmation_required: true;
+  message: 'check_email_to_confirm';
+};
 export type GoogleStart = { authorize_url: string; flow_id: string; expires_in: number };
-export type CoreProfileInput = { display_name: string; bio: string; badge: NonNullable<CoreUser['badge']>; expected_version: number };
+export type CoreProfileInput = {
+  display_name: string;
+  bio: string;
+  badge: NonNullable<CoreUser['badge']>;
+  expected_version: number;
+};
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
   semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {
-    version: 'rules_v2'; score: number; remaining_seats: number; as_of: string;
-    reasons: { code: 'preferred_tags' | 'preferred_location' | 'remaining_seats' | 'deadline'; text: string }[];
+    version: 'rules_v2';
+    score: number;
+    remaining_seats: number;
+    as_of: string;
+    reasons: {
+      code: 'preferred_tags' | 'preferred_location' | 'remaining_seats' | 'deadline';
+      text: string;
+    }[];
   } | null;
   is_demo?: boolean;
-  image_id?: string|null;
+  image_id?: string | null;
   id: string;
   author_id: string;
   author_name: string;
   author_badge?: string;
+  author_level?: number;
   content: string;
   tags: string[];
   location: PostLocation;
@@ -47,7 +67,10 @@ export type CorePost = {
   can_edit?: boolean;
   created_at: string;
 };
-export type CorePostInput = Pick<CorePost, 'content' | 'tags' | 'location' | 'deadline_at' | 'capacity'> & {
+export type CorePostInput = Pick<
+  CorePost,
+  'content' | 'tags' | 'location' | 'deadline_at' | 'capacity'
+> & {
   price_per_person: string | null;
 };
 export type CoreJoin = {
@@ -55,53 +78,161 @@ export type CoreJoin = {
   post_id: string;
   requester_id: string;
   requester_name: string;
-  requester_badge?: string; requester_level?: number;
+  requester_badge?: string;
+  requester_level?: number;
   status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
   created_at: string;
   decided_at: string | null;
 };
 export type CorePostPage = { items: CorePost[]; next_cursor: string | null };
-export type CoreMessage = { id: string; post_id: string; sender_id: string; sender_name: string; sender_badge: string; content: string; created_at: string };
-export type CoreChatPage = { post: CorePost; messages: CoreMessage[]; next_cursor: string | null; can_send: boolean };
-export type CoreConversationPage = { items: { post: CorePost; last_message: CoreMessage | null }[]; next_cursor: string | null };
-export type CoreChatActivity = { groups: { post_id: string; unread_count: number }[]; total_unread: number; pending_requests: number };
-export type CorePublicUser = { id: string; display_name: string; bio: string; badge: string; created_at: string; active_posts: number };
-export type CoreOrderActivity = { id: string; post_id: string; post_content: string; requester_id: string; requester_name: string; status: 'pending' | 'accepted' | 'rejected' | 'cancelled'; kind: 'hosted_request' | 'my_request'; occurred_at: string; post_cancelled: boolean; post_expired: boolean };
+export type CoreMessage = {
+  id: string;
+  post_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_badge: string;
+  sender_level?: number;
+  content: string;
+  created_at: string;
+};
+export type CoreChatPage = {
+  post: CorePost;
+  messages: CoreMessage[];
+  next_cursor: string | null;
+  can_send: boolean;
+};
+export type CoreConversationPage = {
+  items: { post: CorePost; last_message: CoreMessage | null }[];
+  next_cursor: string | null;
+};
+export type CoreChatActivity = {
+  groups: { post_id: string; unread_count: number }[];
+  total_unread: number;
+  pending_requests: number;
+};
+export type CorePublicUser = {
+  id: string;
+  display_name: string;
+  bio: string;
+  badge: string;
+  created_at: string;
+  active_posts: number;
+  level?: number;
+};
+export type CoreOrderActivity = {
+  requester_level?: number;
+  requester_badge?: string;
+  id: string;
+  post_id: string;
+  post_content: string;
+  requester_id: string;
+  requester_name: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  kind: 'hosted_request' | 'my_request';
+  occurred_at: string;
+  post_cancelled: boolean;
+  post_expired: boolean;
+};
 export type CoreOrderActivityPage = { items: CoreOrderActivity[]; next_cursor: string | null };
-export type CoreSearchItem = { id:string; kind:'user'|'message'|'history'; title:string; detail:string; post_id:string|null; created_at:string };
-export type CoreSearchPage = { items:CoreSearchItem[]; next_cursor:string|null };
+export type CoreSearchItem = {
+  level?: number;
+  badge?: string;
+  id: string;
+  kind: 'user' | 'message' | 'history';
+  title: string;
+  detail: string;
+  post_id: string | null;
+  created_at: string;
+};
+export type CoreSearchPage = { items: CoreSearchItem[]; next_cursor: string | null };
 
 export const coreApi = {
-  search: async (scope:'users'|'messages'|'history', q:string, cursor?:string) => (await api.get<CoreSearchPage>('/search',{params:{scope,q,cursor,limit:30}})).data,
+  search: async (scope: 'users' | 'messages' | 'history', q: string, cursor?: string) =>
+    (await api.get<CoreSearchPage>('/search', { params: { scope, q, cursor, limit: 30 } })).data,
   clock: async () => (await api.get<{ server_time: string }>('/development/clock')).data,
-  orderActivity: async (cursor?: string) => (await api.get<CoreOrderActivityPage>('/notifications', { params: { cursor, limit: 30 } })).data,
-  publicUser: async (id: string) => (await api.get<CorePublicUser>(`/users/${encodeURIComponent(id)}`)).data,
-  userPosts: async (id: string, cursor?: string) => (await api.get<CorePostPage>(`/users/${encodeURIComponent(id)}/posts`, { params: { cursor, limit: 30 } })).data,
+  orderActivity: async (cursor?: string) =>
+    (await api.get<CoreOrderActivityPage>('/notifications', { params: { cursor, limit: 30 } }))
+      .data,
+  publicUser: async (id: string) =>
+    (await api.get<CorePublicUser>(`/users/${encodeURIComponent(id)}`)).data,
+  userPosts: async (id: string, cursor?: string) =>
+    (
+      await api.get<CorePostPage>(`/users/${encodeURIComponent(id)}/posts`, {
+        params: { cursor, limit: 30 },
+      })
+    ).data,
   chatActivity: async () => (await api.get<CoreChatActivity>('/conversations/activity')).data,
-  readChat: async (postId: string, messageId: string) => (await api.post<{ ok: true }>(`/conversations/${encodeURIComponent(postId)}/read`, { message_id: messageId })).data,
-  conversations: async (cursor?: string) => (await api.get<CoreConversationPage>('/conversations', { params: { cursor, limit: 30 } })).data,
-  messages: async (postId: string, cursor?: string) => (await api.get<CoreChatPage>(`/conversations/${encodeURIComponent(postId)}/messages`, { params: { cursor, limit: 30 } })).data,
-  sendMessage: async (postId: string, content: string, key: string) => (await api.post<CoreMessage>(`/conversations/${encodeURIComponent(postId)}/messages`, { content }, { headers: { 'Idempotency-Key': key } })).data,
-  clearDemo: async () => (await api.delete<{ deleted_posts: number; kept_posts: number }>('/development/demo')).data,
-  googleStart: async (client: 'web' | 'web_account' | 'ios' = 'web') => (await api.post<GoogleStart>('/auth/google/start', { client })).data,
-  setAppPassword: async (password: string, expectedUserId: string) => { await api.post('/auth/password', { password, expected_user_id: expectedUserId }); },
-  googleFinish: async (flowId: string, code: string) => (await api.post<CoreSession>('/auth/google/finish', { flow_id: flowId, code })).data,
+  readChat: async (postId: string, messageId: string) =>
+    (
+      await api.post<{ ok: true }>(`/conversations/${encodeURIComponent(postId)}/read`, {
+        message_id: messageId,
+      })
+    ).data,
+  conversations: async (cursor?: string) =>
+    (await api.get<CoreConversationPage>('/conversations', { params: { cursor, limit: 30 } })).data,
+  messages: async (postId: string, cursor?: string) =>
+    (
+      await api.get<CoreChatPage>(`/conversations/${encodeURIComponent(postId)}/messages`, {
+        params: { cursor, limit: 30 },
+      })
+    ).data,
+  sendMessage: async (postId: string, content: string, key: string) =>
+    (
+      await api.post<CoreMessage>(
+        `/conversations/${encodeURIComponent(postId)}/messages`,
+        { content },
+        { headers: { 'Idempotency-Key': key } },
+      )
+    ).data,
+  clearDemo: async () =>
+    (await api.delete<{ deleted_posts: number; kept_posts: number }>('/development/demo')).data,
+  googleStart: async (client: 'web' | 'web_account' | 'ios' = 'web') =>
+    (await api.post<GoogleStart>('/auth/google/start', { client })).data,
+  setAppPassword: async (password: string, expectedUserId: string) => {
+    await api.post('/auth/password', { password, expected_user_id: expectedUserId });
+  },
+  googleFinish: async (flowId: string, code: string) =>
+    (await api.post<CoreSession>('/auth/google/finish', { flow_id: flowId, code })).data,
   register: async (email: string, password: string, displayName: string) =>
-    (await api.post<CoreSession | ConfirmationRequired>('/auth/register', { email, password, display_name: displayName })).data,
+    (
+      await api.post<CoreSession | ConfirmationRequired>('/auth/register', {
+        email,
+        password,
+        display_name: displayName,
+      })
+    ).data,
   login: async (email: string, password: string) =>
     (await api.post<CoreSession>('/auth/login', { email, password })).data,
   me: async () => (await api.get<CoreUser>('/auth/me')).data,
-  updateProfile: async (value: CoreProfileInput) => (await api.patch<CoreUser>('/auth/me', value)).data,
-  logout: async () => { await api.post('/auth/logout'); },
-  posts: async (scope: 'feed' | 'hosted' | 'participating' | 'history' = 'feed', cursor?: string, q = '', activeOnly = false) =>
-    (await api.get<CorePostPage>('/posts', { params: { scope, cursor, q, active_only: activeOnly, limit: 30 } })).data,
+  updateProfile: async (value: CoreProfileInput) =>
+    (await api.patch<CoreUser>('/auth/me', value)).data,
+  logout: async () => {
+    await api.post('/auth/logout');
+  },
+  posts: async (
+    scope: 'feed' | 'hosted' | 'participating' | 'history' = 'feed',
+    cursor?: string,
+    q = '',
+    activeOnly = false,
+    limit = 30,
+  ) =>
+    (
+      await api.get<CorePostPage>('/posts', {
+        params: { scope, cursor, q, active_only: activeOnly, limit },
+      })
+    ).data,
   post: async (id: string) => (await api.get<CorePost>(`/posts/${encodeURIComponent(id)}`)).data,
   create: async (value: CorePostInput, requestKey: string) =>
-    (await api.post<CorePost>('/posts', value, { headers: { 'Idempotency-Key': requestKey } })).data,
+    (await api.post<CorePost>('/posts', value, { headers: { 'Idempotency-Key': requestKey } }))
+      .data,
   edit: async (id: string, value: CorePostInput & { expected_version: number }) =>
     (await api.patch<CorePost>(`/posts/${encodeURIComponent(id)}`, value)).data,
   requestJoin: async (id: string, expectedVersion = 1) =>
-    (await api.post<CoreJoin>(`/posts/${encodeURIComponent(id)}/join-requests`, { expected_version: expectedVersion })).data,
+    (
+      await api.post<CoreJoin>(`/posts/${encodeURIComponent(id)}/join-requests`, {
+        expected_version: expectedVersion,
+      })
+    ).data,
   withdraw: async (id: string) =>
     (await api.delete<CorePost>(`/posts/${encodeURIComponent(id)}/membership`)).data,
   requests: async (id: string) =>
@@ -114,10 +245,18 @@ export const coreApi = {
 
 export function toFeedPost(post: CorePost): FeedPost {
   return {
-    id: post.id, name: post.author_name, badge: post.author_badge ?? '🍱', level: 1,
-    time: new Date(post.created_at).toLocaleString('zh-TW'), content: post.content,
-    tags: post.tags, deadline: new Date(post.deadline_at).toLocaleString('zh-TW'), deadlineAt: post.deadline_at,
-    joined: post.joined, capacity: post.capacity, location: post.location,
+    id: post.id,
+    name: post.author_name,
+    badge: post.author_badge ?? '🍱',
+    level: post.author_level ?? 1,
+    time: new Date(post.created_at).toLocaleString('zh-TW'),
+    content: post.content,
+    tags: post.tags,
+    deadline: new Date(post.deadline_at).toLocaleString('zh-TW'),
+    deadlineAt: post.deadline_at,
+    joined: post.joined,
+    capacity: post.capacity,
+    location: post.location,
     pricePerPerson: post.price_per_person === null ? undefined : Number(post.price_per_person),
     isMine: post.my_status === 'host',
   };
@@ -137,16 +276,20 @@ const messages: Record<string, string> = {
   invalid_block_input: '請選擇有效使用者；不能封鎖自己。',
   block_limit_reached: '已達500位封鎖上限，請先整理封鎖名單。',
   user_interaction_blocked: '目前雙方無法互動，可能存在封鎖關係。',
-  blocked_group_interaction: '此群組存在與你的封鎖關係，目前無法發送訊息；仍可查看允許的紀錄與退出。',
+  blocked_group_interaction:
+    '此群組存在與你的封鎖關係，目前無法發送訊息；仍可查看允許的紀錄與退出。',
   invalid_safety_input: '操作格式不符，請重新整理後再試。',
   account_deletion_pending: '帳號正在清除，請到帳號設定繼續刪除流程。',
-  account_deletion_reauthentication_required: '刪除帳號前請先登出，再登入同一帳號；需要15分鐘內的新登入。',
+  account_deletion_reauthentication_required:
+    '刪除帳號前請先登出，再登入同一帳號；需要15分鐘內的新登入。',
   explicit_account_deletion_required: '請先查看刪除影響，手動輸入 DELETE 並明確確認。',
   account_deletion_challenge_expired: '刪除確認已過期或不屬於此登入，請重新取得預覽。',
   invalid_account_deletion_input: '刪除確認格式不符，請重新取得預覽。',
   account_deletion_not_started: '尚未確認開始刪除，請先取得預覽並確認。',
-  account_deletion_storage_remaining: '仍有圖片或其他儲存檔案待清理，帳號尚未刪除；請重試或聯絡開發者。',
-  account_deletion_cleanup_failed: '圖片清理暫時失敗，帳號尚未完成刪除；重新登入同一帳號可繼續清理。',
+  account_deletion_storage_remaining:
+    '仍有圖片或其他儲存檔案待清理，帳號尚未刪除；請重試或聯絡開發者。',
+  account_deletion_cleanup_failed:
+    '圖片清理暫時失敗，帳號尚未完成刪除；重新登入同一帳號可繼續清理。',
   image_storage_not_configured: '圖片儲存尚未啟用，請先使用文字拼單或檢查本機設定。',
   image_too_large: '圖片過大，請選擇4MB以內的圖片；上傳後會壓縮成JPEG。',
   image_dimensions_too_large: '圖片解析度過高，請先選擇較小或裁切後的圖片（最多1600萬像素）。',
@@ -155,15 +298,18 @@ const messages: Record<string, string> = {
   image_processing_busy: '正在處理其他圖片，請稍後重試。',
   image_storage_unavailable: '圖片儲存暫時無法連線，內容仍保留，請稍後重試。',
   image_storage_access_denied: '目前無法存取這份圖片，請重新整理或檢查登入。',
-  image_upload_incomplete: '圖片上傳或驗證尚未完成，請重試；也可到帳號設定清除未發佈副本後重新選取。',
+  image_upload_incomplete:
+    '圖片上傳或驗證尚未完成，請重試；也可到帳號設定清除未發佈副本後重新選取。',
   image_upload_conflict: '圖片副本與本次內容不符，請到帳號設定清除未發佈副本後重新選取。',
   image_key_conflict: '這次圖片或發布內容與先前重試不同，請重新確認。',
-  image_storage_limit: '已達開發版圖片額度（每人20張、專案100張）；請清除未發佈副本或先使用文字拼單。',
+  image_storage_limit:
+    '已達開發版圖片額度（每人20張、專案100張）；請清除未發佈副本或先使用文字拼單。',
   image_not_found: '圖片不存在或你無權查看。',
   image_already_published: '這張圖片已綁定已發佈拼單，不能當未發佈副本刪除或重複發布。',
   image_verification_required: '圖片尚未通過後端驗證，無法發布。',
   image_delete_incomplete: '圖片副本尚未完整刪除，請重試。',
-  invalid_formation_input: '請確認公開說明、整數金額、分工與含時區的截止時間；截止需晚於服務時間且不超過配合區間。',
+  invalid_formation_input:
+    '請確認公開說明、整數金額、分工與含時區的截止時間；截止需晚於服務時間且不超過配合區間。',
   terms_revision_conflict: '方案已更新，請重新整理並確認新版，舊版同意不會沿用。',
   device_ai_disabled: '目前裝置連線未啟用本機 AI，可先使用手動表單。',
   device_ai_rate_limit: '本機 AI 請求太頻繁，請一分鐘後再試。',
@@ -198,7 +344,8 @@ const messages: Record<string, string> = {
   invalid_account_input: '設定格式不符，請檢查後再試。',
   invalid_report_input: '回報需填 10～1,000 字，並選擇有效的對象。',
   preferences_changed_reload: '偏好已在其他地方更新，請先重新載入已儲存設定。',
-  quick_category_unclear: '分身還不確定你想揪什麼，請加上餐點或店名，例如「想喝50嵐」或「想吃披薩」。',
+  quick_category_unclear:
+    '分身還不確定你想揪什麼，請加上餐點或店名，例如「想喝50嵐」或「想吃披薩」。',
   coordination_waiting_for_all: '還在等其他夥伴同意，全部同意後就可以聊天。',
   report_key_conflict: '這次回報與先前重試內容不同，請重新確認。',
   report_target_unavailable: '無法檢舉此內容，可能已移除或你沒有查看權限。',
@@ -209,7 +356,8 @@ const messages: Record<string, string> = {
   recommendations_changed_reload: '偏好、名額或推薦資料已更新，請重新整理推薦清單。',
   intake_incomplete: '分身還需要補充資訊，請先回答問題。',
   local_model_not_configured: '尚未啟用本機模型，請依開發文件啟動模型與後端。',
-  local_semantic_not_configured: '尚未啟用本機語義配對，請依開發文件設定並重啟後端；原配對仍可使用。',
+  local_semantic_not_configured:
+    '尚未啟用本機語義配對，請依開發文件設定並重啟後端；原配對仍可使用。',
   invalid_candidate_review: '模型未能完成候選判讀，請稍後重試；原配對與確認流程仍可使用。',
   ungrounded_candidate_review: '這次模型理由未通過資料檢查，已隱藏，請重新分析。',
   invalid_embedding_response: '本機模型的向量格式不符，請確認模型設定後重試。',
@@ -267,14 +415,17 @@ const messages: Record<string, string> = {
   supabase_operation_failed: '雲端操作未完成，請稍後重試；若持續發生，請檢查開發專案設定。',
   email_confirmation_required: '請先完成信箱驗證，再回到此頁登入。',
   email_provider_not_configured: '開發專案尚未設定對外寄信，請使用已驗證的測試帳號。',
-  email_address_invalid: 'Supabase 不接受這個信箱。請使用能收驗證信的真實信箱；example.test 僅供離線測試。',
+  email_address_invalid:
+    'Supabase 不接受這個信箱。請使用能收驗證信的真實信箱；example.test 僅供離線測試。',
   email_send_rate_limit: '驗證信寄送已達限制，請稍後再試。',
-  google_login_not_configured: 'Google 登入尚未啟用。請先完成 Google OAuth 與 Supabase Google Provider 設定。',
+  google_login_not_configured:
+    'Google 登入尚未啟用。請先完成 Google OAuth 與 Supabase Google Provider 設定。',
   google_login_requires_supabase: 'Google 登入需要啟動 Supabase 開發模式。',
   google_login_expired_restart: 'Google 登入已失效或不屬於這個頁籤，請返回登入頁重新開始。',
   google_login_cancelled: 'Google 登入未完成，請返回登入頁重試。',
   google_web_only: '這一版 Google 登入先支援本機瀏覽器，iPhone App 登入尚未啟用。',
-  google_ios_not_configured: 'iPhone Google 登入程式已備妥，尚需設定開發專案的 App 回呼網址並啟用後端設定。',
+  google_ios_not_configured:
+    'iPhone Google 登入程式已備妥，尚需設定開發專案的 App 回呼網址並啟用後端設定。',
   google_native_build_required: '請使用 iPhone 開發版本，Expo Go 無法使用這個 App 專屬登入回呼。',
   google_login_invalid_response: 'Google 登入設定不符，請檢查開發專案的回呼網址。',
 };
@@ -282,16 +433,18 @@ const messages: Record<string, string> = {
 export function coreError(error: unknown): string {
   if (error instanceof Error && messages[error.message]) return messages[error.message];
   if (isAxiosError(error)) {
-    if (!error.response) return '無法連接本機後端。請確認伺服器已啟動；手機請檢查同一私人網路、本機網路權限與 HTTPS 憑證信任。登入資料會保留，可稍後重試。';
+    if (!error.response)
+      return '無法連接本機後端。請確認伺服器已啟動；手機請檢查同一私人網路、本機網路權限與 HTTPS 憑證信任。登入資料會保留，可稍後重試。';
     const detail: unknown = error.response.data?.detail;
     if (typeof detail === 'string' && messages[detail]) return messages[detail];
     if (error.response.status === 422) {
       const fields = new Set<string>();
-      if (Array.isArray(detail)) for (const item of detail) {
-        if (item && typeof item === 'object' && 'loc' in item && Array.isArray(item.loc)) {
-          for (const field of item.loc) if (typeof field === 'string') fields.add(field);
+      if (Array.isArray(detail))
+        for (const item of detail) {
+          if (item && typeof item === 'object' && 'loc' in item && Array.isArray(item.loc)) {
+            for (const field of item.loc) if (typeof field === 'string') fields.add(field);
+          }
         }
-      }
       if (fields.has('email')) return '請填寫有效的信箱地址。';
       if (fields.has('password')) return '密碼需為 10～128 字。';
       if (fields.has('display_name')) return '顯示名稱需為 1～40 字。';

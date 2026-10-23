@@ -1,3 +1,4 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import type { ComponentProps } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -102,6 +103,7 @@ export function CorePostRow({
           <Text numberOfLines={1} style={styles.name}>
             {post.author_name}
           </Text>
+          <ReputationBadge level={post.author_level} />
           <Text style={styles.metaText}>
             {post.my_status === 'host'
               ? '我主揪的'

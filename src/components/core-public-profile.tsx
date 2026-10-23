@@ -1,3 +1,4 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
@@ -73,6 +74,7 @@ export function CorePublicProfile({ id }: { id: string }) {
             <View style={styles.header}>
               <Avatar name={user.display_name} badge={user.badge} size={72} />
               <Text style={styles.name}>{user.display_name}</Text>
+              <ReputationBadge level={user.level} />
               <Text style={styles.body}>{user.bio || '尚未填寫個人介紹'}</Text>
               <Text style={styles.hint}>
                 加入日期：{new Date(user.created_at).toLocaleDateString('zh-TW')} · 目前有{' '}

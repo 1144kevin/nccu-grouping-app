@@ -1,24 +1,13 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardViewport } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
-import {
-  Avatar,
-  DetailHeader,
-  IconButton,
-  PrimaryButton,
-  Screen,
-} from '@/components/primitives';
+import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { coreApi, coreError, newRequestKey } from '@/lib/core-api';
 import { invalidateCore, useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
@@ -93,7 +82,11 @@ export function CoreGroupChat({ id }: { id: string }) {
   return (
     <Screen>
       <DetailHeader
-        title={query.data?.pages[0]?.post ? `【群組】${query.data.pages[0].post.content.split('\n')[0]}` : '拼單聊天室'}
+        title={
+          query.data?.pages[0]?.post
+            ? `【群組】${query.data.pages[0].post.content.split('\n')[0]}`
+            : '拼單聊天室'
+        }
         right={
           <IconButton
             icon="refresh"
@@ -174,6 +167,7 @@ export function CoreGroupChat({ id }: { id: string }) {
                   <View style={styles.sender}>
                     <Avatar name={item.sender_name} badge={item.sender_badge} size={28} />
                     <Text style={styles.muted}>{item.sender_name}</Text>
+                    <ReputationBadge level={item.sender_level} />
                   </View>
                   <View style={[styles.bubble, item.sender_id === user?.id && styles.mineBubble]}>
                     <Text style={styles.body}>{item.content}</Text>

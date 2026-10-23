@@ -31,7 +31,7 @@ export function postEmoji(post: Pick<CorePost, 'content' | 'tags'>) {
 }
 export function CoreProfileScreen() {
   const user = useAuthStore((s) => s.user);
-  const history = useCorePosts('history');
+  const history = useCorePosts('history', '', false, 5);
   const experience = useExperience();
   const [help, setHelp] = useState(false);
   if (!user) return null;
@@ -58,9 +58,12 @@ export function CoreProfileScreen() {
               })}
               加入
             </Text>
-            <Text style={styles.role}>
-              {user.badge ?? '🍱'} {experience.data ? `${labels[level - 1]}揪團夥伴` : '揪團新朋友'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <BurgerLevelIcon level={level} size={30} />
+              <Text style={styles.role}>
+                {experience.data ? `${labels[level - 1]}揪團夥伴` : '揪團新朋友'}
+              </Text>
+            </View>
             <Text style={styles.bio}>{user.bio || '寫點介紹，讓夥伴認識你'}</Text>
           </View>
           <MaterialCommunityIcons name="pencil-outline" size={17} color={colors.subtle} />
@@ -96,8 +99,8 @@ export function CoreProfileScreen() {
         <SectionTitle
           action={
             <Text style={styles.count}>
-              {experience.data?.history_count ?? history.posts.length}
-              {!experience.data && history.hasNextPage ? '+' : ''} 筆
+              {history.posts.length}
+              {history.hasNextPage ? '+' : ''} 筆
             </Text>
           }
         >
@@ -129,7 +132,7 @@ export function CoreProfileScreen() {
               void history.fetchNextPage();
             }}
           >
-            更多紀錄
+            載入更多
           </PrimaryButton>
         ) : null}
         <Pressable

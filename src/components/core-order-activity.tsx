@@ -1,14 +1,8 @@
+import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar, DetailHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
 import { coreError, type CoreOrderActivity } from '@/lib/core-api';
@@ -127,9 +121,10 @@ function CoreRequestActivity() {
             }
           >
             <View style={styles.row}>
-              <Avatar name={item.requester_name} badge="🍱" size={42} />
+              <Avatar name={item.requester_name} badge={item.requester_badge ?? '🍱'} size={42} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{activityTitle(item)}</Text>
+                <ReputationBadge level={item.requester_level} />
                 <Text style={styles.hint}>{shortDate(item.occurred_at)}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={18} color={colors.subtle} />

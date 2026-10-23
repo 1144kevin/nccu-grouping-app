@@ -33,12 +33,13 @@ export function useCorePosts(
   scope: 'feed' | 'hosted' | 'participating' | 'history' = 'feed',
   q = '',
   activeOnly = false,
+  pageSize = 30,
 ) {
   const user = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
   const query = useInfiniteQuery({
-    queryKey: ['core', user?.id, 'posts', scope, q, activeOnly],
-    queryFn: ({ pageParam }) => coreApi.posts(scope, pageParam, q, activeOnly),
+    queryKey: ['core', user?.id, 'posts', scope, q, activeOnly, pageSize],
+    queryFn: ({ pageParam }) => coreApi.posts(scope, pageParam, q, activeOnly, pageSize),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: CORE_API_ENABLED && !!user && focused,
