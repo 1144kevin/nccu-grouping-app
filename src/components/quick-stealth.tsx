@@ -1,7 +1,8 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { KeyboardScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
@@ -65,6 +66,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
   const [details, setDetails] = useState(false);
+  const [decided, setDecided] = useState<string[]>([]);
   const request = useRef<{ text: string; key: string } | null>(null);
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -88,24 +90,11 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
       setSaved(result);
       await refresh();
       if (!sameActor()) return;
-      setPhase('需求已記住，分身正在替你找夥伴…');
-      try {
-        await stealthApi.discover();
-        if (!sameActor()) return;
-        await refresh();
-        setPhase('正在比較合適的夥伴與初步分工…');
-        const response = await stealthApi.semantic();
-        if (sameActor()) {
-          setAnalysis(response);
-          await refresh();
-        }
-      } catch {
-        if (sameActor())
-          setNotice('需求已儲存。AI 搜尋暫未完成，先顯示已找到的機會；可稍後按「請分身再看看」。');
-      }
+      setNotice('已交給分身，會持續留意平台上的合適需求。');
       if (sameActor()) {
         setPhase('');
         request.current = null;
+        setText('');
       }
     },
   });
@@ -135,13 +124,27 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
     focused ? analysis : undefined,
     now,
   );
-  const visible = ordered.filter((m) => m.status !== 'unavailable' || m.coordination_opened);
+  const visible = ordered.filter(
+    (m) =>
+      m.status === 'pending' &&
+      m.my_decision === 'pending' &&
+      Date.parse(m.expires_at) > now &&
+      !decided.includes(m.id),
+  );
   return (
     <Screen>
       <DetailHeader title="偷揪" />
       <KeyboardScrollView contentContainerStyle={styles.page}>
         <View style={styles.hero}>
-          <Text style={styles.title}>想做什麼，跟分身說一句。</Text>
+          <View style={styles.headingRow}>
+            <View style={styles.agentIcon}>
+              <MaterialCommunityIcons name="robot-outline" size={25} color={colors.brown} />
+            </View>
+            <View>
+              <Text style={styles.title}>讓分身幫你揪</Text>
+              <Text style={styles.hint}>說一次，替你持續留意</Text>
+            </View>
+          </View>
 
           <TextInput
             accessibilityLabel="一句話告訴分身"
@@ -153,7 +156,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             editable={!busy}
             style={styles.input}
           />
-          <Text style={styles.hint}>預設正門 · 接下來兩小時，可直接輸入調整。</Text>
+          <Text style={styles.hint}>正門 · 接下來兩小時，可在描述中更改</Text>
           {!agent.data?.enabled ? (
             <Text style={styles.hint}>啟用後會儲存需求，替你找夥伴。</Text>
           ) : null}
@@ -214,6 +217,21 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
                 ? '還在替你留意合適的人'
                 : '說完一句，就等分身帶消息回來'}
         </Text>
+        {active.length ? (
+          <View style={styles.watchStatus}>
+            <MaterialCommunityIcons name="radar" size={18} color={colors.brown} />
+            <Text style={styles.hint}>分身正在留意 · {active.length} 個需求</Text>
+          </View>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/messages')}
+          style={styles.chatLink}
+        >
+          <MaterialCommunityIcons name="message-outline" size={18} color={colors.brown} />
+          <Text style={styles.hint}>已接受的機會，前往訊息查看</Text>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={colors.brown} />
+        </Pressable>
         {!visible.length && active.length ? (
           <Text style={styles.body}>還沒遇到合適夥伴，稍後再來看看。</Text>
         ) : null}
@@ -228,9 +246,10 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             match={match}
             explanation={valid.get(match.id)?.explanations ?? []}
             refresh={refresh}
+            onDecided={(id) => setDecided((ids) => [...ids, id])}
           />
         ))}
-        {active.length ? (
+        {details && active.length ? (
           <PrimaryButton
             secondary
             disabled={busy || !capability.data?.ready}
@@ -281,23 +300,24 @@ export function QuickMatch({
   match,
   explanation,
   refresh,
+  onDecided,
 }: {
   match: StealthMatch;
   explanation: string[];
   refresh: () => Promise<void>;
+  onDecided?: (id: string) => void;
 }) {
   const actor = useAuthStore((s) => s.user?.id);
   const decide = useMutation({
     mutationFn: (decision: 'accepted' | 'declined') => stealthApi.decide(match.id, decision),
     onSuccess: async (result) => {
       if (useAuthStore.getState().user?.id !== actor) return;
+      onDecided?.(match.id);
       await refresh();
       if (result.status === 'ready')
         router.push({ pathname: '/stealth-chat/[id]', params: { id: result.id } });
     },
   });
-  const role = (number: number | null | undefined) =>
-    number ? (number === match.my_member_number ? '你' : `夥伴 ${number}`) : '進聊天室再商量';
   return (
     <View style={styles.card}>
       <Text style={styles.subtitle}>
@@ -311,16 +331,19 @@ export function QuickMatch({
       <Text style={styles.body}>
         {(explanation.length ? explanation : match.reasons).slice(0, 2).join('。')}
       </Text>
-      <Text style={styles.body}>
-        初步建議：下單由{role(match.agent_draft?.order_member ?? 1)}；取餐由
-        {role(match.agent_draft?.pickup_member ?? 2)}。可以進聊天室交換分工。
-      </Text>
-      <Text style={styles.hint}>
-        {match.known_cost_twd == null
-          ? '價格與品項進聊天室確認'
-          : `目前參考每人 NT$ ${match.known_cost_twd}，仍待確認`}
-        。先聊聊，再決定是否成團。
-      </Text>
+      <View style={styles.watchStatus}>
+        <MaterialCommunityIcons name="clock-outline" size={16} color={colors.brown} />
+        <Text style={styles.hint}>
+          {new Date(match.starts_at).toLocaleTimeString('zh-TW', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}{' '}
+          · {{ main_gate: '正門', east_gate: '麥側', south_gate: '莊九' }[match.location_id]}
+        </Text>
+        <Text style={styles.hint}>
+          {match.known_cost_twd == null ? '金額待討論' : `約 NT$ ${match.known_cost_twd}／人`}
+        </Text>
+      </View>
       {match.status === 'formed' && match.formed_post_id ? (
         <PrimaryButton onPress={() => router.push(`/chat/${match.formed_post_id}`)}>
           進入成團聊天室
@@ -339,7 +362,7 @@ export function QuickMatch({
         </Text>
       ) : (
         <PrimaryButton disabled={decide.isPending} onPress={() => decide.mutate('accepted')}>
-          同意初步安排，進聊天室
+          接受機會
         </PrimaryButton>
       )}
       {match.status !== 'formed' && match.status !== 'unavailable' && !match.is_demo ? (
@@ -369,8 +392,19 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     gap: spacing.md,
   },
-  hero: {
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  agentIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.yellowSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  watchStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  chatLink: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
+  hero: {
+    backgroundColor: colors.background,
     borderRadius: radius.md,
     padding: spacing.md,
     gap: spacing.md,
@@ -382,19 +416,19 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
-  title: { fontSize: 23, fontWeight: '800', lineHeight: 32, color: colors.ink },
+  title: { fontSize: 21, fontWeight: '800', lineHeight: 32, color: colors.ink },
   subtitle: { fontSize: 18, fontWeight: '700', color: colors.ink },
   body: { fontSize: 15, lineHeight: 24, color: colors.ink },
   hint: { fontSize: 13, lineHeight: 21, color: colors.muted },
   input: {
     backgroundColor: colors.surface,
-    minHeight: 90,
+    minHeight: 80,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     color: colors.ink,
-    fontSize: 18,
+    fontSize: 16,
   },
   error: { color: colors.danger, lineHeight: 22 },
 });

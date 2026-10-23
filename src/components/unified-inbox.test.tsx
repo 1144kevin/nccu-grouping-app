@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { UnifiedInbox } from './unified-inbox';
 import { socialApi } from '@/lib/social-api';
 
+jest.mock('@/components/stealth-conversations', () => ({ StealthConversations: () => null }));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn() },
   useFocusEffect: jest.fn(),

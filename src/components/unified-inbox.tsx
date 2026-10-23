@@ -1,18 +1,11 @@
+import { StealthConversations } from '@/components/stealth-conversations';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useCallback, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Pressable,
-
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   AppHeader,
@@ -141,6 +134,7 @@ function Inbox() {
             }}
           />
         }
+        ListHeaderComponent={!deleted && tab !== 'direct' ? <StealthConversations /> : null}
         ListEmptyComponent={
           query.isPending ? (
             <ActivityIndicator />

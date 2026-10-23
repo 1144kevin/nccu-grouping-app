@@ -97,7 +97,7 @@ const wrap = (children: React.ReactNode) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
-it('offers one sentence and one start action, automatically orchestrating search without final consent', async () => {
+it('saves one sentence without blocking on matching or consenting to terms', async () => {
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
   expect(screen.getAllByLabelText('一句話告訴分身')).toHaveLength(1);
   expect(screen.queryByRole('button', { name: 'AI 搜尋新配對機會' })).toBeNull();
@@ -106,9 +106,9 @@ it('offers one sentence and one start action, automatically orchestrating search
   );
   await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
   await fireEvent.press(screen.getByRole('button', { name: '啟用分身並幫我揪' }));
-  await waitFor(() => expect(stealthApi.semantic).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByText(/已交給分身/)).toBeTruthy());
   expect(stealthApi.quickStart).toHaveBeenCalledWith('我今天想喝50嵐', true, expect.any(String));
-  expect(stealthApi.discover).toHaveBeenCalledTimes(1);
+  expect(stealthApi.discover).not.toHaveBeenCalled();
   expect(stealthApi.consent).not.toHaveBeenCalled();
   expect(stealthApi.terms).not.toHaveBeenCalled();
 });
@@ -144,7 +144,7 @@ it('preserves the sentence and request key after an uncertain network failure', 
   );
 });
 
-it('keeps a committed request when semantic inference fails', async () => {
+it('does not make the user wait for semantic inference after saving a request', async () => {
   jest.mocked(stealthApi.discover).mockRejectedValueOnce(new Error('model busy'));
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
   await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
@@ -152,7 +152,7 @@ it('keeps a committed request when semantic inference fails', async () => {
     expect(screen.getByRole('button', { name: '啟用分身並幫我揪' })).toBeEnabled(),
   );
   await fireEvent.press(screen.getByRole('button', { name: '啟用分身並幫我揪' }));
-  await waitFor(() => expect(screen.getByText(/需求已儲存。AI 搜尋暫未完成/)).toBeTruthy());
+  await waitFor(() => expect(screen.getByText(/已交給分身/)).toBeTruthy());
   expect(screen.getByText(/已記住：我今天想喝50嵐/)).toBeTruthy();
   expect(stealthApi.quickStart).toHaveBeenCalledTimes(1);
 });
@@ -162,7 +162,7 @@ it('preliminary acceptance opens coordination only after everyone accepts and ne
   const screen = await render(
     wrap(<QuickMatch match={match} explanation={[]} refresh={async () => undefined} />),
   );
-  await fireEvent.press(screen.getByRole('button', { name: '同意初步安排，進聊天室' }));
+  await fireEvent.press(screen.getByRole('button', { name: '接受機會' }));
   await waitFor(() =>
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/stealth-chat/[id]',
@@ -209,6 +209,29 @@ it('keeps opened withdrawn rooms accessible as read-only history', async () => {
     ),
   );
   expect(screen.getByRole('button', { name: '查看聊天室紀錄' })).toBeEnabled();
-  expect(screen.queryByRole('button', { name: '同意初步安排，進聊天室' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '接受機會' })).toBeNull();
   expect(screen.queryByRole('button', { name: '這次先不用' })).toBeNull();
+});
+
+it('keeps only undecided live opportunities on the quick screen', async () => {
+  const active = {
+    ...match,
+    starts_at: '2026-10-22T10:00:00Z',
+    expires_at: '2026-10-22T12:00:00Z',
+    score: 70,
+    location_id: 'main_gate',
+  };
+  jest
+    .mocked(stealthApi.matches)
+    .mockResolvedValue({
+      items: [
+        active,
+        { ...active, id: 'accepted', my_decision: 'accepted' },
+        { ...active, id: 'formed', status: 'formed' },
+        { ...active, id: 'expired', expires_at: '2026-10-21T12:00:00Z' },
+      ],
+    } as never);
+  const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
+  await waitFor(() => expect(screen.getAllByRole('button', { name: '接受機會' })).toHaveLength(1));
+  expect(screen.queryByText('你已同意聊聊，等待夥伴回覆。')).toBeNull();
 });
