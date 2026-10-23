@@ -15,7 +15,7 @@ import {
 import { BurgerLevelIcon, type BurgerLevel } from '@/components/burger-level-icon';
 import { useCorePosts } from '@/lib/core-hooks';
 import { useExperience } from '@/lib/social-api';
-import { coreError, type CorePost } from '@/lib/core-api';
+import { CORE_SUPABASE_MODE, coreError, type CorePost } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
@@ -35,8 +35,8 @@ export function CoreProfileScreen() {
   const experience = useExperience();
   const [help, setHelp] = useState(false);
   if (!user) return null;
-  const level = experience.data?.level ?? 1;
-  const score = experience.data?.score;
+  const level = CORE_SUPABASE_MODE ? 1 : (experience.data?.level ?? 1);
+  const score = CORE_SUPABASE_MODE ? 20 : experience.data?.score;
   const labels = ['一分熟', '二分熟', '三分熟', '四分熟', '五分熟'];
   return (
     <Screen>
@@ -82,7 +82,12 @@ export function CoreProfileScreen() {
             <MaterialCommunityIcons name="information-outline" size={16} color={colors.muted} />
           </View>
           <View style={styles.progressRow}>
-            <View style={styles.progressTrack}>
+            <View
+              style={styles.progressTrack}
+              accessibilityRole="progressbar"
+              accessibilityLabel="熟度進度"
+              accessibilityValue={{ min: 0, max: 100, now: score ?? 0 }}
+            >
               <View style={[styles.progress, { width: `${score ?? 0}%` }]} />
             </View>
             <Text style={styles.score}>{score == null ? '—' : score}/100</Text>
@@ -150,6 +155,7 @@ export function CoreProfileScreen() {
           <View style={styles.help}>
             <Text style={styles.username}>一起把漢堡疊高</Text>
             <Text style={styles.bio}>
+              {CORE_SUPABASE_MODE ? '目前進度以 20 分預覽；正式分數依完成的面交紀錄計算。' : ''}
               每筆拼單在所有團員確認完成面交後累積 10 分，上限 100
               分。尚未完成、取消與示範拼單不計分。
             </Text>
