@@ -42,6 +42,7 @@ it('selects a campus reference and preserves notes only after explicit confirmat
   await fireEvent.press(s.getByRole('button', { name: '確認取餐地點' }));
   expect(s.getByTestId('location').props.children).toContain('取餐說明：一樓右側桌子');
   expect(s.queryByText(/要將/)).toBeNull();
+  await fireEvent.press(s.getByRole('button', { name: '編輯取餐地點說明' }));
   await fireEvent.changeText(s.getByLabelText('取餐地點名稱'), '商學院另一側');
   expect(s.getByTestId('location').props.children).toBe('unconfirmed');
 });
@@ -81,8 +82,9 @@ it('retains search and navigation and invalidates an edited selection', async ()
   await waitFor(() => expect(s.getByRole('button', { name: '選擇地點 新的取餐點' })).toBeTruthy());
   await fireEvent.press(s.getByRole('button', { name: '選擇地點 新的取餐點' }));
   await fireEvent.press(s.getByRole('button', { name: '確認取餐地點' }));
-  await fireEvent.press(s.getByRole('button', { name: '用 Google Maps 導航' }));
+  await fireEvent.press(s.getByRole('link', { name: '用 Google Maps 導航' }));
   expect(spy).toHaveBeenCalledWith(expect.stringContaining('destination=24.986%2C121.576'));
+  await fireEvent.press(s.getByRole('button', { name: '編輯取餐地點說明' }));
   await fireEvent.changeText(s.getByLabelText('補充取餐地點說明'), '另一張桌子');
   expect(s.getByTestId('location').props.children).toBe('unconfirmed');
   spy.mockRestore();
@@ -106,6 +108,7 @@ it('does not show another account favorites and blocks edits while publishing', 
 it('loads older server locations with null optional fields without losing coordinates', async () => {
   const onChange = jest.fn();
   const s = await render(<LocationPicker value={{ ...place, address: null, source: null } as unknown as PostLocation} onChange={onChange} />);
+  await fireEvent.press(s.getByRole('button', { name: '編輯取餐地點說明' }));
   await fireEvent.press(s.getByRole('button', { name: '確認取餐地點' }));
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining(place));
 });
@@ -116,5 +119,5 @@ it('preserves the address and note if the map is opened and confirmed without mo
   await fireEvent.press(s.getByRole('button', { name: '在地圖上選點／微調' }));
   await fireEvent.press(s.getByRole('button', { name: '使用此位置' }));
   expect(onChange).not.toHaveBeenCalled();
-  expect(s.getByLabelText('補充取餐地點說明').props.value).toBe('一樓桌子');
+  expect(s.getByText('一樓桌子')).toBeTruthy();
 });
