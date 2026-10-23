@@ -165,15 +165,6 @@ export function CoreOrderDetail({ id }: { id: string }) {
           <RequestCard key={request.id} request={request} closed={closed} />
         ))}
         {!pending.length ? <Text style={styles.empty}>這筆紀錄沒有待處理的申請</Text> : null}
-        <SectionTitle>面交資訊</SectionTitle>
-        <PostInfo post={toFeedPost(post)} />
-        <View style={styles.infoRow}>
-          <MaterialCommunityIcons name="shield-check-outline" size={20} color={colors.yellow} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.memberName}>交易提醒</Text>
-            <Text style={styles.body}>付款前確認品項與金額，勿提供帳戶密碼或驗證碼。</Text>
-          </View>
-        </View>
         {summary.data?.can_confirm ? (
           <View style={{ gap: 8 }}>
             <Text style={styles.detail}>
@@ -204,6 +195,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
             </Text>
           ))}
         </View>
+        <PostInfo post={toFeedPost(post)} />
         {['host', 'accepted'].includes(post.my_status) ? (
           <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>
             進入群組聊天室
@@ -294,13 +286,6 @@ const styles = StyleSheet.create({
   },
   memberName: { color: colors.ink, fontSize: 15, fontWeight: '700' },
   empty: { paddingVertical: 24, color: colors.muted, textAlign: 'center', fontSize: 14 },
-  infoRow: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
   body: { color: colors.ink, fontSize: 15, lineHeight: 23 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   tag: { color: colors.brown, fontSize: 14 },

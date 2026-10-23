@@ -3,7 +3,8 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { coreApi } from '@/lib/core-api';
-import { CoreOrdersScreen } from './core-order-screens';
+import { CoreOrdersScreen, ParticipatingOrderRow } from './core-order-screens';
+import type { CorePost } from '@/lib/core-api';
 
 let mockClosed = false;
 const mockPost = {
@@ -112,4 +113,17 @@ it('omits expired orders even when stale activity still mentions pending request
   const screen = await render(ui());
   expect(screen.queryByText('較早發布的晚餐團')).toBeNull();
   expect(screen.queryByRole('button', { name: '接受' })).toBeNull();
+});
+
+it('shows participation as a compact host/content/status row with separate profile access', async () => {
+  const s = await render(
+    <ParticipatingOrderRow post={{ ...mockPost, my_status: 'pending' } as CorePost} />,
+  );
+  expect(s.getByText('待接受')).toBeTruthy();
+  expect(s.getByText('普通拼單')).toBeTruthy();
+  expect(s.queryByText('取餐地點')).toBeNull();
+  await fireEvent.press(s.getByRole('button', { name: '查看 測試主揪 的公開資料' }));
+  expect(router.push).toHaveBeenCalledWith('/user/host');
+  await fireEvent.press(s.getByRole('button', { name: '查看拼單 普通拼單' }));
+  expect(router.push).toHaveBeenCalledWith('/order/visible-post');
 });

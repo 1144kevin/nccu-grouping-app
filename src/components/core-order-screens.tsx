@@ -39,7 +39,7 @@ import {
 } from '@/lib/core-api';
 import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/lib/core-hooks';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
-import { CorePostRow, shortDate } from '@/components/list-ui';
+import { shortDate } from '@/components/list-ui';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
 import { ReportButton } from '@/components/core-reports';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -163,13 +163,12 @@ export function CoreOrdersScreen() {
         : 'hosted';
   const query = useCorePosts(scope, '', true);
   const activity = useCoreOrderActivity(true);
-  const pendingIds = new Set(activity.groups.map((group) => group.postId));
   const posts = query.posts
     .filter(
       (p) =>
         !['expired', 'cancelled'].includes(p.status) && Date.parse(p.deadline_at) > clock.now(),
     )
-    .sort((a, b) => Number(pendingIds.has(b.id)) - Number(pendingIds.has(a.id)));
+    .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const missing =
     scope === 'hosted'
       ? activity.groups.filter((group) => !posts.some((p) => p.id === group.postId))
@@ -213,9 +212,6 @@ export function CoreOrdersScreen() {
         }
         ListHeaderComponent={
           <>
-            {missing.map((group) => (
-              <MissingHostedGroup key={group.postId} id={group.postId} />
-            ))}
             {query.error || activity.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 {coreError(query.error || activity.error)}
@@ -236,6 +232,9 @@ export function CoreOrdersScreen() {
         }
         ListFooterComponent={
           <>
+            {missing.map((group) => (
+              <MissingHostedGroup key={group.postId} id={group.postId} />
+            ))}
             {activity.hasNextPage && scope === 'hosted' ? (
               <PrimaryButton
                 secondary
@@ -261,10 +260,61 @@ export function CoreOrdersScreen() {
           </>
         }
         renderItem={({ item }) =>
-          scope === 'hosted' ? <HostedApplicants post={item} /> : <CorePostRow post={item} order />
+          scope === 'hosted' ? (
+            <HostedApplicants post={item} />
+          ) : (
+            <ParticipatingOrderRow post={item} />
+          )
         }
       />
     </Screen>
+  );
+}
+export function ParticipatingOrderRow({ post }: { post: CorePost }) {
+  const label =
+    post.status === 'expired' || post.status === 'cancelled'
+      ? statusLabels[post.status]
+      : post.my_status in decisionLabels
+        ? decisionLabels[post.my_status as keyof typeof decisionLabels]
+        : statusLabels[post.status];
+  return (
+    <View style={styles.participatingRow}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`查看 ${post.author_name} 的公開資料`}
+        onPress={() => router.push(`/user/${post.author_id}`)}
+      >
+        <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={46} />
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`查看拼單 ${post.content}`}
+        onPress={() => router.push(`/order/${post.id}`)}
+        style={{ flex: 1, gap: 7 }}
+      >
+        <View style={[styles.row, { alignItems: 'flex-start' }]}>
+          <View
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Text numberOfLines={1} style={[styles.title, { flexShrink: 1 }]}>
+              {post.author_name}
+            </Text>
+            <ReputationBadge level={post.author_level} />
+          </View>
+          <Pill tone={post.my_status === 'accepted' ? 'success' : 'plain'}>{label}</Pill>
+        </View>
+        <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
+        <Text numberOfLines={2} style={styles.body}>
+          {post.content}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 function MissingHostedGroup({ id }: { id: string }) {
@@ -493,6 +543,14 @@ export function RequestCard({ request, closed }: { request: CoreJoin; closed: bo
 }
 
 const styles = StyleSheet.create({
+  participatingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
   orderTabs: { flexDirection: 'row', paddingHorizontal: 18, gap: 12, paddingVertical: 10 },
   orderTab: {
     flex: 1,
