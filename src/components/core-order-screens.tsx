@@ -1,3 +1,4 @@
+import { useCoreClock } from '@/lib/core-clock';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
@@ -7,7 +8,6 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-
   Share,
   ScrollView,
   StyleSheet,
@@ -92,13 +92,15 @@ export function CorePostDetail({ id }: { id: string }) {
           >
             <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={46} />
             <View style={{ flex: 1, gap: 4 }}>
-              <View style={styles.row}><Text style={styles.title}>{post.author_name}</Text><ReputationBadge level={post.author_level} /></View>
+              <View style={styles.row}>
+                <Text style={styles.title}>{post.author_name}</Text>
+                <ReputationBadge level={post.author_level} />
+              </View>
               <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
             </View>
           </Pressable>
           <Pill>{statusLabels[post.status]}</Pill>
         </View>
-        {post.is_demo ? <Pill>示範資料</Pill> : null}
         {post.my_status === 'host' && focus === 'requests' ? <HostManagement post={post} /> : null}
         <Text style={styles.body}>{post.content}</Text>
         {post.image_id ? <CorePostImage imageId={post.image_id} /> : null}
@@ -151,6 +153,7 @@ export function CorePostDetail({ id }: { id: string }) {
 }
 
 export function CoreOrdersScreen() {
+  const clock = useCoreClock();
   const params = useLocalSearchParams<{ scope?: string }>();
   const scope =
     params.scope === 'history'
@@ -158,12 +161,15 @@ export function CoreOrdersScreen() {
       : params.scope === 'participating'
         ? 'participating'
         : 'hosted';
-  const query = useCorePosts(scope);
+  const query = useCorePosts(scope, '', true);
   const activity = useCoreOrderActivity(true);
   const pendingIds = new Set(activity.groups.map((group) => group.postId));
-  const posts = [...query.posts].sort(
-    (a, b) => Number(pendingIds.has(b.id)) - Number(pendingIds.has(a.id)),
-  );
+  const posts = query.posts
+    .filter(
+      (p) =>
+        !['expired', 'cancelled'].includes(p.status) && Date.parse(p.deadline_at) > clock.now(),
+    )
+    .sort((a, b) => Number(pendingIds.has(b.id)) - Number(pendingIds.has(a.id)));
   const missing =
     scope === 'hosted'
       ? activity.groups.filter((group) => !posts.some((p) => p.id === group.postId))
@@ -262,8 +268,13 @@ export function CoreOrdersScreen() {
   );
 }
 function MissingHostedGroup({ id }: { id: string }) {
+  const clock = useCoreClock();
   const query = useCorePost(id);
-  return query.data?.my_status === 'host' ? <HostedApplicants post={query.data} /> : null;
+  return query.data?.my_status === 'host' &&
+    !['expired', 'cancelled'].includes(query.data.status) &&
+    Date.parse(query.data.deadline_at) > clock.now() ? (
+    <HostedApplicants post={query.data} />
+  ) : null;
 }
 function HostedApplicants({ post }: { post: CorePost }) {
   const query = useCoreRequests(post.id);
@@ -367,7 +378,10 @@ function HostManagement({ post }: { post: CorePost }) {
       </SectionTitle>
       <View style={styles.member}>
         <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={42} />
-        <View style={styles.row}><Text style={styles.title}>{post.author_name}</Text><ReputationBadge level={post.author_level} /></View>
+        <View style={styles.row}>
+          <Text style={styles.title}>{post.author_name}</Text>
+          <ReputationBadge level={post.author_level} />
+        </View>
         <Pill tone="yellow">主揪</Pill>
       </View>
       {query.isPending ? <ActivityIndicator /> : null}
@@ -439,7 +453,10 @@ export function RequestCard({ request, closed }: { request: CoreJoin; closed: bo
           accessibilityRole="button"
           onPress={() => router.push(`/user/${request.requester_id}`)}
         >
-          <View style={styles.row}><Text style={styles.requestName}>{request.requester_name}</Text><ReputationBadge level={request.requester_level} /></View>
+          <View style={styles.row}>
+            <Text style={styles.requestName}>{request.requester_name}</Text>
+            <ReputationBadge level={request.requester_level} />
+          </View>
         </Pressable>
         <Text style={styles.hint}>{shortDate(request.created_at)}</Text>
       </View>
@@ -451,7 +468,7 @@ export function RequestCard({ request, closed }: { request: CoreJoin; closed: bo
             disabled={mutation.isPending}
             onPress={() => mutation.mutate('rejected')}
           >
-            <Text style={styles.hint}>拒絕</Text>
+            <Text style={styles.hint}>刪除</Text>
           </Pressable>
           <PrimaryButton
             style={{ minHeight: 36, paddingHorizontal: 14 }}
@@ -476,15 +493,15 @@ export function RequestCard({ request, closed }: { request: CoreJoin; closed: bo
 }
 
 const styles = StyleSheet.create({
-  orderTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
+  orderTabs: { flexDirection: 'row', paddingHorizontal: 18, gap: 12, paddingVertical: 10 },
   orderTab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 18,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
+    height: 40,
+    borderRadius: radius.pill,
+    justifyContent: 'center',
   },
-  orderTabActive: { borderBottomColor: colors.yellow },
+  orderTabActive: { backgroundColor: colors.yellow },
   tabLabel: { color: colors.muted, fontSize: 16 },
   tabLabelActive: { color: colors.ink, fontWeight: '700' },
   applicationGroup: { marginBottom: 28, gap: 8 },

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { coreApi } from '@/lib/core-api';
 import { CoreOrdersScreen } from './core-order-screens';
 
+let mockClosed = false;
 const mockPost = {
   id: 'visible-post',
   author_id: 'host',
@@ -19,15 +20,48 @@ const mockPost = {
   status: 'open',
   my_status: 'host',
 };
+jest.mock('@/lib/core-clock', () => ({
+  useCoreClock: () => ({ now: () => Date.parse('2026-10-23T08:00:00Z') }),
+}));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), setParams: jest.fn() },
   useLocalSearchParams: () => ({}),
   Link: ({ children }: { children: unknown }) => children,
 }));
 jest.mock('@/lib/core-hooks', () => ({
-  useCorePosts: () => ({ posts: [mockPost], isPending: false }),
-  useCorePost: () => ({ data: { ...mockPost, id: 'older-page-post', content: '較早發布的晚餐團' } }),
-  useCoreRequests: (id: string) => ({ data: id === 'older-page-post' ? [{ id: 'request-1', post_id: id, requester_id: 'applicant', requester_name: '小安', requester_badge: '🍍', status: 'pending', created_at: '2026-10-23T08:00:00Z' }] : [], isPending: false }),
+  useCorePosts: () => ({
+    posts: [
+      mockClosed
+        ? { ...mockPost, status: 'expired', deadline_at: '2020-01-01T00:00:00Z' }
+        : mockPost,
+    ],
+    isPending: false,
+  }),
+  useCorePost: () => ({
+    data: {
+      ...mockPost,
+      ...(mockClosed ? { status: 'expired', deadline_at: '2020-01-01T00:00:00Z' } : {}),
+      id: 'older-page-post',
+      content: '較早發布的晚餐團',
+    },
+  }),
+  useCoreRequests: (id: string) => ({
+    data:
+      id === 'older-page-post'
+        ? [
+            {
+              id: 'request-1',
+              post_id: id,
+              requester_id: 'applicant',
+              requester_name: '小安',
+              requester_badge: '🍍',
+              status: 'pending',
+              created_at: '2026-10-23T08:00:00Z',
+            },
+          ]
+        : [],
+    isPending: false,
+  }),
   invalidateCore: jest.fn(async () => undefined),
 }));
 jest.mock('@/lib/core-chat-hooks', () => ({
@@ -40,12 +74,22 @@ jest.mock('@/lib/font-size-storage', () => ({
   fontSizeStorage: { getItem: () => null, setItem: jest.fn(), removeItem: jest.fn() },
 }));
 afterEach(() => {
+  mockClosed = false;
   client.clear();
   jest.clearAllMocks();
 });
-jest.mock('@/lib/core-api', () => ({ coreApi: { decide: jest.fn(async () => ({})) }, coreError: () => '測試錯誤' }));
-const client = new QueryClient({ defaultOptions: { mutations: { retry: false, gcTime: 0 }, queries: { gcTime: 0 } } });
-const ui = () => <QueryClientProvider client={client}><CoreOrdersScreen /></QueryClientProvider>;
+jest.mock('@/lib/core-api', () => ({
+  coreApi: { decide: jest.fn(async () => ({})) },
+  coreError: () => '測試錯誤',
+}));
+const client = new QueryClient({
+  defaultOptions: { mutations: { retry: false, gcTime: 0 }, queries: { gcTime: 0 } },
+});
+const ui = () => (
+  <QueryClientProvider client={client}>
+    <CoreOrdersScreen />
+  </QueryClientProvider>
+);
 it('shows applicants from an older page and accepts inline without opening order detail', async () => {
   const screen = await render(ui());
   expect(screen.getByText('較早發布的晚餐團')).toBeTruthy();
@@ -61,4 +105,11 @@ it('opens applicant profiles and full member/post detail from their own controls
   await fireEvent.press(screen.getByRole('button', { name: '查看完整拼單 較早發布的晚餐團' }));
   expect(router.push).toHaveBeenCalledWith('/order/older-page-post');
   expect(screen.getByRole('tab', { name: '我主揪的 (1)' })).toBeTruthy();
+});
+
+it('omits expired orders even when stale activity still mentions pending requests', async () => {
+  mockClosed = true;
+  const screen = await render(ui());
+  expect(screen.queryByText('較早發布的晚餐團')).toBeNull();
+  expect(screen.queryByRole('button', { name: '接受' })).toBeNull();
 });
