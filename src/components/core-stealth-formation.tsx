@@ -49,7 +49,6 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
     <Text style={styles.heading}>全員已同意，拼單與聊天室已建立</Text>
     {match.terms ? <Text style={styles.body}>第 {match.terms_revision} 版 · 每人 NT$ {match.terms.cost_per_person_twd} · 已同意 {match.confirmed_count}／{match.member_count} 人</Text> : null}
     {match.terms?.cost_change_note ? <Text style={styles.body}>本組費用調整原因：{match.terms.cost_change_note}</Text> : null}
-    <Text style={styles.body}>本次需求已使用，其他重疊配對會失效。後續退出、名額與取消依原本拼單流程處理；此處不會重複建團。</Text>
     <PrimaryButton onPress={() => router.push({ pathname: '/order/[id]', params: { id: match.formed_post_id! } })}>查看正式拼單</PrimaryButton>
     <PrimaryButton secondary onPress={() => router.push({ pathname: '/chat/[id]', params: { id: match.formed_post_id! } })}>進入成團聊天室</PrimaryButton>
   </View>;
@@ -58,7 +57,7 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
   return <View style={styles.panel}>
     {match.agent_draft && (!match.terms || editing) ? <AgentDraftSummary draft={match.agent_draft} /> : null}
     <Text style={styles.heading}>確認最終方案</Text>
-    <Text style={styles.body}>你是{label(match.my_member_number)}。成團前使用固定代號；提案者擔任主揪。分配角色只是提案，必須本人同意才算承諾。</Text>
+    <Text style={styles.body}>你是{label(match.my_member_number)}，請確認自己的分工。</Text>
     {match.terms ? <>
       <Text style={styles.body}>第 {match.terms_revision} 版 · 主揪：{label(match.host_member_number!)} · 已同意 {match.confirmed_count}／{match.member_count} 人</Text>
       <Text style={styles.body}>每人 NT$ {match.terms.cost_per_person_twd} · 全團 NT$ {match.terms.cost_per_person_twd * match.member_count}</Text>
@@ -68,13 +67,13 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
       <Text style={styles.body}>拼單截止／可退出至：{new Date(match.terms.deadline_at).toLocaleString('zh-TW')}</Text>
       <Text style={styles.body}>公開說明：{match.terms.content}</Text>
       <Text style={styles.body}>我的分工：{[match.terms.order_member === match.my_member_number ? '下單' : '', match.terms.pickup_member === match.my_member_number ? '取餐' : ''].filter(Boolean).join('、') || '依約參與分食'}。</Text>
-      <Text style={styles.body}>同意代表已確認餐點細節、每人金額與自己的分工。全員同意這一版後自動建立公開拼單與團員聊天室，公開說明、主揪、分工者的顯示名稱會供登入用戶查看；私人需求原文不會公開。這不會代為訂餐、付款或扣款。</Text>
+      <Text style={styles.body}>全員同意後建立公開拼單與聊天室，公開說明及主揪、分工者名稱會供登入用戶查看；私人需求不公開，不代為訂餐或付款。</Text>
       {!editing && !match.my_terms_accepted ? <>
         <Pressable accessibilityRole="checkbox" accessibilityLabel="我已確認費用、我的分工與公開內容，同意全員確認後自動成團" accessibilityState={{ checked, disabled: busy }} disabled={busy} onPress={() => setChecked(checked ? null : match.terms_revision)} style={styles.choice}><Text>{checked ? '✓ ' : ''}我已確認費用、我的分工與公開內容，同意全員確認後自動成團</Text></Pressable>
         <PrimaryButton disabled={!checked || busy} onPress={() => consent.mutate()}>{consent.isPending ? '確認中…' : `同意第 ${match.terms_revision} 版並等待成團`}</PrimaryButton>
-      </> : match.my_terms_accepted ? <Text style={styles.body}>你已同意這一版，等待其他人。要退出可使用下方「撤回我的意願」；修改方案將要求所有人重新同意。</Text> : null}
+      </> : match.my_terms_accepted ? <Text style={styles.body}>你已同意，等待其他夥伴確認。</Text> : null}
       <PrimaryButton secondary disabled={busy} onPress={() => { if (editing) { setEditing(false); setChecked(null); } else loadCurrentTerms(); }}>{editing ? '取消編輯' : '修改方案（清除所有舊同意）'}</PrimaryButton>
-    </> : <Text style={styles.body}>分身草案已填入下方，可先修改或補齊再提出。草案尚未送出，也沒有任何人的同意；仍可自行填寫方案。</Text>}
+    </> : <Text style={styles.body}>確認費用與分工後，提出方案。</Text>}
     {!match.terms || editing ? <>
       {staleDraft ? <>
         <Text accessibilityRole="alert" style={styles.error}>最新方案已更新，保留你的未送出修改。請先核對新版，再重新編輯；不會自動覆蓋他人方案。</Text>
@@ -99,7 +98,7 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
       {!order ? <Text style={styles.body}>尚未指定下單者，請協調後選擇，並由本人確認。</Text> : null}
       <Text>誰負責取餐</Text><View style={styles.row}>{members.map((n) => <PrimaryButton key={n} secondary={pickup !== n} disabled={busy} onPress={() => setPickup(n)}>{label(n)}取餐</PrimaryButton>)}</View>
       {!pickup ? <Text style={styles.body}>尚未指定取餐者，請協調後選擇，並由本人確認。</Text> : null}
-      <Text style={styles.body}>金額不能超過共同預算；調整已知價格需說明原因並由全員確認。送出方案不代表任何人已同意，包含提案者在內都要另外確認。</Text>
+      <Text style={styles.body}>提出後，包含你在內的所有人都需確認；修改方案會清除舊同意。</Text>
       <PrimaryButton disabled={busy || !valid || staleDraft} onPress={() => save.mutate()}>{save.isPending ? '送出中…' : '提出方案，請全員確認'}</PrimaryButton>
     </> : null}
     {error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(error)}</Text> : null}
@@ -111,13 +110,13 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
 }
 function AgentDraftSummary({ draft }: { draft: StealthAgentTermsDraft }) {
   return <View style={{ gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm }}>
-    <Text style={styles.heading}>分身自動提案 · 費用與分工草案</Text>
-    <Text style={styles.body}>免費規則規劃器，未使用大型模型。只根據已確認條件提出建議，不代表已下單、成團或有人同意。</Text>
+    <Text style={styles.heading}>分身建議</Text>
+    <Text style={styles.body}>以下安排可再調整。</Text>
     <Text style={styles.body}>{draft.cost_per_person_twd === null ? '費用待補：沒有已知價格，預算上限不是售價。' : `依已知費用：每人 NT$ ${draft.cost_per_person_twd}，全團 NT$ ${draft.total_cost_twd}。`}</Text>
-    {draft.budget_limit_twd !== null ? <Text style={styles.body}>共同每人預算上限：NT$ {draft.budget_limit_twd}，不會當作實際費用。</Text> : null}
+    {draft.budget_limit_twd !== null ? <Text style={styles.body}>每人預算上限 NT$ {draft.budget_limit_twd}</Text> : null}
     {draft.role_suggestions.map((role) => <Text key={role.role} style={styles.body}>{role.role === 'order' ? '下單' : '取餐'}建議：{role.member_number === null ? '待協調' : `成員 ${role.member_number}`}。{role.reason}</Text>)}
     {draft.missing_fields.length ? <Text style={styles.body}>原始草案待補：{draft.missing_fields.map((field) => ({ cost: '實際每人費用', order: '下單者', pickup: '取餐者' })[field]).join('、')}。補齊後才能提出方案。</Text> : null}
     {draft.needs_confirmation.map((item) => <Text key={item} style={styles.body}>• {item}</Text>)}
   </View>;
 }
-const styles = StyleSheet.create({ panel: { gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.yellowSoft }, heading: { fontSize: 17, fontWeight: '700', color: colors.ink }, body: { fontSize: 14, lineHeight: 23, color: colors.ink }, input: { padding: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: '#fff', minHeight: 44 }, choice: { padding: spacing.sm, borderWidth: 1, borderColor: colors.brown, borderRadius: radius.md }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, error: { color: colors.danger } });
+const styles = StyleSheet.create({ panel: { gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }, heading: { fontSize: 17, fontWeight: '700', color: colors.ink }, body: { fontSize: 14, lineHeight: 23, color: colors.ink }, input: { padding: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: '#fff', minHeight: 44 }, choice: { padding: spacing.sm, borderWidth: 1, borderColor: colors.brown, borderRadius: radius.md }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, error: { color: colors.danger } });

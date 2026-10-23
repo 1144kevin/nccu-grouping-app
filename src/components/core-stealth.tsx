@@ -52,7 +52,7 @@ export function AdvancedStealthScreen({ onQuick }: { onQuick?: () => void } = {}
     <DetailHeader title="偷揪 · 我的 AI 分身" right={<IconButton icon="refresh" label="重新整理偷揪資料" onPress={() => { void invalidate(); void clock.refetch(); }} />} />
     {onQuick ? <PrimaryButton secondary onPress={onQuick}>回到一句話偷揪</PrimaryButton> : null}
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-      <View style={styles.hero}><Text style={styles.heading}>不用發文，也能被揪</Text><Text style={styles.body}>告訴分身你需要什麼、擁有什麼，或接下來願意做什麼，讓它找出兩到三人的互補機會。</Text><Text style={styles.hint}>免費開發模式：本機模型理解與補問，規則檢查配對及費用分工。原始需求只供本人查看；全員確認同一版方案才成團，沒有代為訂購或付款。</Text></View>
+      <View style={styles.hero}><Text style={styles.heading}>不用發文，也能被揪</Text><Text style={styles.body}>告訴分身你需要什麼、擁有什麼，或接下來願意做什麼，讓它找出兩到三人的互補機會。</Text><Text style={styles.hint}>需求僅供本人查看，成團前需全員確認。</Text></View>
       {clock.data && Math.abs(clock.data.driftMs) > 60_000 ? <Text style={styles.hint}>裝置時間與服務不同，需求與邀請期限以服務時間為準。載入時服務時間：{new Date(clock.data.serverMs).toLocaleString('zh-TW')}</Text> : null}
       <View style={styles.row}>{([['agent','我的分身'],['signals','我的需求'],['matches','偷揪結果']] as const).map(([value,label]) => <PrimaryButton key={value} secondary={tab !== value} onPress={() => setTab(value)}>{label}</PrimaryButton>)}</View>
       {tab === 'agent' ? <>
@@ -124,7 +124,7 @@ export function AgentForm({ initial, refresh }: { initial: StealthAgent | null; 
     {includeDemo ? <Text style={styles.hint}>示範資源是「正餐／政大正門／晚餐標籤／已知每人 90 元」，可用相容需求體驗。示範人物不會接受意願或回覆；需求不符仍不配對。</Text> : null}
     <Text style={styles.hint}>開啟分身不代表加入拼單；配對後仍需全員確認費用與分工才會成團。暫停或變更探索範圍會使尚未成團的舊配對失效。</Text>
     <PrimaryButton disabled={!valid || save.isPending} onPress={() => save.mutate()}>{save.isPending ? '儲存中…' : '儲存我的分身'}</PrimaryButton>
-    <ErrorText error={save.error} />{save.data ? <Text accessibilityRole="alert" style={styles.note}>分身已儲存在你的 Supabase 帳號，版本 {version}。</Text> : null}
+    <ErrorText error={save.error} />{save.data ? <Text accessibilityRole="alert" style={styles.note}>分身設定已儲存。</Text> : null}
   </View>;
 }
 
@@ -164,7 +164,7 @@ export function SignalEditor({ now, refresh, localOnly = false }: { now: () => n
     <Field label="必要飲食條件（逗號分隔，可留白）" value={form.requirements} onChange={(value) => change('requirements',value)} disabled={busy} maxLength={395} />
     <Field label="我已確認的餐點條件（逗號分隔）" value={form.verified} onChange={(value) => change('verified',value)} disabled={busy} maxLength={395} />
     <Text style={styles.hint}>缺少必要飲食資訊就不配對；本人提供的資訊不等於商家認證或過敏安全保證。</Text>
-    {localOnly ? <Text style={styles.note}>這是本機核對草稿，尚未儲存。正式儲存與配對需連接開發 API 並登入本人帳號。</Text> : <PrimaryButton disabled={!form.title.trim() || busy} onPress={() => save.mutate()}>{save.isPending ? '儲存並尋找中…' : '確認需求並交給分身'}</PrimaryButton>}
+    {localOnly ? <Text style={styles.note}>這份草稿尚未儲存，請登入後確認。</Text> : <PrimaryButton disabled={!form.title.trim() || busy} onPress={() => save.mutate()}>{save.isPending ? '儲存並尋找中…' : '確認需求並交給分身'}</PrimaryButton>}
     <ErrorText error={save.error} />
     {save.error ? <Text style={styles.hint}>內容仍保留，未更改內容的重試沿用同一筆請求，不重複新增。</Text> : null}
     {save.data ? <Text accessibilityRole="alert" style={styles.note}>需求已存入資料庫。{stateLabels[save.data.matching]}</Text> : null}

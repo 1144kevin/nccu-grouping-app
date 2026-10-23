@@ -5,11 +5,13 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
+import { SegmentedTabs, shortDate } from '@/components/list-ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardViewport } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -51,21 +53,15 @@ export function CoreInbox() {
   );
   return (
     <Screen>
-      <AppHeader title="拼單聊天室" />
-      <Text style={styles.note}>
-        主揪與已加入的團員可協調取餐。申請待接受時還不能進入；取消拼單後保留唯讀紀錄。
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 8, padding: 12 }}>
-        <PrimaryButton secondary={archived} onPress={() => setArchived(false)}>
-          收件匣
-        </PrimaryButton>
-        <PrimaryButton secondary={!archived} onPress={() => setArchived(true)}>
-          已封存
-        </PrimaryButton>
-      </View>
-      <Text style={styles.note}>
-        封存只整理自己的收件匣，不會刪除訊息或退出拼單；靜音與封存會隱藏此群組的未讀提示。
-      </Text>
+      <AppHeader searchScope="messages" />
+      <SegmentedTabs
+        value={archived ? 'archived' : 'all'}
+        onChange={(value) => setArchived(value === 'archived')}
+        options={[
+          { value: 'all', label: '收件匣' },
+          { value: 'archived', label: '已封存' },
+        ]}
+      />
       {inbox.error ? (
         <>
           <Text accessibilityRole="alert" style={styles.error}>
@@ -89,7 +85,7 @@ export function CoreInbox() {
       <FlatList
         data={items}
         keyExtractor={(item) => item.post.id}
-        contentContainerStyle={[styles.list, { paddingBottom: 120 }]}
+        contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
           <RefreshControl
             refreshing={query.isFetching && !query.isFetchingNextPage}
@@ -134,34 +130,49 @@ export function CoreInbox() {
           ) : null
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <View style={styles.inboxRow}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`開啟聊天室 ${item.post.content}`}
               onPress={() => router.push(`/chat/${item.post.id}`)}
+              style={styles.conversation}
             >
-              <Text numberOfLines={2} style={styles.title}>
-                {item.post.content.split('\n')[0]}
-              </Text>
-              <Text numberOfLines={2} style={styles.muted}>
-                {item.last_message
-                  ? `${item.last_message.sender_name}：${item.last_message.content}`
-                  : '還沒有訊息，開始協調吧'}
-              </Text>
-              <Text style={styles.muted}>
-                {item.post.is_demo ? '示範聊天室 · ' : ''}
-                {item.post.status === 'cancelled'
-                  ? '已取消 · 唯讀'
-                  : `${item.post.joined}/${item.post.capacity} 人`}
-              </Text>
-              {(activity.data?.groups.find((group) => group.post_id === item.post.id)
-                ?.unread_count ?? 0) > 0 ? (
-                <Text style={styles.title}>
-                  {
-                    activity.data?.groups.find((group) => group.post_id === item.post.id)
-                      ?.unread_count
-                  }{' '}
-                  則未讀
+              <View>
+                <Avatar
+                  name={item.post.author_name}
+                  badge={item.post.author_badge ?? '🍱'}
+                  size={54}
+                />
+                {(activity.data?.groups.find((g) => g.post_id === item.post.id)?.unread_count ??
+                  0) > 0 ? (
+                  <View style={styles.unreadDot} />
+                ) : null}
+              </View>
+              <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Text numberOfLines={1} style={[styles.title, { flex: 1 }]}>
+                    {item.post.author_name}
+                  </Text>
+                  <Text style={styles.muted}>
+                    {shortDate(item.last_message?.created_at ?? item.post.created_at)}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} style={styles.preview}>
+                  {item.post.content}
+                </Text>
+                <Text numberOfLines={1} style={styles.muted}>
+                  {item.last_message
+                    ? `${item.last_message.sender_name}：${item.last_message.content}`
+                    : '開始聊聊吧'}
+                </Text>
+                {item.post.status === 'cancelled' ? (
+                  <Text style={styles.muted}>已取消 · 唯讀</Text>
+                ) : null}
+              </View>
+              {(activity.data?.groups.find((g) => g.post_id === item.post.id)?.unread_count ?? 0) >
+              0 ? (
+                <Text style={styles.unreadBadge}>
+                  {activity.data?.groups.find((g) => g.post_id === item.post.id)?.unread_count}
                 </Text>
               ) : null}
             </Pressable>
@@ -185,6 +196,7 @@ export function CoreInbox() {
 
 function InboxActions({ value }: { value: InboxPreference }) {
   const actor = useAuthStore((state) => state.user?.id);
+  const [menu, setMenu] = useState(false);
   const save = useMutation({
     mutationFn: (next: { muted: boolean; archived: boolean }) =>
       engagementApi.saveInbox(value.post_id, next),
@@ -196,33 +208,49 @@ function InboxActions({ value }: { value: InboxPreference }) {
           items: [...(old?.items.filter((p) => p.post_id !== updated.post_id) ?? []), updated],
         }),
       );
+      setMenu(false);
       void queryClient.invalidateQueries({ queryKey: ['core', actor, 'chat-activity'] });
     },
   });
   return (
-    <View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <PrimaryButton
-          secondary
-          disabled={save.isPending}
-          onPress={() => save.mutate({ muted: !value.muted, archived: value.archived })}
-        >
-          {value.muted ? '取消靜音' : '靜音提示'}
-        </PrimaryButton>
-        <PrimaryButton
-          secondary
-          disabled={save.isPending}
-          onPress={() => save.mutate({ muted: value.muted, archived: !value.archived })}
-        >
-          {value.archived ? '移回收件匣' : '封存聊天室'}
-        </PrimaryButton>
-      </View>
-      {save.error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {coreError(save.error)}
-        </Text>
-      ) : null}
-    </View>
+    <>
+      <IconButton icon="dots-horizontal" label="聊天室選項" onPress={() => setMenu(true)} />
+      <Modal transparent visible={menu} animationType="fade" onRequestClose={() => setMenu(false)}>
+        <View style={styles.overlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="關閉聊天室選項"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setMenu(false)}
+          />
+          <View style={styles.menu} accessibilityViewIsModal>
+            <Text style={styles.title}>聊天室選項</Text>
+            <PrimaryButton
+              secondary
+              disabled={save.isPending}
+              onPress={() => save.mutate({ muted: !value.muted, archived: value.archived })}
+            >
+              {value.muted ? '取消靜音' : '靜音提示'}
+            </PrimaryButton>
+            <PrimaryButton
+              secondary
+              disabled={save.isPending}
+              onPress={() => save.mutate({ muted: value.muted, archived: !value.archived })}
+            >
+              {value.archived ? '移回收件匣' : '封存聊天室'}
+            </PrimaryButton>
+            {save.error ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                {coreError(save.error)}
+              </Text>
+            ) : null}
+            <PrimaryButton secondary onPress={() => setMenu(false)}>
+              取消
+            </PrimaryButton>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -428,6 +456,58 @@ export function CoreGroupChat({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
+  inboxRow: {
+    minHeight: 94,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  conversation: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    minWidth: 0,
+  },
+  unreadDot: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.danger,
+    borderWidth: 1,
+    borderColor: colors.background,
+  },
+  unreadBadge: {
+    minWidth: 22,
+    padding: 4,
+    textAlign: 'center',
+    borderRadius: 11,
+    color: '#fff',
+    backgroundColor: colors.danger,
+    fontSize: 12,
+  },
+  preview: { color: colors.ink, fontSize: 14 },
+  overlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#00000055',
+  },
+  menu: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    gap: 12,
+  },
   list: { padding: spacing.md, gap: spacing.md, paddingBottom: 24 },
   card: {
     padding: spacing.md,

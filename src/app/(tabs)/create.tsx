@@ -53,7 +53,7 @@ const schema = z
       context.addIssue({
         code: 'custom',
         path: ['capacity'],
-        message: '本機拼單人數需為 2～20 人（含主揪）',
+        message: '拼單人數需為 2～20 人（含主揪）',
       });
   });
 type FormValues = z.infer<typeof schema>;
@@ -334,9 +334,7 @@ function CreateForm({
             </Text>
           ) : null}
           {CORE_API_ENABLED && !CORE_SUPABASE_MODE ? (
-            <Text style={styles.fieldHint}>
-              離線本機版先支援文字拼單；圖片請使用 Supabase 開發模式。
-            </Text>
+            <Text style={styles.fieldHint}>目前可發布文字拼單。</Text>
           ) : (
             <>
               <View style={styles.mediaRow}>
@@ -395,9 +393,7 @@ function CreateForm({
                 ) : null}
               </View>
               {CORE_API_ENABLED ? (
-                <Text style={styles.fieldHint}>
-                  可加入一張4MB以內的靜態圖片。發布時會轉JPEG、縮小並移除EXIF；附圖會讓其他登入使用者看到。語音尚未上傳。未發佈副本可在帳號設定清理。
-                </Text>
+                <Text style={styles.fieldHint}>可加入一張圖片，最大 4MB。</Text>
               ) : null}
               {imageError ? (
                 <Text accessibilityRole="alert" style={{ color: colors.danger }}>
@@ -539,16 +535,16 @@ function CreateForm({
               <Controller
                 control={control}
                 name="location"
-                render={({ field: { onChange, value } }) =>
-                    <LocationPicker
-                      key={locationKey}
-                      value={value}
-                      disabled={isSubmitting}
-                      onChange={(next) => {
-                        if (!publishing.current) onChange(next);
-                      }}
-                    />
-                }
+                render={({ field: { onChange, value } }) => (
+                  <LocationPicker
+                    key={locationKey}
+                    value={value}
+                    disabled={isSubmitting}
+                    onChange={(next) => {
+                      if (!publishing.current) onChange(next);
+                    }}
+                  />
+                )}
               />
             </View>
             {errors.location ? (

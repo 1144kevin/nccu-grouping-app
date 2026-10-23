@@ -118,7 +118,7 @@ it('keeps the original settings usable when the development database migration i
   const advanced = jest.fn();
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={advanced} />));
   await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
-  await waitFor(() => expect(screen.getByText(/尚未接通開發資料庫/)).toBeTruthy());
+  await waitFor(() => expect(screen.getByText(/目前無法自動找人/)).toBeTruthy());
   expect(screen.getByRole('button', { name: '啟用分身並幫我揪' })).toBeDisabled();
   await fireEvent.press(screen.getByRole('button', { name: '分身與需求進階設定' }));
   expect(advanced).toHaveBeenCalledTimes(1);

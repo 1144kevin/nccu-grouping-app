@@ -142,7 +142,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
       <KeyboardScrollView contentContainerStyle={styles.page}>
         <View style={styles.hero}>
           <Text style={styles.title}>想做什麼，跟分身說一句。</Text>
-          <Text style={styles.body}>找人、想分工，交給分身。你只要決定要不要一起。</Text>
+
           <TextInput
             accessibilityLabel="一句話告訴分身"
             placeholder="我今天想喝50嵐"
@@ -153,13 +153,9 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             editable={!busy}
             style={styles.input}
           />
-          <Text style={styles.hint}>
-            沿用你的地點與預算；首次暫找正門、接下來兩小時。想改就直接說。
-          </Text>
+          <Text style={styles.hint}>預設正門 · 接下來兩小時，可直接輸入調整。</Text>
           {!agent.data?.enabled ? (
-            <Text style={styles.hint}>
-              按下後會啟用分身、儲存需求幫你找人。不會代你下單或付款。
-            </Text>
+            <Text style={styles.hint}>啟用後會儲存需求，替你找夥伴。</Text>
           ) : null}
           <PrimaryButton
             disabled={
@@ -175,9 +171,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             {busy ? phase || '分身正在找人…' : agent.data?.enabled ? '幫我揪' : '啟用分身並幫我揪'}
           </PrimaryButton>
           {!capability.isPending && !capability.data?.ready ? (
-            <Text style={styles.hint}>
-              一句話流程尚未接通開發資料庫；原本功能可由下方「分身與需求進階設定」繼續使用。
-            </Text>
+            <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
           ) : null}
           {agent.error ? (
             <>
@@ -202,9 +196,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
           {saved ? (
             <Text accessibilityLiveRegion="polite" style={styles.body}>
               已記住：{saved.created.signal.title}
-              {saved.interpretation === 'keyword_fallback'
-                ? '（本機模型暫不可用，先依文字線索整理）'
-                : ''}
+              {saved.interpretation === 'keyword_fallback' ? '（依關鍵字整理）' : ''}
             </Text>
           ) : null}
           {notice ? (
@@ -223,9 +215,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
                 : '說完一句，就等分身帶消息回來'}
         </Text>
         {!visible.length && active.length ? (
-          <Text style={styles.body}>
-            目前沒有合適夥伴。對方也要開啟分身並留下需求，沒有配到不代表你需要多填表單。回到此頁會自動更新結果。
-          </Text>
+          <Text style={styles.body}>還沒遇到合適夥伴，稍後再來看看。</Text>
         ) : null}
         {matches.error ? (
           <Text accessibilityRole="alert" style={styles.error}>
@@ -255,7 +245,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
           </Text>
         ) : null}
         <PrimaryButton secondary onPress={() => setDetails(!details)}>
-          {details ? '收起我的需求' : '查看我的需求與理解依據'}
+          {details ? '收起我的需求' : '查看我的需求'}
         </PrimaryButton>
         {details ? (
           <View style={styles.card}>
@@ -282,9 +272,6 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
         <PrimaryButton secondary onPress={onAdvanced}>
           分身與需求進階設定
         </PrimaryButton>
-        <Text style={styles.hint}>
-          App 在前景時更新結果。分身的安排是待討論建議；全員確認最終費用與分工後，才會建立正式拼單。
-        </Text>
       </KeyboardScrollView>
     </Screen>
   );
@@ -332,7 +319,7 @@ export function QuickMatch({
         {match.known_cost_twd == null
           ? '價格與品項進聊天室確認'
           : `目前參考每人 NT$ ${match.known_cost_twd}，仍待確認`}
-        。這一步只同意一起聊聊，不承諾付款或代辦。
+        。先聊聊，再決定是否成團。
       </Text>
       {match.status === 'formed' && match.formed_post_id ? (
         <PrimaryButton onPress={() => router.push(`/chat/${match.formed_post_id}`)}>

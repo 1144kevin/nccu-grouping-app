@@ -61,9 +61,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     <Screen>
       <DetailHeader title="偷揪 · 聊聊細節" />
       <KeyboardViewport>
-        <Text style={styles.note}>
-          大家已同意初步配對。先聊品項、費用與誰下單、誰取餐；目前沒有正式拼單，也不會自動付款。最近100則訊息會顯示在這裡。
-        </Text>
+        <Text style={styles.note}>先聊品項與取餐分工，談好後再確認成團。</Text>
         {query.error ? (
           <>
             <Text accessibilityRole="alert" style={styles.error}>
