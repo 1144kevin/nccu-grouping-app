@@ -116,12 +116,30 @@ it('retains search and navigation and invalidates an edited selection', async ()
   await waitFor(() => expect(s.getByRole('button', { name: '選擇地點 新的取餐點' })).toBeTruthy());
   await fireEvent.press(s.getByRole('button', { name: '選擇地點 新的取餐點' }));
   await fireEvent.press(s.getByRole('button', { name: '確認取餐地點' }));
+  expect(s.getByText(/加入我的常用地點嗎/)).toBeTruthy();
   await fireEvent.press(s.getByRole('link', { name: '用 Google Maps 導航' }));
   expect(spy).toHaveBeenCalledWith(expect.stringContaining('destination=24.986%2C121.576'));
   await fireEvent.press(s.getByRole('button', { name: '編輯取餐地點說明' }));
   await fireEvent.changeText(s.getByLabelText('補充取餐地點說明'), '另一張桌子');
   expect(s.getByTestId('location').props.children).toBe('unconfirmed');
   spy.mockRestore();
+});
+it('offers to save an already confirmed location and keeps it after dismissing the prompt', async () => {
+  const s = await render(<LocationPicker value={place} onChange={jest.fn()} />);
+  await waitFor(() => expect(s.getByText('加入我的常用地點')).toBeTruthy());
+  await fireEvent.press(s.getByText('加入我的常用地點'));
+  await fireEvent.press(s.getByRole('button', { name: '暫時不用' }));
+  expect(s.getByText('加入我的常用地點')).toBeTruthy();
+  expect(pickupFavorites.add).not.toHaveBeenCalled();
+});
+it('marks a personal favorite as selected after choosing it', async () => {
+  jest.mocked(pickupFavorites.list).mockResolvedValue([{ id: 'saved', location: place }]);
+  const s = await render(<Form />);
+  await waitFor(() => expect(s.getByRole('button', { name: '新的取餐點' })).toBeTruthy());
+  await fireEvent.press(s.getByRole('button', { name: '新的取餐點' }));
+  expect(s.getByRole('button', { name: '新的取餐點' }).props.accessibilityState.selected).toBe(
+    true,
+  );
 });
 it('does not accept a late search response after account change', async () => {
   let finish!: (p: Awaited<ReturnType<typeof searchPlaces>>) => void;

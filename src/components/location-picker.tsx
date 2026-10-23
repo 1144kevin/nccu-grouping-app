@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PrimaryButton } from '@/components/primitives';
 import { PickupMap } from '@/components/pickup-map';
 import { campusPickupPlaces, type CampusPickupPlace } from '@/data/campus-pickup-places';
-import { googleMapsDirectionsUrl, postLocationSchema } from '@/lib/location';
+import { distanceKm, googleMapsDirectionsUrl, postLocationSchema } from '@/lib/location';
 import { pickupAddress, splitPickupAddress } from '@/lib/pickup-details';
 import { pickupFavorites } from '@/lib/pickup-favorites-storage';
 import type { PickupFavorite } from '@/lib/pickup-favorites';
@@ -218,7 +218,13 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
                     onChange(p.location);
                     setEditing(false);
                   }}
-                  style={styles.placeChip}
+                  style={[
+                    styles.placeChip,
+                    value && distanceKm(p.location, value) < 0.005 && styles.activeChip,
+                  ]}
+                  accessibilityState={{
+                    selected: !!value && distanceKm(p.location, value) < 0.005,
+                  }}
                 >
                   <Text style={styles.chipLabel}>{p.location.name}</Text>
                 </Pressable>
@@ -298,7 +304,7 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
           accessibilityRole="button"
           accessibilityLabel={`選擇地點 ${p.name}`}
           disabled={disabled}
-          onPress={() => choose(p)}
+          onPress={() => choose(p, true)}
           style={styles.selected}
         >
           <Text>{p.name}</Text>
@@ -322,6 +328,18 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
           </View>
           {original.address ? <Text style={styles.hint}>{original.address}</Text> : null}
           {original.note ? <Text style={styles.hint}>{original.note}</Text> : null}
+          {actor &&
+          favoritesReady &&
+          !askSave &&
+          !favorites.some((p) => distanceKm(p.location, value) < 0.005) ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={disabled || saving}
+              onPress={() => setAskSave(value)}
+            >
+              <Text style={{ color: colors.brown, paddingVertical: 6 }}>加入我的常用地點</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="用 Google Maps 導航"
