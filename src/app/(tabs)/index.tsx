@@ -6,7 +6,6 @@ import { router } from 'expo-router';
 import { Alert, FlatList, Modal, Pressable, RefreshControl, Share, StyleSheet, View } from 'react-native';
 import { AppHeader, Avatar, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
-import { TagChip } from '@/components/tag-chip';
 import { PostInfo } from '@/components/post-location';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreError, toFeedPost, type CorePost } from '@/lib/core-api';
 import { engagementApi, useCoreRecommendations, useSavedPostPreferences, type SavedPostPreference } from '@/lib/engagement-api';
@@ -174,8 +173,8 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
         <IconButton icon="dots-horizontal" label="貼文選項" onPress={() => setOptionsVisible(true)} />
       </View>
       <Pressable onPress={() => router.push(`/post/${post.id}`)}><Text style={styles.content}>{post.content}</Text>{corePost?.image_id?<CorePostImage imageId={corePost.image_id}/>:post.imageUrl && <Image source={post.imageUrl} contentFit="cover" transition={180} style={styles.postImage} />}</Pressable>
-      <View style={styles.tags}>{post.tags.map((tag) => <TagChip key={tag} label={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })} />)}</View>
-      <PostInfo post={post} reminder={reminder} />
+      <View style={styles.tags}>{post.tags.map((tag) => <Pressable key={tag} accessibilityRole="button" onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })}><Text style={{ color: colors.brown, fontSize: 15, fontWeight: '700' }}>#{tag}</Text></Pressable>)}</View>
+      <PostInfo post={post} reminder={reminder} compact />
       {corePost ? <CoreRecommendationReasons post={corePost} /> : null}
       {updatePreference.error?<Text accessibilityRole="alert" style={{color:colors.danger}}>{coreError(updatePreference.error)}</Text>:null}
       {corePost?.is_demo ? <Text style={styles.time}>示範資料 · 沒有真實訂購</Text> : null}
