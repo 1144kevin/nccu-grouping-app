@@ -1,10 +1,11 @@
+import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  RefreshControl,
+
   StyleSheet,
   View,
 } from 'react-native';
@@ -64,10 +65,9 @@ function CoreRequestActivity() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching && !query.isFetchingNextPage}
+          <PullRefreshControl
             onRefresh={() => {
-              void query.refetch();
+              return query.refetch();
             }}
           />
         }
@@ -83,7 +83,7 @@ function CoreRequestActivity() {
                   <PrimaryButton
                     secondary
                     onPress={() => {
-                      void query.refetch();
+                      return query.refetch();
                     }}
                   >
                     重試
@@ -176,10 +176,9 @@ function CoreDeadlineReminders() {
         keyExtractor={(item) => item.post_id}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching}
+          <PullRefreshControl
             onRefresh={() => {
-              void query.refetch();
+              return query.refetch();
             }}
           />
         }

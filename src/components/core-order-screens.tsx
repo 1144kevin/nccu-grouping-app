@@ -1,3 +1,4 @@
+import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -5,7 +6,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
-  RefreshControl,
+
   Share,
   ScrollView,
   StyleSheet,
@@ -62,7 +63,7 @@ export function CorePostDetail({ id }: { id: string }) {
           pending={query.isPending}
           error={query.error}
           retry={() => {
-            void query.refetch();
+            return query.refetch();
           }}
         />
       </Screen>
@@ -74,10 +75,9 @@ export function CorePostDetail({ id }: { id: string }) {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching}
+          <PullRefreshControl
             onRefresh={() => {
-              void query.refetch();
+              return query.refetch();
             }}
           />
         }
@@ -198,11 +198,9 @@ export function CoreOrdersScreen() {
         keyExtractor={(post) => post.id}
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching && !query.isFetchingNextPage}
+          <PullRefreshControl
             onRefresh={() => {
-              void query.refetch();
-              void activity.refetch();
+              return Promise.all([query.refetch(), activity.refetch()]);
             }}
           />
         }
@@ -224,7 +222,7 @@ export function CoreOrdersScreen() {
               pending={query.isPending}
               error={query.error}
               retry={() => {
-                void query.refetch();
+                return query.refetch();
               }}
             />
           ) : null
@@ -304,7 +302,7 @@ function HostedApplicants({ post }: { post: CorePost }) {
           <PrimaryButton
             secondary
             onPress={() => {
-              void query.refetch();
+              return query.refetch();
             }}
           >
             重新載入申請
@@ -380,7 +378,7 @@ function HostManagement({ post }: { post: CorePost }) {
           <PrimaryButton
             secondary
             onPress={() => {
-              void query.refetch();
+              return query.refetch();
             }}
           >
             重試申請清單

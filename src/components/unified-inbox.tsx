@@ -1,3 +1,4 @@
+import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useCallback, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router, useFocusEffect } from 'expo-router';
@@ -7,7 +8,7 @@ import {
   FlatList,
   Modal,
   Pressable,
-  RefreshControl,
+
   StyleSheet,
   View,
 } from 'react-native';
@@ -133,10 +134,9 @@ function Inbox() {
         directionalLockEnabled
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching && !query.isFetchingNextPage}
+          <PullRefreshControl
             onRefresh={() => {
-              void query.refetch();
+              return query.refetch();
             }}
           />
         }

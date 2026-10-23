@@ -1,3 +1,4 @@
+import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { AppText as Text } from '@/components/app-text';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -36,10 +37,9 @@ function CoreHomeScreen() {
         renderItem={({ item }) => <PostItem post={toFeedPost(item)} corePost={item} />}
         ItemSeparatorComponent={() => <View style={styles.divider} />}
         refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching && !query.isFetchingNextPage}
+          <PullRefreshControl
             onRefresh={() => {
-              void query.refetch();
+              return query.refetch();
             }}
             tintColor={colors.yellow}
           />
@@ -52,7 +52,7 @@ function CoreHomeScreen() {
                 secondary
                 disabled={query.isFetching}
                 onPress={() => {
-                  void query.refetch();
+                  return query.refetch();
                 }}
               >
                 重試

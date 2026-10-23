@@ -1,10 +1,11 @@
+import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
+
   ScrollView,
   StyleSheet,
   View,
@@ -99,12 +100,9 @@ export function CoreOrderDetail({ id }: { id: string }) {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl
-            refreshing={postQuery.isFetching}
+          <PullRefreshControl
             onRefresh={() => {
-              void postQuery.refetch();
-              void summary.refetch();
-              if (post?.my_status === 'host') void requests.refetch();
+              return Promise.all([postQuery.refetch(), summary.refetch(), ...(post?.my_status === 'host' ? [requests.refetch()] : [])]);
             }}
           />
         }
