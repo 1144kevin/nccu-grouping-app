@@ -17,15 +17,14 @@ import { useAuthStore } from '@/store/auth-store';
 import { DraftImageManager } from '@/components/core-post-image';
 import { AccountDeletionPanel } from '@/components/core-account-deletion';
 import { CloudBlockList } from '@/components/core-user-blocks';
-import { CoreConnectionStatus } from '@/components/core-connection-status';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 const options: [keyof NotificationPreferences, string, string][] = [
-  ['joinRequests', '拼單申請提示', '控制 App 內待審核提示，不會隱藏申請紀錄'],
-  ['messages', '聊天未讀提示', '控制 App 內聊天未讀徽章'],
-  ['recommendations', '推薦提示', '儲存偏好；目前尚未發送手機推薦推播'],
-  ['deadlineReminders', '截止提醒偏好', '儲存偏好；尚未啟用背景提醒送達'],
-  ['stealthInvites', '偷揪邀請提示', '儲存提示偏好，不會代替分身的啟用設定'],
+  ['joinRequests', '拼單申請提示', '顯示待審申請數'],
+  ['messages', '聊天未讀提示', '顯示未讀訊息數'],
+  ['recommendations', '推薦提示', 'App 內推薦提示'],
+  ['deadlineReminders', '截止提醒偏好', 'App 內截止提醒'],
+  ['stealthInvites', '偷揪邀請提示', 'App 內邀請提示'],
 ];
 const tags = [
   '甜點',
@@ -45,7 +44,6 @@ const tags = [
 
 export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommendations' }) {
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
   const query = useAccountPreferences();
   return (
     <Screen>
@@ -64,14 +62,6 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
               編輯我的個人資料
             </PrimaryButton>
           </>
-        ) : null}
-        <Text style={styles.hint}>
-          設定會儲存至你的 Supabase 帳號。這些開關不會要求手機通知權限；目前沒有遠端推播。
-        </Text>
-        {query.data ? (
-          <Text accessibilityLiveRegion="polite" style={styles.hint}>
-            目前已儲存版本：{query.data.version}。修改後請按儲存。
-          </Text>
         ) : null}
         {query.isPending ? (
           <ActivityIndicator />
@@ -93,15 +83,14 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
             void query.refetch();
           }}
         >
-          重新載入已儲存設定（捨棄未儲存內容）
+          重新載入設定
         </PrimaryButton>
         {mode === 'settings' ? (
           <>
             <DraftImageManager />
             <PrimaryButton secondary onPress={() => router.push('/app-password')}>
-              設定 App 密碼（Expo Go 登入）
+              設定 App 密碼
             </PrimaryButton>
-            <CoreConnectionStatus />
             <CloudBlockList />
             <AccountDeletionPanel />
             <PrimaryButton secondary onPress={() => router.push('/preferences')}>
@@ -109,14 +98,6 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
             </PrimaryButton>
             <PrimaryButton secondary onPress={() => router.push('/help')}>
               我的回報與協助
-            </PrimaryButton>
-            <PrimaryButton
-              secondary
-              onPress={() => {
-                void logout();
-              }}
-            >
-              登出帳號
             </PrimaryButton>
           </>
         ) : null}
@@ -173,9 +154,7 @@ export function PreferencesForm({
       ) : (
         <>
           <Text style={styles.title}>我感興趣的餐點與地點</Text>
-          <Text style={styles.hint}>
-            推薦排序會優先顯示符合標籤的進行中拼單；最新拼單與搜尋仍可查看其他內容。
-          </Text>
+          <Text style={styles.hint}>選擇喜歡的餐點與方便取餐的地點。</Text>
           <View style={styles.wrap}>
             {[...new Set([...tags, ...selected])].map((tag) => (
               <Pressable

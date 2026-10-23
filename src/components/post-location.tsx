@@ -37,10 +37,8 @@ export function PostInfo({ post, reminder = false }: { post: FeedPost; reminder?
           <Pressable accessibilityRole="link" accessibilityLabel={`在 Google Maps 開啟 ${location.name}`} onPress={openMap} style={styles.place}><Text style={[styles.value, styles.placeName]}>{location.name}</Text><MaterialCommunityIcons name="open-in-new" size={13} color={colors.brown} /></Pressable>
           {details.address && details.address !== location.name ? <Text style={styles.note}>{details.address}</Text> : null}
           {details.note ? <Text style={styles.note}>取餐說明：{details.note}</Text> : null}
-          <Pressable accessibilityRole="link" onPress={openMap} style={styles.locate}><Text style={styles.locateText}>用 Google Maps 導航</Text></Pressable>
-          <Text style={styles.distance}>{coordinates ? `${formatDistance(distanceKm(coordinates, location))} · 直線` : loading ? '定位中…' : '開啟定位以查看距離'}</Text>
-          <Pressable accessibilityRole="button" disabled={loading} onPress={() => void requestLocation()} style={styles.locate}><Text style={styles.locateText}>{coordinates ? '更新定位' : '開啟定位'}</Text></Pressable>
-          {coordinates ? <Text style={styles.note}>依最近一次定位估算</Text> : null}
+          {coordinates ? <Text style={styles.distance}>{formatDistance(distanceKm(coordinates, location))} · 直線距離</Text> : null}
+          <Pressable accessibilityRole="button" disabled={loading} onPress={() => void requestLocation()} style={styles.locate}><Text style={styles.locateText}>{loading ? '定位中…' : coordinates ? '更新距離' : '查看距離'}</Text></Pressable>
           {location.source === 'openstreetmap' ? <Text accessibilityRole="link" onPress={() => { void Linking.openURL('https://www.openstreetmap.org/copyright').catch(() => setMapError('無法開啟資料來源頁面。')); }} style={styles.attribution}>© OpenStreetMap contributors</Text> : null}
           {error || mapError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{mapError || error}</Text> : null}
         </> : <Text style={styles.value}>未提供</Text>}

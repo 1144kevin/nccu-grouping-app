@@ -8,13 +8,7 @@ import { type Href, router } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
-
-const mainItems = [
-  { label: '首頁', icon: 'home-outline', href: '/' },
-  { label: '我的拼單', icon: 'format-list-bulleted', href: '/orders' },
-  { label: '訊息', icon: 'message-outline', href: '/messages' },
-  { label: '個人檔案', icon: 'account-outline', href: '/profile' },
-] as const;
+import { useAuthStore } from '@/store/auth-store';
 
 const supportItems = [
   { label: 'App 字級', icon: 'format-size', href: '/font-size' },
@@ -29,6 +23,7 @@ export function AppDrawer() {
   const visible = useNavigationStore((state) => state.drawerOpen);
   const close = useNavigationStore((state) => state.closeDrawer);
   const unreadNotifications = useAppStore(selectUnreadNotificationCount);
+  const { logout, busy, error } = useAuthStore();
   const currentUser = useAppStore((state) => state.currentUser);
 
   function navigate(href: string) {
@@ -39,7 +34,15 @@ export function AppDrawer() {
   return (
     <Modal animationType="fade" onRequestClose={close} transparent visible={visible}>
       <View style={styles.overlay}>
-        <View style={[styles.panel, { paddingTop: Math.max(insets.top, spacing.xxl) + spacing.sm, paddingBottom: insets.bottom }]}>
+        <View
+          style={[
+            styles.panel,
+            {
+              paddingTop: Math.max(insets.top, spacing.xxl) + spacing.sm,
+              paddingBottom: insets.bottom,
+            },
+          ]}
+        >
           <View style={styles.topBar}>
             <View style={styles.brand}>
               <MaterialCommunityIcons name="bowl-mix-outline" size={23} color={colors.ink} />
@@ -54,31 +57,60 @@ export function AppDrawer() {
               <MaterialCommunityIcons name="close" size={20} color={colors.ink} />
             </Pressable>
           </View>
-          <Pressable onPress={() => navigate('/profile')} style={styles.account}>
+          <View style={styles.account}>
             <Avatar name={currentUser.name} badge={currentUser.badge} size={52} />
             <View style={styles.accountText}>
               <Text style={styles.name}>{currentUser.name}</Text>
-              <Text style={styles.level}>{CORE_API_ENABLED ? '已登入' : `${currentUser.badge} 五分熟 · Lv.5`}</Text>
+              <Text style={styles.level}>
+                {CORE_API_ENABLED ? '已登入' : `${currentUser.badge} 五分熟 · Lv.5`}
+              </Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
-          </Pressable>
+          </View>
           <ScrollView contentContainerStyle={styles.items}>
-            {CORE_API_ENABLED && CORE_SUPABASE_MODE ? <DrawerItem label="偷揪 · 我的 AI 分身" icon="robot-outline" onPress={() => navigate('/stealth')} /> : null}
-            {mainItems.map((item) => (
-              <DrawerItem key={item.label} {...item} onPress={() => navigate(item.href)} />
-            ))}
+            {CORE_API_ENABLED && CORE_SUPABASE_MODE ? (
+              <DrawerItem
+                label="偷揪 · 我的 AI 分身"
+                icon="robot-outline"
+                onPress={() => navigate('/stealth')}
+              />
+            ) : null}
             <View style={styles.divider} />
             {supportItems.map((item) => (
               <DrawerItem
                 key={item.label}
                 {...item}
-                label={item.href === '/notifications' && CORE_API_ENABLED && CORE_SUPABASE_MODE ? '拼單動態' : item.label}
-                badge={item.href === '/notifications' && !CORE_API_ENABLED ? unreadNotifications : undefined}
+                label={
+                  item.href === '/notifications' && CORE_API_ENABLED && CORE_SUPABASE_MODE
+                    ? '拼單動態'
+                    : item.label
+                }
+                badge={
+                  item.href === '/notifications' && !CORE_API_ENABLED
+                    ? unreadNotifications
+                    : undefined
+                }
                 onPress={() => navigate(item.href)}
               />
             ))}
           </ScrollView>
-          <Text style={styles.version}>政缺一咖 · Prototype 1.0</Text>
+          {CORE_API_ENABLED ? (
+            <View style={styles.logout}>
+              {error ? (
+                <Text accessibilityRole="alert" style={{ color: colors.danger }}>
+                  {error}
+                </Text>
+              ) : null}
+              <DrawerItem
+                label={busy ? '登出中…' : '登出帳號'}
+                icon="logout"
+                disabled={busy}
+                onPress={() => {
+                  close();
+                  void logout();
+                }}
+              />
+            </View>
+          ) : null}
         </View>
         <Pressable accessibilityLabel="關閉選單背景" onPress={close} style={styles.backdrop} />
       </View>
@@ -91,16 +123,19 @@ function DrawerItem({
   icon,
   badge,
   onPress,
+  disabled,
 }: {
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   badge?: number;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
+      disabled={disabled}
       style={({ pressed }) => [styles.item, pressed && styles.pressed]}
     >
       <MaterialCommunityIcons name={icon} size={20} color={colors.ink} />
@@ -184,5 +219,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellow,
   },
   badgeText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  version: { marginTop: 'auto', padding: spacing.lg, color: colors.subtle, fontSize: 13 },
+  logout: {
+    marginTop: 'auto',
+    padding: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
 });

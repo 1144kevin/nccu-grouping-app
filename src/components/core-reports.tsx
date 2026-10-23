@@ -10,6 +10,7 @@ import { engagementApi, type ReportInput } from '@/lib/engagement-api';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { queryClient } from '@/lib/query-client';
+import { CoreConnectionStatus } from '@/components/core-connection-status';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 const reasons: [ReportInput['reason'], string][] = [
@@ -58,9 +59,7 @@ export function ReportComposer({
   return (
     <View style={styles.card}>
       <Text style={styles.title}>{kind === 'feedback' ? '回報問題' : '檢舉內容'}</Text>
-      <Text style={styles.hint}>
-        內容會私下存入開發專案，由管理者查看。不會公開給被檢舉者，也不會自動停權或刪除內容。請不要填密碼、驗證碼或付款資料。
-      </Text>
+      <Text style={styles.hint}>回報僅供管理者查看。請勿填入密碼、驗證碼或付款資料。</Text>
       {send.data ? (
         <>
           <Text accessibilityRole="alert" style={styles.success}>
@@ -147,9 +146,14 @@ export function ReportButton({
   );
 }
 export function CoreHelpScreen() {
+  const [diagnostics, setDiagnostics] = useState(false);
   const actor = useAuthStore((state) => state.user?.id);
-  const access = useQuery({ queryKey: ['core', actor, 'moderation-access'], enabled: !!actor, retry: false,
-    queryFn: async () => (await api.get<{ can_review: boolean }>('/moderation/access')).data });
+  const access = useQuery({
+    queryKey: ['core', actor, 'moderation-access'],
+    enabled: !!actor,
+    retry: false,
+    queryFn: async () => (await api.get<{ can_review: boolean }>('/moderation/access')).data,
+  });
   const query = useQuery({
     queryKey: ['core', actor, 'reports'],
     queryFn: engagementApi.reports,
@@ -163,11 +167,23 @@ export function CoreHelpScreen() {
         <Text style={styles.body}>
           加入申請需要主揪接受；偷揪要全員確認同一版方案才成團。遇到可疑內容可在貼文、公開個人資料或聊天室檢舉。平台不會代為訂餐或付款。
         </Text>
+        <PrimaryButton secondary onPress={() => setDiagnostics(!diagnostics)}>
+          {diagnostics ? '收起連線檢查' : '連線檢查'}
+        </PrimaryButton>
+        {diagnostics ? <CoreConnectionStatus /> : null}
         <ReportComposer key={actor} kind="feedback" />
-        <PrimaryButton secondary onPress={() => router.push('/appeals')}>申訴與覆核</PrimaryButton>
-        <PrimaryButton secondary onPress={() => router.push('/data-notice')}>內測資料與使用說明</PrimaryButton>
-        {access.data?.can_review ? <PrimaryButton secondary onPress={() => router.push('/moderation')}>管理回報</PrimaryButton> : null}
-        <Text style={styles.title}>我的近期回報（最多50筆）</Text>
+        <PrimaryButton secondary onPress={() => router.push('/appeals')}>
+          申訴與覆核
+        </PrimaryButton>
+        <PrimaryButton secondary onPress={() => router.push('/data-notice')}>
+          資料與使用說明
+        </PrimaryButton>
+        {access.data?.can_review ? (
+          <PrimaryButton secondary onPress={() => router.push('/moderation')}>
+            管理回報
+          </PrimaryButton>
+        ) : null}
+        <Text style={styles.title}>我的回報</Text>
         {query.isPending ? <ActivityIndicator /> : null}
         {query.error ? (
           <>
@@ -188,13 +204,21 @@ export function CoreHelpScreen() {
         {query.data?.items.map((item) => (
           <View key={item.id} style={styles.card}>
             <Text style={styles.body}>
-              {item.kind === 'feedback' ? '問題回報' : '內容檢舉'} · {{ received: '已收到，待查看', reviewing: '管理者處理中', resolved: '已結案', dismissed: '查核後不成立' }[item.status]}
+              {item.kind === 'feedback' ? '問題回報' : '內容檢舉'} ·{' '}
+              {
+                {
+                  received: '已收到，待查看',
+                  reviewing: '管理者處理中',
+                  resolved: '已結案',
+                  dismissed: '查核後不成立',
+                }[item.status]
+              }
             </Text>
             <Text style={styles.body}>{item.detail}</Text>
-            {item.public_response ? <Text style={styles.body}>處理回覆：{item.public_response}</Text> : null}
-            <Text style={styles.hint}>
-              {new Date(item.created_at).toLocaleString('zh-TW')} · {item.id}
-            </Text>
+            {item.public_response ? (
+              <Text style={styles.body}>處理回覆：{item.public_response}</Text>
+            ) : null}
+            <Text style={styles.hint}>{new Date(item.created_at).toLocaleString('zh-TW')}</Text>
           </View>
         ))}
       </ScrollView>

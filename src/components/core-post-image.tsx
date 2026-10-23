@@ -11,7 +11,13 @@ import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
 
-export function CorePostImage({ imageId }: { imageId: string }) {
+export function CorePostImage({
+  imageId,
+  compact = false,
+}: {
+  imageId: string;
+  compact?: boolean;
+}) {
   const actor = useAuthStore((state) => state.user?.id);
   const focused = useCoreScreenFocused();
   const [failed, setFailed] = useState(false);
@@ -27,7 +33,7 @@ export function CorePostImage({ imageId }: { imageId: string }) {
     gcTime: 0,
   });
   return (
-    <View style={styles.imageWrap}>
+    <View style={[styles.imageWrap, compact && { minHeight: 120 }]}>
       {query.isPending ? (
         <ActivityIndicator accessibilityLabel="正在載入拼單圖片" />
       ) : query.data && !failed ? (
@@ -37,7 +43,7 @@ export function CorePostImage({ imageId }: { imageId: string }) {
           cachePolicy="memory"
           contentFit="contain"
           onError={() => setFailed(true)}
-          style={styles.image}
+          style={[styles.image, compact && { height: 120 }]}
         />
       ) : (
         <View style={styles.note}>
