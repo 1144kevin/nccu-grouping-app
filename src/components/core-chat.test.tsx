@@ -5,6 +5,10 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { CoreGroupChat } from './core-chat';
 import { coreApi, type CoreChatPage } from '@/lib/core-api';
 
+jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual<typeof import('react-native-safe-area-context')>('react-native-safe-area-context'),
+  useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/lib/core-hooks', () => ({ useCoreScreenFocused: () => true, invalidateCore: jest.fn(async () => undefined) }));
 jest.mock('@/lib/core-api', () => ({ coreApi: { messages: jest.fn(), sendMessage: jest.fn(), readChat: jest.fn(async () => ({ ok: true })) }, coreError: () => '操作失敗', newRequestKey: jest.fn(() => 'synthetic-message-retry-key') }));

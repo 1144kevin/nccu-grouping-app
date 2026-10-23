@@ -37,7 +37,7 @@ export type StealthMatch = {
 };
 export type StealthCreated = { signal: StealthSignal; matching: 'completed' | 'paused' | 'quiet' | 'cooldown' | 'unavailable'; new_matches: number };
 export type StealthQuickResult = { created: StealthCreated; sources: string[]; interpretation: 'local_model' | 'keyword_fallback' | 'retry' };
-export type StealthRoomMessage = { id: string; content: string; created_at: string; member_number: number; is_me: boolean };
+export type StealthRoomMessage = { id: string; image_id?: string | null; content: string; created_at: string; member_number: number; is_me: boolean };
 export type StealthRoom = { opened: boolean; can_send: boolean; items: StealthRoomMessage[] };
 export type StealthFactCode = 'location' | 'time' | 'category' | 'shared_tags' | 'offer' | 'pickup_volunteer' | 'cost_unknown' | 'order_missing' | 'pickup_missing' | 'coupon_terms';
 export type StealthSemanticItem = {

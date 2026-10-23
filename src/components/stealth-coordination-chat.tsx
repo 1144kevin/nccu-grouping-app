@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -101,7 +102,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             renderItem={({ item }) => (
               <View style={[styles.message, item.is_me && styles.mine]}>
                 <Text style={styles.hint}>{item.is_me ? '你' : `夥伴 ${item.member_number}`}</Text>
-                <Text style={styles.body}>{item.content}</Text>
+                {item.image_id ? (
+                  <ChatPhoto imageId={item.image_id} />
+                ) : (
+                  <Text style={styles.body}>{item.content}</Text>
+                )}
               </View>
             )}
           />
@@ -112,7 +117,12 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           </PrimaryButton>
         ) : null}
         {!formal ? (
-          <View style={styles.composer}>
+          <ChatComposer
+            kind="stealth"
+            threadId={id}
+            disabled={!focused || !query.data?.can_send || send.isPending}
+            onSent={() => query.refetch()}
+          >
             <TextInput
               accessibilityLabel="偷揪聊天室訊息"
               placeholder="想喝什麼？我們怎麼分工？"
@@ -129,7 +139,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             >
               {send.isPending ? '送出中…' : '傳送'}
             </PrimaryButton>
-          </View>
+          </ChatComposer>
         ) : null}
         {send.error ? (
           <Text accessibilityRole="alert" style={styles.error}>
@@ -156,6 +166,7 @@ const styles = StyleSheet.create({
   hint: { color: colors.muted, fontSize: 12 },
   composer: { padding: spacing.sm, gap: spacing.sm },
   input: {
+    flex: 1,
     minHeight: 45,
     maxHeight: 120,
     padding: spacing.sm,

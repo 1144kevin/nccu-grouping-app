@@ -1,10 +1,10 @@
 import { ReputationBadge } from '@/components/reputation-badge';
+import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardViewport } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
@@ -119,7 +119,7 @@ export function CoreGroupChat({ id }: { id: string }) {
           ) : null}
         </View>
       ) : (
-        <SafeAreaView edges={['bottom']} style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           <KeyboardViewport>
             <Pressable
               accessibilityRole="button"
@@ -170,7 +170,11 @@ export function CoreGroupChat({ id }: { id: string }) {
                     <ReputationBadge level={item.sender_level} />
                   </View>
                   <View style={[styles.bubble, item.sender_id === user?.id && styles.mineBubble]}>
-                    <Text style={styles.body}>{item.content}</Text>
+                    {item.image_id ? (
+                      <ChatPhoto imageId={item.image_id} />
+                    ) : (
+                      <Text style={styles.body}>{item.content}</Text>
+                    )}
                   </View>
                   <Text style={styles.muted}>
                     {new Date(item.created_at).toLocaleString('zh-TW')}
@@ -198,7 +202,15 @@ export function CoreGroupChat({ id }: { id: string }) {
               </Text>
             ) : null}
             {current.can_send ? (
-              <View style={styles.composer}>
+              <ChatComposer
+                kind="group"
+                threadId={id}
+                disabled={mutation.isPending}
+                onSent={() => {
+                  void query.refetch();
+                  void invalidateCore();
+                }}
+              >
                 <TextInput
                   accessibilityLabel="聊天訊息"
                   placeholder="協調取餐、時間或集合點"
@@ -212,12 +224,12 @@ export function CoreGroupChat({ id }: { id: string }) {
                 <PrimaryButton disabled={!text.trim() || mutation.isPending} onPress={send}>
                   {mutation.isPending ? '傳送中…' : '傳送'}
                 </PrimaryButton>
-              </View>
+              </ChatComposer>
             ) : (
               <Text style={styles.note}>拼單已取消，聊天室只供查看紀錄。</Text>
             )}
           </KeyboardViewport>
-        </SafeAreaView>
+        </View>
       )}
     </Screen>
   );

@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth-store';
 export type ThreadKind = 'group' | 'direct' | 'stealth';
 export type InboxFilter = 'all' | 'primary' | 'group' | 'direct';
 export type ThreadMessage = {
+  image_id?: string | null;
   id: string;
   thread_id?: string;
   sender_id: string | null;

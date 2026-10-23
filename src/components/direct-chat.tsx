@@ -1,9 +1,9 @@
 import { ReputationBadge } from '@/components/reputation-badge';
+import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { KeyboardViewport } from '@/components/keyboard-layout';
@@ -19,7 +19,6 @@ export function DirectChat({ id }: { id: string }) {
 }
 function Chat({ id, actor }: { id: string; actor?: string }) {
   const focused = useCoreScreenFocused();
-  const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const draft = useRef<{ content: string; key: string } | null>(null);
   const read = useRef<string | undefined>(undefined);
@@ -132,7 +131,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                   <ReputationBadge level={item.sender_level} />
                 </View>
                 <View style={[styles.bubble, item.sender_id === actor && styles.mineBubble]}>
-                  <Text style={styles.body}>{item.content}</Text>
+                  {item.image_id ? (
+                    <ChatPhoto imageId={item.image_id} />
+                  ) : (
+                    <Text style={styles.body}>{item.content}</Text>
+                  )}
                 </View>
                 <Text style={styles.time}>
                   {new Date(item.created_at).toLocaleTimeString('zh-TW', {
@@ -150,7 +153,15 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           </Text>
         ) : null}
         {page?.can_send ? (
-          <View style={[styles.composer, { paddingBottom: Math.max(8, insets.bottom) }]}>
+          <ChatComposer
+            kind="direct"
+            threadId={id}
+            disabled={send.isPending}
+            onSent={() => {
+              void query.refetch();
+              void invalidateCore();
+            }}
+          >
             <TextInput
               accessibilityLabel="私訊內容"
               placeholder="傳送訊息…"
@@ -164,7 +175,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             <PrimaryButton disabled={!text.trim() || send.isPending} onPress={() => send.mutate()}>
               {send.isPending ? '傳送中…' : '傳送'}
             </PrimaryButton>
-          </View>
+          </ChatComposer>
         ) : null}
       </KeyboardViewport>
     </Screen>

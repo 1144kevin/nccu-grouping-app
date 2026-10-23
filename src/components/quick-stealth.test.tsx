@@ -7,6 +7,10 @@ import { StealthCoordinationChat } from './stealth-coordination-chat';
 import { queryClient } from '@/lib/query-client';
 import { stealthApi, type StealthMatch } from '@/lib/stealth-api';
 
+jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual<typeof import('react-native-safe-area-context')>('react-native-safe-area-context'),
+  useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/lib/api', () => ({ api: {} }));
 let mockKey = 0;

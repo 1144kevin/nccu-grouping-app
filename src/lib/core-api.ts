@@ -86,6 +86,7 @@ export type CoreJoin = {
 };
 export type CorePostPage = { items: CorePost[]; next_cursor: string | null };
 export type CoreMessage = {
+  image_id?: string | null;
   id: string;
   post_id: string;
   sender_id: string;
