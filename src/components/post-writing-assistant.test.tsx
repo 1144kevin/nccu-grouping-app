@@ -45,10 +45,29 @@ it('discards a late model response if the user changes the source', async () => 
   const onApply = jest.fn();
   const props = { context: '', disabled: false, onApply };
   const screen = await render(<PostWritingAssistant {...props} content="原本便當" />);
-  await fireEvent.press(screen.getByRole('button', { name: 'AI 潤稿' }));
+  await fireEvent.press(screen.getByRole('button', { name: 'AI 生成貼文' }));
   await screen.rerender(<PostWritingAssistant {...props} content="改為披薩" />);
   await act(async () => resolve({ text: '過期的便當草稿' }));
   expect(screen.queryByLabelText('AI 貼文草稿')).toBeNull();
   expect(onApply).not.toHaveBeenCalled();
   expect(screen.getByText('內容已變更，請重新生成。')).toBeTruthy();
+});
+
+it('offers generation only once per draft, but a failed attempt can be retried', async () => {
+  jest
+    .mocked(socialApi.writePost)
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValue({ text: '整理後的活動剩餘便當公告' });
+  const screen = await render(
+    <PostWritingAssistant content="活動剩餘便當" context="" disabled={false} onApply={jest.fn()} />,
+  );
+  expect(screen.queryByRole('button', { name: 'AI 潤稿' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: 'AI 生成貼文' }));
+  await waitFor(() => expect(screen.getByText('暫時失敗')).toBeTruthy());
+  expect(screen.getByRole('button', { name: 'AI 生成貼文' })).toBeEnabled();
+  await fireEvent.press(screen.getByRole('button', { name: 'AI 生成貼文' }));
+  await waitFor(() => expect(screen.getByLabelText('AI 貼文草稿')).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '保留原文' }));
+  expect(screen.getByRole('button', { name: 'AI 生成貼文' })).toBeDisabled();
+  expect(screen.getByText('此篇已生成一次，可直接編輯內容')).toBeTruthy();
 });

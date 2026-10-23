@@ -9,18 +9,23 @@ import { coreError } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius } from '@/theme/tokens';
 
-export function PostWritingAssistant({
-  content,
-  context,
-  disabled,
-  onApply,
-}: {
+type WritingProps = {
   content: string;
   context: string;
   disabled: boolean;
   onApply: (text: string) => void;
-}) {
+};
+export function PostWritingAssistant(props: WritingProps) {
   const actor = useAuthStore((s) => s.user?.id);
+  return <WritingSession key={actor} {...props} actor={actor} />;
+}
+function WritingSession({
+  content,
+  context,
+  disabled,
+  onApply,
+  actor,
+}: WritingProps & { actor?: string }) {
   const current = useRef({ content, context, actor });
   useEffect(() => {
     current.current = { content, context, actor };
@@ -33,6 +38,8 @@ export function PostWritingAssistant({
     };
   }, []);
   const [busy, setBusy] = useState(false);
+  const [used, setUsed] = useState(false);
+  if (used && !content.trim()) setUsed(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState<{
     original: string;
@@ -41,13 +48,13 @@ export function PostWritingAssistant({
     text: string;
   }>();
   const [original, setOriginal] = useState<{ before: string; after: string; actor?: string }>();
-  async function run(mode: 'generate' | 'polish') {
-    if (!content.trim() || busy || disabled || !actor) return;
+  async function run() {
+    if (!content.trim() || busy || disabled || used || !actor) return;
     const source = { ...current.current };
     setBusy(true);
     setError('');
     try {
-      const result = await socialApi.writePost(mode, source.content, source.context);
+      const result = await socialApi.writePost('generate', source.content, source.context);
       if (!mounted.current || useAuthStore.getState().user?.id !== source.actor) return;
       if (
         current.current.content !== source.content ||
@@ -56,6 +63,7 @@ export function PostWritingAssistant({
         setError('內容已變更，請重新生成。');
         return;
       }
+      setUsed(true);
       setPreview({
         original: source.content,
         context: source.context,
@@ -79,30 +87,29 @@ export function PostWritingAssistant({
       <View style={styles.strip}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>AI</Text>
-          <Text style={styles.hint}>{busy ? '正在整理草稿…' : 'AI 生成內容可能有誤'}</Text>
+          <Text style={styles.hint}>
+            {busy
+              ? '正在整理草稿…'
+              : used
+                ? '此篇已生成一次，可直接編輯內容'
+                : '每篇生成一次，採用前請確認內容'}
+          </Text>
         </View>
-        {(['generate', 'polish'] as const).map((mode) => (
-          <Pressable
-            key={mode}
-            accessibilityRole="button"
-            accessibilityLabel={mode === 'generate' ? 'AI 生成貼文' : 'AI 潤稿'}
-            disabled={disabled || busy || !actor || !content.trim()}
-            onPress={() => {
-              void run(mode);
-            }}
-            style={[
-              styles.button,
-              (disabled || busy || !actor || !content.trim()) && { opacity: 0.45 },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={mode === 'generate' ? 'reload' : 'pencil-outline'}
-              size={16}
-              color={colors.ink}
-            />
-            <Text style={styles.buttonText}>{mode === 'generate' ? '生成' : '潤稿'}</Text>
-          </Pressable>
-        ))}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="AI 生成貼文"
+          disabled={disabled || busy || used || !actor || !content.trim()}
+          onPress={() => {
+            void run();
+          }}
+          style={[
+            styles.button,
+            (disabled || busy || used || !actor || !content.trim()) && { opacity: 0.4 },
+          ]}
+        >
+          <MaterialCommunityIcons name="creation" size={16} color={colors.ink} />
+          <Text style={styles.buttonText}>{used ? '已生成' : '生成'}</Text>
+        </Pressable>
       </View>
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>
