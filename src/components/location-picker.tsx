@@ -96,11 +96,9 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
     invalidate();
   }
   function campus(place: CampusPickupPlace) {
-    if (place.requiresPin) {
-      setMap({ initial: place, name: place.name, mustPick: true });
-      return;
-    }
     choose(place);
+    onChange(postLocationSchema.parse(place));
+    setEditing(false);
   }
   async function search() {
     if (query.trim().length < 2 || disabled) return;
@@ -209,29 +207,35 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
       {favorites.length ? (
         <>
           <Text style={styles.label}>我的常用地點（本裝置）</Text>
-          {favorites.map((p) => (
-            <View key={p.id} style={styles.actions}>
-              <Pressable
-                accessibilityRole="button"
-                disabled={disabled}
-                onPress={() => choose(p.location)}
-                style={styles.placeChip}
-              >
-                <Text style={styles.chipLabel}>{p.location.name}</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`移除 ${p.location.name}`}
-                disabled={disabled || saving}
-                onPress={() => {
-                  void removeFavorite(p.id);
-                }}
-                style={styles.smallButton}
-              >
-                <MaterialCommunityIcons name="close" size={18} color={colors.muted} />
-              </Pressable>
-            </View>
-          ))}
+          <View style={styles.actions}>
+            {favorites.map((p) => (
+              <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={disabled}
+                  onPress={() => {
+                    choose(p.location);
+                    onChange(p.location);
+                    setEditing(false);
+                  }}
+                  style={styles.placeChip}
+                >
+                  <Text style={styles.chipLabel}>{p.location.name}</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`移除 ${p.location.name}`}
+                  disabled={disabled || saving}
+                  onPress={() => {
+                    void removeFavorite(p.id);
+                  }}
+                  style={styles.smallButton}
+                >
+                  <MaterialCommunityIcons name="close" size={18} color={colors.muted} />
+                </Pressable>
+              </View>
+            ))}
+          </View>
         </>
       ) : null}
       <TextInput

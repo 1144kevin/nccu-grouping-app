@@ -58,7 +58,7 @@ const schema = z
       });
   });
 type FormValues = z.infer<typeof schema>;
-const suggestedTags = ['拼單', '政大附近', '東側門', '麵包', '法國可頌'];
+const suggestedTags = ['晚餐', '便當', '飲料', '宵夜', '剩食分享'];
 
 export default function CreateScreen() {
   return CORE_API_ENABLED ? <ClockReadyCreate /> : <CreateForm />;
@@ -428,7 +428,22 @@ function CreateForm({
             <Text style={styles.error}>{errors.content?.message}</Text>
             <Text style={styles.counter}>{content.length}/500</Text>
           </View>
-          {CORE_API_ENABLED ? <PostWritingAssistant content={content} context={JSON.stringify({ tags, deadline, capacity: writingFields.capacity, price: writingFields.price, location: writingFields.location })} disabled={isSubmitting} onApply={(text) => setValue('content', text, { shouldDirty: true, shouldValidate: true })} /> : null}
+          {CORE_API_ENABLED ? (
+            <PostWritingAssistant
+              content={content}
+              context={JSON.stringify({
+                tags,
+                deadline,
+                capacity: writingFields.capacity,
+                price: writingFields.price,
+                location: writingFields.location,
+              })}
+              disabled={isSubmitting}
+              onApply={(text) =>
+                setValue('content', text, { shouldDirty: true, shouldValidate: true })
+              }
+            />
+          ) : null}
           <SectionTitle>主題標籤</SectionTitle>
           <View style={styles.tagRow}>
             {[...new Set([...suggestedTags, ...tags])].map((tag) => (
