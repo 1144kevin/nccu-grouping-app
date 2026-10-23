@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import { FlatList, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -31,9 +31,11 @@ export function validatedSemanticPosts(snapshot: CorePost[], fresh: CorePost[]):
 export function CoreSemanticFeed({
   renderPost,
   initialQuery = '',
+  search,
 }: {
   renderPost: (post: CorePost) => ReactElement;
   initialQuery?: string;
+  search?: { query: string; revision: number };
 }) {
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
@@ -47,8 +49,9 @@ export function CoreSemanticFeed({
         actor,
         focused,
         version,
-        text,
+        text: search?.query ?? text,
         setText,
+        search,
         renderPost,
         preferenceError: preferences.error ? coreError(preferences.error) : '',
       }}
@@ -64,6 +67,7 @@ function SemanticFeedSession({
   setText,
   renderPost,
   preferenceError,
+  search,
 }: {
   actor?: string;
   focused: boolean;
@@ -72,6 +76,7 @@ function SemanticFeedSession({
   setText: (value: string) => void;
   renderPost: (post: CorePost) => ReactElement;
   preferenceError: string;
+  search?: { query: string; revision: number };
 }) {
   const generation = useRef(0);
   const mounted = useRef(false);
@@ -101,7 +106,8 @@ function SemanticFeedSession({
     focused && !validation.error && validation.data && result
       ? validatedSemanticPosts(result.items, validation.data.items)
       : [];
-  const run = async () => {
+  const run = useCallback(async () => {
+    if (!focused || !actor || version === undefined || !text.trim()) return;
     const query = text.trim();
     const request = ++generation.current;
     setBusy(true);
@@ -123,7 +129,9 @@ function SemanticFeedSession({
     } finally {
       if (mounted.current && request === generation.current) setBusy(false);
     }
-  };
+  }, [text, focused, actor, version]);
+  const lastTrigger = useRef(0);
+  useEffect(() => { if (!search?.revision || lastTrigger.current === search.revision || !focused || !actor || version === undefined) return; lastTrigger.current = search.revision; void run(); }, [search?.revision, focused, actor, version, run]);
   return (
     <FlatList
       data={posts}
@@ -132,7 +140,7 @@ function SemanticFeedSession({
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
         <View style={{ padding: 16, gap: 10 }}>
-          <TextInput
+          {!search ? <><TextInput
             accessibilityLabel="語義搜尋需求"
             placeholder="想找晚餐，也可以是活動剩餘便當"
             value={text}
@@ -155,7 +163,7 @@ function SemanticFeedSession({
             }}
           >
             {busy ? 'AI 正在比較貼文…' : '用 AI 找相關拼單'}
-          </PrimaryButton>
+          </PrimaryButton></> : null}
           {error ? <Text accessibilityRole="alert">{error} 請稍後再試。</Text> : null}
           {preferenceError ? <Text accessibilityRole="alert">{preferenceError}</Text> : null}
           {result ? (

@@ -157,3 +157,14 @@ it('keeps semantic order but removes unauthorized, edited, full, expired and can
     expect(validatedSemanticPosts([post], [{ ...post, ...change }])).toEqual([]);
   }
 });
+
+it('shares externally submitted search text without adding an input or running while typing', async () => {
+  const ui = (query: string, revision: number) => <QueryClientProvider client={client}><CoreSemanticFeed search={{ query, revision }} renderPost={(p) => <Text>{p.content}</Text>} /></QueryClientProvider>;
+  const screen = await render(ui('想找晚餐', 0));
+  expect(screen.queryByLabelText('語義搜尋需求')).toBeNull();
+  expect(engagementApi.semanticRecommendations).not.toHaveBeenCalled();
+  await screen.rerender(ui('想找免費晚餐', 1));
+  await waitFor(() => expect(engagementApi.semanticRecommendations).toHaveBeenCalledWith('想找免費晚餐'));
+  await screen.rerender(ui('改找飲料', 1));
+  expect(engagementApi.semanticRecommendations).toHaveBeenCalledTimes(1);
+});

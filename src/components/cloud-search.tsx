@@ -12,14 +12,7 @@ import {
   View,
 } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
-import {
-  Avatar,
-  DetailHeader,
-  EmptyState,
-  IconButton,
-  PrimaryButton,
-  Screen,
-} from '@/components/primitives';
+import { Avatar, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { CorePostRow, shortDate } from '@/components/list-ui';
 import { CoreSemanticFeed } from '@/components/core-semantic-feed';
 import { coreApi, coreError, type CoreSearchItem } from '@/lib/core-api';
@@ -27,8 +20,9 @@ import { useCorePosts, useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
-type Scope = 'posts' | 'semantic' | 'users' | 'messages' | 'history';
+type Scope = 'all' | 'posts' | 'semantic' | 'users' | 'messages' | 'history';
 const scopes: [Scope, string][] = [
+  ['all', '全部'],
   ['posts', '拼單'],
   ['semantic', 'AI 找拼單'],
   ['users', '使用者'],
@@ -50,50 +44,52 @@ export function CloudSearchScreen({
       ? 'history'
       : scopes.some(([s]) => s === initialScope)
         ? (initialScope as Scope)
-        : 'posts',
+        : 'all',
   );
   const [activeOnly, setActiveOnly] = useState(false);
-  const submit = () => setQuery(input.trim());
+  const [revision, setRevision] = useState(0);
+  const [quick, setQuick] = useState<'soon' | 'campus'>();
+  const submit = () => {
+    setQuick(undefined);
+    setQuery(input.trim());
+    if (scope === 'semantic') setRevision((r) => r + 1);
+  };
   return (
     <Screen>
-      {scope === 'semantic' ? (
-        <DetailHeader title="搜尋" />
-      ) : (
-        <View style={styles.header}>
-          <IconButton
-            icon="chevron-left"
-            label="返回"
-            onPress={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace('/');
-            }}
+      <View style={styles.header}>
+        <IconButton
+          icon="chevron-left"
+          label="返回"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/');
+          }}
+        />
+        <View style={styles.inputWrap}>
+          <MaterialCommunityIcons name="magnify" size={19} color={colors.muted} />
+          <TextInput
+            accessibilityLabel="搜尋內容"
+            placeholder="搜尋拼單、使用者或訊息"
+            value={input}
+            onChangeText={setInput}
+            maxLength={80}
+            returnKeyType="search"
+            onSubmitEditing={submit}
+            style={styles.input}
           />
-          <View style={styles.inputWrap}>
-            <MaterialCommunityIcons name="magnify" size={19} color={colors.muted} />
-            <TextInput
-              accessibilityLabel="搜尋內容"
-              placeholder="搜尋拼單、使用者或訊息"
-              value={input}
-              onChangeText={setInput}
-              maxLength={80}
-              returnKeyType="search"
-              onSubmitEditing={submit}
-              style={styles.input}
+          {input ? (
+            <IconButton
+              icon="close-circle"
+              label="清除搜尋"
+              onPress={() => {
+                setInput('');
+                setQuery('');
+              }}
             />
-            {input ? (
-              <IconButton
-                icon="close-circle"
-                label="清除搜尋"
-                onPress={() => {
-                  setInput('');
-                  setQuery('');
-                }}
-              />
-            ) : null}
-          </View>
-          <IconButton icon="arrow-right" label="搜尋" onPress={submit} />
+          ) : null}
         </View>
-      )}
+        <IconButton icon="arrow-right" label="搜尋" onPress={submit} />
+      </View>
       <View style={styles.filters}>
         <ScrollView
           horizontal
@@ -105,7 +101,11 @@ export function CloudSearchScreen({
               key={key}
               accessibilityRole="tab"
               accessibilityState={{ selected: scope === key }}
-              onPress={() => setScope(key)}
+              onPress={() => {
+                setScope(key);
+                setRevision(0);
+                setQuick(undefined);
+              }}
               style={[styles.filter, scope === key && styles.filterActive]}
             >
               <Text style={[styles.filterText, scope === key && styles.filterTextActive]}>
@@ -116,8 +116,13 @@ export function CloudSearchScreen({
         </ScrollView>
       </View>
       {scope === 'semantic' ? (
-        <CoreSemanticFeed initialQuery={input} renderPost={(post) => <CorePostRow post={post} />} />
-      ) : scope === 'posts' ? (
+        <CoreSemanticFeed
+          search={{ query: input, revision }}
+          renderPost={(post) => <CorePostRow post={post} />}
+        />
+      ) : scope === 'all' && query ? (
+        <AllResults query={query} onScope={setScope} />
+      ) : scope === 'posts' || scope === 'all' ? (
         <>
           {query ? (
             <View style={styles.toggle}>
@@ -129,8 +134,8 @@ export function CloudSearchScreen({
               />
             </View>
           ) : null}
-          {query ? (
-            <PostResults query={query} activeOnly={activeOnly} />
+          {query || quick ? (
+            <PostResults query={query} activeOnly={activeOnly || !!quick} quick={quick} />
           ) : (
             <View style={styles.discovery}>
               <Text style={styles.sectionTitle}>熱門搜尋</Text>
@@ -149,7 +154,33 @@ export function CloudSearchScreen({
                   </Pressable>
                 ))}
               </View>
-              <EmptyState icon="magnify" title="找找今天想吃什麼" />
+              <Text style={styles.sectionTitle}>快速尋找</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setQuick('soon');
+                  setScope('posts');
+                  setQuery('');
+                }}
+                style={styles.quickRow}
+              >
+                <MaterialCommunityIcons name="clock-fast" size={22} color={colors.yellow} />
+                <Text style={styles.quickLabel}>即將截止</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setQuick('campus');
+                  setScope('posts');
+                  setQuery('');
+                }}
+                style={styles.quickRow}
+              >
+                <MaterialCommunityIcons name="map-marker-outline" size={22} color={colors.yellow} />
+                <Text style={styles.quickLabel}>校園附近</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
+              </Pressable>
             </View>
           )}
         </>
@@ -159,7 +190,86 @@ export function CloudSearchScreen({
     </Screen>
   );
 }
-function PostResults({ query, activeOnly }: { query: string; activeOnly: boolean }) {
+function AllResults({ query, onScope }: { query: string; onScope: (scope: Scope) => void }) {
+  const actor = useAuthStore((s) => s.user?.id);
+  const focused = useCoreScreenFocused();
+  const result = useInfiniteQuery({
+    queryKey: ['core', actor, 'search-all', query],
+    queryFn: async ({ pageParam }) => {
+      const scopes = ['users', 'messages', 'history'] as const;
+      const responses = await Promise.allSettled([
+        coreApi.posts('feed', pageParam, query),
+        ...scopes.map((scope) => coreApi.search(scope, query)),
+      ]);
+      return responses;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: () => undefined,
+    enabled: !!actor && focused && query.length >= 2,
+    retry: false,
+    gcTime: 0,
+  });
+  const responses = result.data?.pages[0];
+  const postResult = responses?.[0];
+  return (
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
+      {query.length < 2 ? (
+        <EmptyState icon="magnify" title="輸入至少 2 個字開始搜尋" />
+      ) : result.isPending ? (
+        <ActivityIndicator />
+      ) : null}
+      {responses?.map((entry, index) => (
+        <View key={index}>
+          <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.lg }]}>
+            {['拼單', '使用者', '訊息', '紀錄'][index]}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onScope((['posts', 'users', 'messages', 'history'] as Scope[])[index])}
+          >
+            <Text style={{ color: colors.brown, paddingHorizontal: spacing.lg, paddingBottom: 8 }}>
+              查看全部
+            </Text>
+          </Pressable>
+          {entry.status === 'rejected' ? (
+            <Text style={styles.error}>{coreError(entry.reason)}</Text>
+          ) : index === 0 ? (
+            postResult?.status === 'fulfilled' ? (
+              postResult.value.items.map((p) => (
+                <CorePostRow key={p.id} post={p as import('@/lib/core-api').CorePost} />
+              ))
+            ) : null
+          ) : (
+            entry.value.items.map((item) => (
+              <SearchResult key={item.id} item={item as CoreSearchItem} />
+            ))
+          )}
+          {entry.status === 'fulfilled' && !entry.value.items.length ? (
+            <Text style={{ color: colors.muted, paddingHorizontal: spacing.lg }}>
+              沒有符合的結果
+            </Text>
+          ) : null}
+        </View>
+      ))}
+      <ErrorAndRetry
+        error={result.error}
+        retry={() => {
+          void result.refetch();
+        }}
+      />
+    </ScrollView>
+  );
+}
+
+function PostResults({
+  query,
+  activeOnly,
+  quick,
+}: {
+  query: string;
+  activeOnly: boolean;
+  quick?: 'soon' | 'campus';
+}) {
   const result = useCorePosts('feed', query, activeOnly);
   return (
     <>
@@ -171,7 +281,22 @@ function PostResults({ query, activeOnly }: { query: string; activeOnly: boolean
       />
       <FlatList
         keyboardShouldPersistTaps="handled"
-        data={result.posts}
+        data={
+          quick === 'soon'
+            ? [...result.posts].sort(
+                (a, b) => Date.parse(a.deadline_at) - Date.parse(b.deadline_at),
+              )
+            : quick === 'campus'
+              ? result.posts.filter(
+                  (p) =>
+                    p.location &&
+                    p.location.latitude >= 24.975 &&
+                    p.location.latitude <= 24.998 &&
+                    p.location.longitude >= 121.565 &&
+                    p.location.longitude <= 121.59,
+                )
+              : result.posts
+        }
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.results}
         ListEmptyComponent={
@@ -203,7 +328,7 @@ function PrivateResults({
   scope,
   query,
 }: {
-  scope: Exclude<Scope, 'posts' | 'semantic'>;
+  scope: 'users' | 'messages' | 'history';
   query: string;
 }) {
   const actor = useAuthStore((state) => state.user?.id);
@@ -304,6 +429,15 @@ function ErrorAndRetry({ error, retry }: { error: unknown; retry: () => void }) 
   ) : null;
 }
 const styles = StyleSheet.create({
+  quickRow: {
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  quickLabel: { flex: 1, color: colors.ink, fontSize: 16 },
   header: {
     minHeight: 58,
     paddingHorizontal: spacing.sm,

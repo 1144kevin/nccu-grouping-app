@@ -91,5 +91,7 @@ it('places semantic matching inside search while keeping normal scoped search se
   expect(screen.queryByText('語義搜尋入口')).toBeNull();
   await fireEvent.press(screen.getByRole('tab', { name: 'AI 找拼單' }));
   expect(screen.getByText('語義搜尋入口')).toBeTruthy();
+  expect(screen.getAllByLabelText('搜尋內容')).toHaveLength(1);
+  expect(screen.getByRole('tab', { name: '全部' })).toBeTruthy();
   expect(coreApi.search).not.toHaveBeenCalled();
 });
