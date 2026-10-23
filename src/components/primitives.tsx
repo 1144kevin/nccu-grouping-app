@@ -158,16 +158,19 @@ export function PrimaryButton({
   secondary = false,
   style,
   textColor,
+  accessibilityLabel,
 }: PropsWithChildren<{
   onPress?: () => void;
   disabled?: boolean;
   secondary?: boolean;
   style?: ViewStyle;
   textColor?: string;
+  accessibilityLabel?: string;
 }>) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [

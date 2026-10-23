@@ -13,6 +13,7 @@ export type FeedPost = {
   content: string;
   tags: string[];
   deadline: string;
+  deadlineAt?: string;
   joined: number;
   capacity: number;
   imageUrl?: string;

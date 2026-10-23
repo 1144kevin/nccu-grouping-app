@@ -1,0 +1,130 @@
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE, type CorePost } from '@/lib/core-api';
+import { useCoreScreenFocused } from '@/lib/core-hooks';
+import { useAuthStore } from '@/store/auth-store';
+
+export type ThreadKind = 'group' | 'direct';
+export type InboxFilter = 'all' | ThreadKind;
+export type ThreadMessage = {
+  id: string;
+  thread_id?: string;
+  sender_id: string;
+  sender_name: string;
+  sender_badge: string;
+  content: string;
+  created_at: string;
+};
+export type InboxThread = {
+  id: string;
+  kind: ThreadKind;
+  post: CorePost;
+  peer_id: string;
+  peer_name: string;
+  peer_badge: string;
+  last_message: ThreadMessage | null;
+  updated_at: string;
+  unread_count: number;
+  pinned: boolean;
+  inbox: 'primary' | 'general';
+  muted: boolean;
+  deleted: boolean;
+};
+export type InboxPage = { items: InboxThread[]; next_cursor: string | null; total_unread: number };
+export type OrderSummary = {
+  post: CorePost;
+  members: { id: string; name: string; badge: string; host: boolean }[];
+  formed: boolean;
+  completed: boolean;
+  confirmed_count: number;
+  my_confirmed: boolean;
+  can_confirm: boolean;
+};
+export type Experience = {
+  score: number;
+  level: 1 | 2 | 3 | 4 | 5;
+  completed_orders: number;
+  completed_post_ids: string[];
+  history_count: number;
+};
+export const socialApi = {
+  inbox: async (kind: InboxFilter = 'all', cursor?: string, deleted = false, limit = 30) =>
+    (await api.get<InboxPage>('/inbox', { params: { kind, cursor, deleted, limit } })).data,
+  preference: async (
+    thread: Pick<InboxThread, 'kind' | 'id'>,
+    value: Partial<Pick<InboxThread, 'pinned' | 'inbox' | 'muted' | 'deleted'>>,
+  ) =>
+    (await api.patch<InboxThread>(`/inbox/${thread.kind}/${encodeURIComponent(thread.id)}`, value))
+      .data,
+  start: async (postId: string) =>
+    (await api.post<InboxThread>('/direct-messages', { post_id: postId })).data,
+  messages: async (id: string, cursor?: string) =>
+    (
+      await api.get<{
+        thread: InboxThread;
+        messages: ThreadMessage[];
+        can_send: boolean;
+        next_cursor: string | null;
+      }>(`/direct-messages/${encodeURIComponent(id)}`, { params: { cursor, limit: 30 } })
+    ).data,
+  send: async (id: string, content: string, key: string) =>
+    (
+      await api.post<ThreadMessage>(
+        `/direct-messages/${encodeURIComponent(id)}/messages`,
+        { content },
+        { headers: { 'Idempotency-Key': key } },
+      )
+    ).data,
+  read: async (id: string, message_id: string) =>
+    (await api.post(`/direct-messages/${encodeURIComponent(id)}/read`, { message_id })).data,
+  order: async (postId: string) =>
+    (await api.get<OrderSummary>(`/orders/${encodeURIComponent(postId)}/summary`)).data,
+  handoff: async (postId: string) =>
+    (await api.post<OrderSummary>(`/orders/${encodeURIComponent(postId)}/handoff`)).data,
+  experience: async () => (await api.get<Experience>('/account/experience')).data,
+  writePost: async (mode: 'generate' | 'polish', content: string, context: string) =>
+    (
+      await api.post<{ text: string }>(
+        '/ai/post-writing',
+        { mode, content, context },
+        { timeout: 120_000 },
+      )
+    ).data,
+};
+export function useInboxThreads(kind: InboxFilter = 'all', deleted = false) {
+  const actor = useAuthStore((s) => s.user?.id);
+  const focused = useCoreScreenFocused();
+  const query = useInfiniteQuery({
+    queryKey: ['core', actor, 'social-inbox', kind, deleted],
+    queryFn: ({ pageParam }) => socialApi.inbox(kind, pageParam, deleted),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (p) => p.next_cursor ?? undefined,
+    enabled: !!actor && focused && CORE_API_ENABLED && CORE_SUPABASE_MODE,
+    retry: false,
+    refetchInterval: focused ? 10_000 : false,
+  });
+  const unique = new Map<string, InboxThread>();
+  for (const item of query.data?.pages.flatMap((p) => p.items) ?? [])
+    if (!unique.has(item.kind + item.id)) unique.set(item.kind + item.id, item);
+  return { ...query, items: [...unique.values()] };
+}
+export function useSocialUnread() {
+  const actor = useAuthStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: ['core', actor, 'social-unread'],
+    queryFn: () => socialApi.inbox('all', undefined, false, 1),
+    enabled: !!actor && CORE_API_ENABLED && CORE_SUPABASE_MODE,
+    retry: false,
+    refetchInterval: 15_000,
+  });
+}
+export function useExperience() {
+  const actor = useAuthStore((s) => s.user?.id);
+  const focused = useCoreScreenFocused();
+  return useQuery({
+    queryKey: ['core', actor, 'experience'],
+    queryFn: socialApi.experience,
+    enabled: !!actor && focused && CORE_SUPABASE_MODE,
+    retry: false,
+  });
+}

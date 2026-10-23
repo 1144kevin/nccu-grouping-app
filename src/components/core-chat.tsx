@@ -5,254 +5,28 @@ import { router } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Pressable,
-  RefreshControl,
   StyleSheet,
   View,
 } from 'react-native';
-import { SegmentedTabs, shortDate } from '@/components/list-ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardViewport } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import {
-  AppHeader,
   Avatar,
   DetailHeader,
-  EmptyState,
   IconButton,
   PrimaryButton,
   Screen,
 } from '@/components/primitives';
 import { coreApi, coreError, newRequestKey } from '@/lib/core-api';
 import { invalidateCore, useCoreScreenFocused } from '@/lib/core-hooks';
-import { useCoreChatActivity } from '@/lib/core-chat-hooks';
 import { queryClient } from '@/lib/query-client';
 import { chatMessagesNewestFirst } from '@/lib/chat-message-pages';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
-import { engagementApi, useInboxPreferences, type InboxPreference } from '@/lib/engagement-api';
 
-export function CoreInbox() {
-  const user = useAuthStore((state) => state.user);
-  const focused = useCoreScreenFocused();
-  const activity = useCoreChatActivity(false);
-  const inbox = useInboxPreferences();
-  const [archived, setArchived] = useState(false);
-  const query = useInfiniteQuery({
-    queryKey: ['core', user?.id, 'conversations'],
-    queryFn: ({ pageParam }) => coreApi.conversations(pageParam),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
-    enabled: !!user && focused,
-    refetchInterval: 10_000,
-  });
-  const items = (query.data?.pages.flatMap((page) => page.items) ?? []).filter(
-    (item) =>
-      Boolean(inbox.data?.items.find((p) => p.post_id === item.post.id)?.archived) === archived,
-  );
-  return (
-    <Screen>
-      <AppHeader searchScope="messages" />
-      <SegmentedTabs
-        value={archived ? 'archived' : 'all'}
-        onChange={(value) => setArchived(value === 'archived')}
-        options={[
-          { value: 'all', label: '收件匣' },
-          { value: 'archived', label: '已封存' },
-        ]}
-      />
-      {inbox.error ? (
-        <>
-          <Text accessibilityRole="alert" style={styles.error}>
-            {coreError(inbox.error)}
-          </Text>
-          <PrimaryButton
-            secondary
-            onPress={() => {
-              void inbox.refetch();
-            }}
-          >
-            重試載入聊天室偏好
-          </PrimaryButton>
-        </>
-      ) : null}
-      {query.error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {coreError(query.error)}
-        </Text>
-      ) : null}
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.post.id}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={query.isFetching && !query.isFetchingNextPage}
-            onRefresh={() => {
-              void query.refetch();
-            }}
-          />
-        }
-        ListEmptyComponent={
-          query.isPending ? (
-            <ActivityIndicator />
-          ) : (
-            <EmptyState
-              icon="chat-outline"
-              title={query.error ? '聊天室載入失敗' : '加入拼單後，就能在這裡協調取餐'}
-              action={
-                query.error ? (
-                  <PrimaryButton
-                    secondary
-                    onPress={() => {
-                      void query.refetch();
-                    }}
-                  >
-                    重試
-                  </PrimaryButton>
-                ) : undefined
-              }
-            />
-          )
-        }
-        ListFooterComponent={
-          query.hasNextPage ? (
-            <PrimaryButton
-              secondary
-              disabled={query.isFetchingNextPage}
-              onPress={() => {
-                void query.fetchNextPage();
-              }}
-            >
-              載入更多聊天室
-            </PrimaryButton>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <View style={styles.inboxRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`開啟聊天室 ${item.post.content}`}
-              onPress={() => router.push(`/chat/${item.post.id}`)}
-              style={styles.conversation}
-            >
-              <View>
-                <Avatar
-                  name={item.post.author_name}
-                  badge={item.post.author_badge ?? '🍱'}
-                  size={54}
-                />
-                {(activity.data?.groups.find((g) => g.post_id === item.post.id)?.unread_count ??
-                  0) > 0 ? (
-                  <View style={styles.unreadDot} />
-                ) : null}
-              </View>
-              <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <Text numberOfLines={1} style={[styles.title, { flex: 1 }]}>
-                    {item.post.author_name}
-                  </Text>
-                  <Text style={styles.muted}>
-                    {shortDate(item.last_message?.created_at ?? item.post.created_at)}
-                  </Text>
-                </View>
-                <Text numberOfLines={1} style={styles.preview}>
-                  {item.post.content}
-                </Text>
-                <Text numberOfLines={1} style={styles.muted}>
-                  {item.last_message
-                    ? `${item.last_message.sender_name}：${item.last_message.content}`
-                    : '開始聊聊吧'}
-                </Text>
-                {item.post.status === 'cancelled' ? (
-                  <Text style={styles.muted}>已取消 · 唯讀</Text>
-                ) : null}
-              </View>
-              {(activity.data?.groups.find((g) => g.post_id === item.post.id)?.unread_count ?? 0) >
-              0 ? (
-                <Text style={styles.unreadBadge}>
-                  {activity.data?.groups.find((g) => g.post_id === item.post.id)?.unread_count}
-                </Text>
-              ) : null}
-            </Pressable>
-            {inbox.data ? (
-              <InboxActions
-                value={
-                  inbox.data.items.find((p) => p.post_id === item.post.id) ?? {
-                    post_id: item.post.id,
-                    muted: false,
-                    archived: false,
-                  }
-                }
-              />
-            ) : null}
-          </View>
-        )}
-      />
-    </Screen>
-  );
-}
-
-function InboxActions({ value }: { value: InboxPreference }) {
-  const actor = useAuthStore((state) => state.user?.id);
-  const [menu, setMenu] = useState(false);
-  const save = useMutation({
-    mutationFn: (next: { muted: boolean; archived: boolean }) =>
-      engagementApi.saveInbox(value.post_id, next),
-    onSuccess: (updated) => {
-      if (useAuthStore.getState().user?.id !== actor) return;
-      queryClient.setQueryData<{ items: InboxPreference[] }>(
-        ['core', actor, 'inbox-preferences'],
-        (old) => ({
-          items: [...(old?.items.filter((p) => p.post_id !== updated.post_id) ?? []), updated],
-        }),
-      );
-      setMenu(false);
-      void queryClient.invalidateQueries({ queryKey: ['core', actor, 'chat-activity'] });
-    },
-  });
-  return (
-    <>
-      <IconButton icon="dots-horizontal" label="聊天室選項" onPress={() => setMenu(true)} />
-      <Modal transparent visible={menu} animationType="fade" onRequestClose={() => setMenu(false)}>
-        <View style={styles.overlay}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="關閉聊天室選項"
-            style={StyleSheet.absoluteFill}
-            onPress={() => setMenu(false)}
-          />
-          <View style={styles.menu} accessibilityViewIsModal>
-            <Text style={styles.title}>聊天室選項</Text>
-            <PrimaryButton
-              secondary
-              disabled={save.isPending}
-              onPress={() => save.mutate({ muted: !value.muted, archived: value.archived })}
-            >
-              {value.muted ? '取消靜音' : '靜音提示'}
-            </PrimaryButton>
-            <PrimaryButton
-              secondary
-              disabled={save.isPending}
-              onPress={() => save.mutate({ muted: value.muted, archived: !value.archived })}
-            >
-              {value.archived ? '移回收件匣' : '封存聊天室'}
-            </PrimaryButton>
-            {save.error ? (
-              <Text accessibilityRole="alert" style={styles.error}>
-                {coreError(save.error)}
-              </Text>
-            ) : null}
-            <PrimaryButton secondary onPress={() => setMenu(false)}>
-              取消
-            </PrimaryButton>
-          </View>
-        </View>
-      </Modal>
-    </>
-  );
-}
+export { UnifiedInbox as CoreInbox } from '@/components/unified-inbox';
 
 export function CoreGroupChat({ id }: { id: string }) {
   const user = useAuthStore((state) => state.user);
@@ -319,7 +93,7 @@ export function CoreGroupChat({ id }: { id: string }) {
   return (
     <Screen>
       <DetailHeader
-        title="拼單聊天室"
+        title={query.data?.pages[0]?.post ? `【群組】${query.data.pages[0].post.content.split('\n')[0]}` : '拼單聊天室'}
         right={
           <IconButton
             icon="refresh"

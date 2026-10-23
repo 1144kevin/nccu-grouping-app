@@ -4,11 +4,13 @@ import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreApi } from './core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { useAccountPreferences, useInboxPreferences, visibleChatActivity } from './engagement-api';
 import { useCoreScreenFocused } from './core-hooks';
+import { useSocialUnread } from './social-api';
 import { pendingOrderGroups } from './order-attention';
 
 export function useCoreChatActivity(polling = true) {
   const user = useAuthStore((state) => state.user);
   const preferences = useAccountPreferences();
+  const directUnread = useSocialUnread();
   const inbox = useInboxPreferences();
   const query = useQuery({
     queryKey: ['core', user?.id, 'chat-activity'],
@@ -21,7 +23,7 @@ export function useCoreChatActivity(polling = true) {
     rawData: query.data,
     data:
       query.data && preferences.data && inbox.data
-        ? visibleChatActivity(query.data, inbox.data.items, preferences.data)
+        ? { ...visibleChatActivity(query.data, inbox.data.items, preferences.data), total_unread: preferences.data.notifications?.messages === false ? 0 : directUnread.data?.total_unread ?? visibleChatActivity(query.data, inbox.data.items, preferences.data).total_unread }
         : undefined,
   };
 }

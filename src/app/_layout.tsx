@@ -36,6 +36,7 @@ function RootNavigator() {
   return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
     <Stack.Protected guard={allowed}>
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="direct-chat/[id]" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="chat/[id]" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="post/[id]" />
       <Stack.Screen name="order/[id]" />

@@ -55,6 +55,7 @@ export type CoreJoin = {
   post_id: string;
   requester_id: string;
   requester_name: string;
+  requester_badge?: string; requester_level?: number;
   status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
   created_at: string;
   decided_at: string | null;
@@ -115,7 +116,7 @@ export function toFeedPost(post: CorePost): FeedPost {
   return {
     id: post.id, name: post.author_name, badge: post.author_badge ?? '🍱', level: 1,
     time: new Date(post.created_at).toLocaleString('zh-TW'), content: post.content,
-    tags: post.tags, deadline: new Date(post.deadline_at).toLocaleString('zh-TW'),
+    tags: post.tags, deadline: new Date(post.deadline_at).toLocaleString('zh-TW'), deadlineAt: post.deadline_at,
     joined: post.joined, capacity: post.capacity, location: post.location,
     pricePerPerson: post.price_per_person === null ? undefined : Number(post.price_per_person),
     isMine: post.my_status === 'host',
@@ -123,6 +124,16 @@ export function toFeedPost(post: CorePost): FeedPost {
 }
 
 const messages: Record<string, string> = {
+  social_requires_supabase: '目前無法使用訊息功能，請稍後重試。',
+  direct_message_unavailable: '目前無法與這位主揪私訊。',
+  conversation_not_found: '找不到聊天室，或你目前無法存取。',
+  direct_message_rate_limit: '訊息操作過於頻繁，請稍後重試。',
+  handoff_not_ready: '尚未符合面交確認條件，請重新整理拼單。',
+  post_writing_invalid_output: '這次草稿未通過檢查，原文已保留，請重新生成。',
+  local_post_writing_not_configured: '本地 AI 尚未啟動，原文已保留。',
+  post_writing_rate_limit: '生成次數較多，請稍等再試。',
+  invalid_social_input: '操作未完成，請重新整理後再試。',
+  invalid_social_cursor: '清單已更新，請重新整理。',
   invalid_block_input: '請選擇有效使用者；不能封鎖自己。',
   block_limit_reached: '已達500位封鎖上限，請先整理封鎖名單。',
   user_interaction_blocked: '目前雙方無法互動，可能存在封鎖關係。',

@@ -5,6 +5,7 @@ import type { PropsWithChildren } from 'react';
 import { coreApi, type CoreOrderActivity } from './core-api';
 import { useCoreOrderActivity } from './core-chat-hooks';
 
+jest.mock('./social-api', () => ({ useSocialUnread: () => ({ data: undefined }) }));
 jest.mock('./core-api', () => ({
   CORE_API_ENABLED: true,
   CORE_SUPABASE_MODE: true,

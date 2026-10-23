@@ -1,0 +1,30 @@
+import { afterEach, expect, it, jest } from '@jest/globals';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
+import { DirectChat } from './direct-chat';
+import type { CorePost } from '@/lib/core-api';
+import { socialApi } from '@/lib/social-api';
+
+jest.mock('expo-router', () => ({ router: { push: jest.fn(), back: jest.fn(), canGoBack: () => true } }));
+jest.mock('@/lib/core-hooks', () => ({ invalidateCore: jest.fn(async () => undefined), useCoreScreenFocused: () => true }));
+jest.mock('@/lib/core-api', () => ({ coreError: () => '暫時失敗', newRequestKey: () => 'synthetic-stable-key' }));
+jest.mock('@/store/auth-store', () => ({ useAuthStore: Object.assign((select: (s: { user: { id: string } }) => unknown) => select({ user: { id: 'self' } }), { getState: () => ({ user: { id: 'self' } }) }) }));
+jest.mock('@/lib/font-size-storage', () => ({ fontSizeStorage: { getItem: () => null, setItem: jest.fn(), removeItem: jest.fn() } }));
+jest.mock('@/lib/social-api', () => ({ socialApi: { messages: jest.fn(), send: jest.fn(), read: jest.fn() } }));
+const client = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false }, mutations: { gcTime: 0, retry: false } } });
+afterEach(() => { client.clear(); jest.resetAllMocks(); });
+it('retains failed text and retries the same message key without duplicate sends', async () => {
+  jest.mocked(socialApi.messages).mockResolvedValue({ thread: { id: 'thread', kind: 'direct', peer_id: 'host', peer_name: '主揪', peer_badge: '🍱', post: { id: 'post', content: '晚餐便當' } as CorePost, last_message: null, updated_at: '2026-10-23T00:00:00Z', unread_count: 0, pinned: false, inbox: 'general', muted: false, deleted: false }, messages: [], can_send: true, next_cursor: null } as Awaited<ReturnType<typeof socialApi.messages>>);
+  jest.mocked(socialApi.send).mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({ id: 'message' } as Awaited<ReturnType<typeof socialApi.send>>);
+  const screen = await render(<SafeAreaInsetsContext.Provider value={{ top: 0, bottom: 0, left: 0, right: 0 }}><QueryClientProvider client={client}><DirectChat id="thread" /></QueryClientProvider></SafeAreaInsetsContext.Provider>);
+  await waitFor(() => expect(screen.getByLabelText('私訊內容')).toBeTruthy());
+  await fireEvent.changeText(screen.getByLabelText('私訊內容'), '請問還有便當嗎？');
+  await fireEvent.press(screen.getByRole('button', { name: '傳送' }));
+  await waitFor(() => expect(screen.getByText('暫時失敗 文字已保留，可重試。')).toBeTruthy());
+  expect(screen.getByLabelText('私訊內容').props.value).toBe('請問還有便當嗎？');
+  await fireEvent.press(screen.getByRole('button', { name: '傳送' }));
+  await waitFor(() => expect(screen.getByLabelText('私訊內容').props.value).toBe(''));
+  expect(socialApi.send).toHaveBeenNthCalledWith(1, 'thread', '請問還有便當嗎？', 'synthetic-stable-key');
+  expect(socialApi.send).toHaveBeenNthCalledWith(2, 'thread', '請問還有便當嗎？', 'synthetic-stable-key');
+});
