@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AppText as Text } from '@/components/app-text';
 import { IconButton, PrimaryButton } from '@/components/primitives';
-import { chatPhotos, type PhotoChatKind } from '@/lib/chat-photos';
+import { chatPhotos, type PhotoChatKind, type SentPhoto } from '@/lib/chat-photos';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { validPickedImage } from '@/lib/media-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
@@ -24,7 +24,7 @@ export function ChatComposer({
   kind: PhotoChatKind;
   threadId: string;
   disabled?: boolean;
-  onSent: () => unknown;
+  onSent: (photo: SentPhoto) => unknown;
 }>) {
   const actor = useAuthStore((s) => s.user?.id);
   return (
@@ -47,7 +47,7 @@ function ComposerSession({
   kind: PhotoChatKind;
   threadId: string;
   disabled?: boolean;
-  onSent: () => unknown;
+  onSent: (photo: SentPhoto) => unknown;
   actor?: string;
 }>) {
   const insets = useSafeAreaInsets();
@@ -67,13 +67,19 @@ function ComposerSession({
         photo.imageId = asset.id;
       }
       if (!live()) return;
-      await chatPhotos.send(kind, threadId, photo.imageId, photo.key);
+      const receipt = await chatPhotos.send(kind, threadId, photo.imageId, photo.key);
+      return {
+        ...receipt,
+        image_id: photo.imageId,
+        local_uri: photo.uri,
+        created_at: new Date().toISOString(),
+      } as SentPhoto;
     },
-    onSuccess: () => {
-      if (live()) {
+    onSuccess: (receipt) => {
+      if (live() && receipt) {
         current.current = undefined;
         setDraft(undefined);
-        void onSent();
+        void onSent(receipt);
       }
     },
   });
@@ -185,10 +191,11 @@ function ComposerSession({
     </>
   );
 }
-export function ChatPhoto({ imageId }: { imageId: string }) {
+export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: string }) {
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
   const [expanded, setExpanded] = useState(false);
+  const [preview] = useState(localUri);
   const photo = useQuery({
     queryKey: ['core', actor, 'chat-photo', imageId],
     queryFn: () => chatPhotos.read(imageId),
@@ -197,7 +204,7 @@ export function ChatPhoto({ imageId }: { imageId: string }) {
     gcTime: 0,
     staleTime: 30_000,
   });
-  const uri = photo.data ? `data:image/jpeg;base64,${photo.data.content_base64}` : undefined;
+  const uri = photo.data ? `data:image/jpeg;base64,${photo.data.content_base64}` : preview;
   return (
     <View style={{ width: 220, maxWidth: '100%' }}>
       {uri ? (

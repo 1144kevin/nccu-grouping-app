@@ -9,6 +9,8 @@ import { StealthFormation } from '@/components/core-stealth-formation';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useCoreClock } from '@/lib/core-clock';
+import { useChatOutbox } from '@/lib/chat-outbox';
+import type { StealthRoomMessage } from '@/lib/stealth-api';
 import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
@@ -27,7 +29,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     queryKey: [...key, 'room', id],
     queryFn: () => stealthApi.room(id),
     enabled: !!actor && focused,
-    refetchInterval: focused ? 5000 : false,
+    refetchInterval: focused ? 2000 : false,
   });
   const matches = useQuery({
     queryKey: [...key, 'matches'],
@@ -42,20 +44,39 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
   };
+  const outbox = useChatOutbox<StealthRoomMessage>(query.data?.items ?? [], false);
+  const ownMessage = (content: string, messageId: string): StealthRoomMessage => ({
+    id: messageId,
+    content,
+    created_at: new Date().toISOString(),
+    member_number: match?.my_member_number ?? 1,
+    is_me: true,
+  });
+  function pendingDraft() {
+    const content = text.trim();
+    if (frozen.current?.text !== content) frozen.current = { text: content, key: newRequestKey() };
+    return frozen.current;
+  }
   const send = useMutation({
     retry: false,
     gcTime: 0,
-    mutationFn: async () => {
-      const content = text.trim();
-      if (frozen.current?.text !== content)
-        frozen.current = { text: content, key: newRequestKey() };
-      return stealthApi.roomSend(id, content, frozen.current.key);
+    mutationFn: () => {
+      const pending = pendingDraft();
+      return stealthApi.roomSend(id, pending.text, pending.key);
     },
-    onSuccess: async () => {
+    onMutate: () => {
+      const pending = pendingDraft();
+      outbox.begin(pending.key, ownMessage(pending.text, `local:${pending.key}`));
+    },
+    onSuccess: (message) => {
       if (useAuthStore.getState().user?.id !== actor) return;
+      if (frozen.current) outbox.confirm(frozen.current.key, message);
       setText('');
       frozen.current = null;
-      await query.refetch();
+      void query.refetch();
+    },
+    onError: () => {
+      if (frozen.current) outbox.fail(frozen.current.key);
     },
   });
   return (
@@ -82,7 +103,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           <Text style={styles.note}>還在等待其他夥伴同意，全部同意後才能聊天。</Text>
         ) : null}
         {query.data?.opened && !query.data.can_send ? (
-          <Text style={styles.note}>這組配對已撤回或過期，訊息保留唯讀。</Text>
+          <Text style={styles.note}>有人撤回、封鎖或拼單已取消，訊息保留唯讀。</Text>
         ) : null}
         {formal && match ? (
           <KeyboardScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
@@ -94,19 +115,30 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           </KeyboardScrollView>
         ) : (
           <FlatList
-            data={query.data?.items ?? []}
+            data={outbox.items}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.messages}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="interactive"
             renderItem={({ item }) => (
-              <View style={[styles.message, item.is_me && styles.mine]}>
+              <View
+                style={[
+                  styles.message,
+                  item.is_me && styles.mine,
+                  item.image_id && styles.photoMessage,
+                ]}
+              >
                 <Text style={styles.hint}>{item.is_me ? '你' : `夥伴 ${item.member_number}`}</Text>
                 {item.image_id ? (
-                  <ChatPhoto imageId={item.image_id} />
+                  <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                 ) : (
                   <Text style={styles.body}>{item.content}</Text>
                 )}
+                {item.delivery ? (
+                  <Text style={styles.hint}>
+                    {item.delivery === 'sending' ? '傳送中…' : '尚未送出，請重試'}
+                  </Text>
+                ) : null}
               </View>
             )}
           />
@@ -121,7 +153,15 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             kind="stealth"
             threadId={id}
             disabled={!focused || !query.data?.can_send || send.isPending}
-            onSent={() => query.refetch()}
+            onSent={(photo) => {
+              outbox.begin(photo.id, {
+                ...ownMessage('📷 照片', photo.id),
+                image_id: photo.image_id,
+                local_image_uri: photo.local_uri,
+              });
+              outbox.confirm(photo.id, { id: photo.id });
+              void query.refetch();
+            }}
           >
             <TextInput
               accessibilityLabel="偷揪聊天室訊息"
@@ -162,6 +202,7 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
   },
   mine: { backgroundColor: colors.yellowSoft, alignSelf: 'flex-end' },
+  photoMessage: { backgroundColor: 'transparent', padding: 0 },
   body: { fontSize: 16, color: colors.ink, lineHeight: 24 },
   hint: { color: colors.muted, fontSize: 12 },
   composer: { padding: spacing.sm, gap: spacing.sm },

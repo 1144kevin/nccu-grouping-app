@@ -9,8 +9,10 @@ import { KeyboardViewport } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { coreApi, coreError, newRequestKey } from '@/lib/core-api';
-import { invalidateCore, useCoreScreenFocused } from '@/lib/core-hooks';
+import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
+import { useChatOutbox } from '@/lib/chat-outbox';
+import type { CoreMessage } from '@/lib/core-api';
 import { chatMessagesNewestFirst } from '@/lib/chat-message-pages';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -18,6 +20,11 @@ import { colors, radius, spacing } from '@/theme/tokens';
 export { UnifiedInbox as CoreInbox } from '@/components/unified-inbox';
 
 export function CoreGroupChat({ id }: { id: string }) {
+  const actor = useAuthStore((state) => state.user?.id);
+  return <GroupChat key={`${actor}:${id}`} id={id} />;
+}
+
+function GroupChat({ id }: { id: string }) {
   const user = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
   const [text, setText] = useState('');
@@ -32,18 +39,33 @@ export function CoreGroupChat({ id }: { id: string }) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
     enabled: !!user && focused && !!id,
-    refetchInterval: 10_000,
+    refetchInterval: focused ? 2000 : false,
     retry: false,
     gcTime: 0,
+  });
+  const outbox = useChatOutbox<CoreMessage>(chatMessagesNewestFirst(query.data?.pages ?? []));
+  const ownMessage = (content: string, messageId: string): CoreMessage => ({
+    id: messageId,
+    post_id: id,
+    sender_id: user?.id ?? '',
+    sender_name: user?.display_name ?? '你',
+    sender_badge: user?.badge ?? '🍱',
+    content,
+    created_at: new Date().toISOString(),
   });
   const mutation = useMutation({
     mutationFn: (value: { text: string; key: string }) =>
       coreApi.sendMessage(id, value.text, value.key),
-    onSuccess: () => {
+    onMutate: (value) => outbox.begin(value.key, ownMessage(value.text, `local:${value.key}`)),
+    onSuccess: (message, value) => {
+      outbox.confirm(value.key, message);
       setText('');
       draft.current = null;
     },
-    onSettled: invalidateCore,
+    onError: (_, value) => outbox.fail(value.key),
+    onSettled: () => {
+      void query.refetch();
+    },
   });
   const current = query.data?.pages[0];
   const denied =
@@ -72,7 +94,7 @@ export function CoreGroupChat({ id }: { id: string }) {
         readState.current.pending = null;
       });
   }, [focused, denied, latestId, id, user?.id, query.dataUpdatedAt]);
-  const messages = chatMessagesNewestFirst(query.data?.pages ?? []);
+  const messages = outbox.items;
   function send() {
     const value = text.trim();
     if (!value || !current?.can_send || mutation.isPending) return;
@@ -169,13 +191,24 @@ export function CoreGroupChat({ id }: { id: string }) {
                     <Text style={styles.muted}>{item.sender_name}</Text>
                     <ReputationBadge level={item.sender_level} />
                   </View>
-                  <View style={[styles.bubble, item.sender_id === user?.id && styles.mineBubble]}>
+                  <View
+                    style={[
+                      styles.bubble,
+                      item.sender_id === user?.id && styles.mineBubble,
+                      item.image_id && styles.photoBubble,
+                    ]}
+                  >
                     {item.image_id ? (
-                      <ChatPhoto imageId={item.image_id} />
+                      <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                     ) : (
                       <Text style={styles.body}>{item.content}</Text>
                     )}
                   </View>
+                  {item.delivery ? (
+                    <Text style={styles.muted}>
+                      {item.delivery === 'sending' ? '傳送中…' : '尚未送出，請重試'}
+                    </Text>
+                  ) : null}
                   <Text style={styles.muted}>
                     {new Date(item.created_at).toLocaleString('zh-TW')}
                   </Text>
@@ -206,9 +239,14 @@ export function CoreGroupChat({ id }: { id: string }) {
                 kind="group"
                 threadId={id}
                 disabled={mutation.isPending}
-                onSent={() => {
+                onSent={(photo) => {
+                  outbox.begin(photo.id, {
+                    ...ownMessage('📷 照片', photo.id),
+                    image_id: photo.image_id,
+                    local_image_uri: photo.local_uri,
+                  });
+                  outbox.confirm(photo.id, { id: photo.id });
                   void query.refetch();
-                  void invalidateCore();
                 }}
               >
                 <TextInput
@@ -312,6 +350,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   mineBubble: { backgroundColor: colors.yellow },
+  photoBubble: { backgroundColor: 'transparent', padding: 0, borderRadius: 0 },
   body: { color: colors.ink, fontSize: 16, lineHeight: 24 },
   composer: {
     padding: spacing.sm,

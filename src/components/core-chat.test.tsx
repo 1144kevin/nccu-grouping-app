@@ -54,3 +54,18 @@ it('hides private messages when membership is denied', async () => {
   expect(screen.queryByText('六點見。')).toBeNull();
   expect(screen.queryByLabelText('聊天訊息')).toBeNull();
 });
+
+it('shows a pending message immediately and keeps its receipt visible while refresh is stale', async () => {
+  let resolve!: (v: CoreChatPage['messages'][number]) => void;
+  jest.mocked(coreApi.messages).mockResolvedValue(page);
+  jest.mocked(coreApi.sendMessage).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+  const screen = await render(<QueryClientProvider client={client}><CoreGroupChat id="post-a" /></QueryClientProvider>);
+  await waitFor(() => expect(screen.getByLabelText('聊天訊息')).toBeTruthy());
+  await fireEvent.changeText(screen.getByLabelText('聊天訊息'), '我在正門等');
+  await fireEvent.press(screen.getByRole('button', { name: '傳送' }));
+  await waitFor(() => expect(screen.getByText('我在正門等')).toBeTruthy());
+  expect(screen.getAllByText('傳送中…').length).toBeGreaterThan(0);
+  await act(async () => resolve({...page.messages[0], id: 'sent-now', sender_id: 'member', content: '我在正門等'}));
+  await waitFor(() => expect(screen.getByLabelText('聊天訊息').props.value).toBe(''));
+  expect(screen.getAllByText('我在正門等')).toHaveLength(1);
+});

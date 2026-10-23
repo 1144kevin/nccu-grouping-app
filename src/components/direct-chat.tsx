@@ -10,6 +10,8 @@ import { KeyboardViewport } from '@/components/keyboard-layout';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreScreenFocused, invalidateCore } from '@/lib/core-hooks';
 import { socialApi } from '@/lib/social-api';
+import { useChatOutbox } from '@/lib/chat-outbox';
+import type { ThreadMessage } from '@/lib/social-api';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius } from '@/theme/tokens';
 
@@ -28,14 +30,16 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (p) => p.next_cursor ?? undefined,
     enabled: !!actor && focused && !!id,
-    refetchInterval: focused ? 5000 : false,
+    refetchInterval: focused ? 2000 : false,
     retry: false,
     gcTime: 0,
   });
   const page = query.error ? undefined : query.data?.pages[0];
-  const messages = [
+  const serverMessages = [
     ...new Map((query.data?.pages.flatMap((p) => p.messages) ?? []).map((m) => [m.id, m])).values(),
   ];
+  const outbox = useChatOutbox<ThreadMessage>(serverMessages);
+  const messages = outbox.items;
   const latest = page?.messages[0]?.id;
   useEffect(() => {
     if (!focused || !actor || !latest || read.current === latest) return;
@@ -49,19 +53,38 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         read.current = undefined;
       });
   }, [focused, actor, latest, id, query.dataUpdatedAt]);
+  function pendingDraft() {
+    const content = text.trim();
+    if (draft.current?.content !== content) draft.current = { content, key: newRequestKey() };
+    return draft.current;
+  }
+  const ownMessage = (content: string, id: string) => ({
+    id,
+    sender_id: actor ?? '',
+    sender_name: useAuthStore.getState().user?.display_name ?? '你',
+    sender_badge: useAuthStore.getState().user?.badge ?? '🍱',
+    content,
+    created_at: new Date().toISOString(),
+  });
   const send = useMutation({
     retry: false,
     mutationFn: () => {
-      const content = text.trim();
-      if (draft.current?.content !== content) draft.current = { content, key: newRequestKey() };
-      return socialApi.send(id, content, draft.current.key);
+      const pending = pendingDraft();
+      return socialApi.send(id, pending.content, pending.key);
     },
-    onSuccess: () => {
+    onMutate: () => {
+      const pending = pendingDraft();
+      outbox.begin(pending.key, ownMessage(pending.content, `local:${pending.key}`));
+    },
+    onSuccess: (message) => {
       if (useAuthStore.getState().user?.id !== actor) return;
+      if (draft.current) outbox.confirm(draft.current.key, message);
       setText('');
       draft.current = null;
       void query.refetch();
-      void invalidateCore();
+    },
+    onError: () => {
+      if (draft.current) outbox.fail(draft.current.key);
     },
   });
   return (
@@ -130,13 +153,24 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                   <Text style={styles.sender}>{item.sender_name}</Text>
                   <ReputationBadge level={item.sender_level} />
                 </View>
-                <View style={[styles.bubble, item.sender_id === actor && styles.mineBubble]}>
+                <View
+                  style={[
+                    styles.bubble,
+                    item.sender_id === actor && styles.mineBubble,
+                    item.image_id && styles.photoBubble,
+                  ]}
+                >
                   {item.image_id ? (
-                    <ChatPhoto imageId={item.image_id} />
+                    <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                   ) : (
                     <Text style={styles.body}>{item.content}</Text>
                   )}
                 </View>
+                {item.delivery ? (
+                  <Text style={styles.time}>
+                    {item.delivery === 'sending' ? '傳送中…' : '尚未送出，請重試'}
+                  </Text>
+                ) : null}
                 <Text style={styles.time}>
                   {new Date(item.created_at).toLocaleTimeString('zh-TW', {
                     hour: '2-digit',
@@ -157,9 +191,14 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             kind="direct"
             threadId={id}
             disabled={send.isPending}
-            onSent={() => {
+            onSent={(photo) => {
+              outbox.begin(photo.id, {
+                ...ownMessage('📷 照片', photo.id),
+                image_id: photo.image_id,
+                local_image_uri: photo.local_uri,
+              });
+              outbox.confirm(photo.id, { id: photo.id });
               void query.refetch();
-              void invalidateCore();
             }}
           >
             <TextInput
@@ -202,6 +241,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   mineBubble: { backgroundColor: colors.yellow },
+  photoBubble: { backgroundColor: 'transparent', padding: 0, borderRadius: 0 },
   body: { color: colors.ink, fontSize: 16, lineHeight: 23 },
   time: { color: colors.muted, fontSize: 11 },
   error: { padding: 10, color: colors.danger },

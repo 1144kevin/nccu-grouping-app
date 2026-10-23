@@ -2,6 +2,7 @@ import { api } from '@/lib/api';
 import type { ImageAsset } from '@/lib/media-api';
 
 export type PhotoChatKind = 'group' | 'direct' | 'stealth';
+export type SentPhoto = { id: string; image_id: string; local_uri: string; created_at: string };
 export const chatPhotos = {
   upload: async (content_base64: string, key: string) =>
     (

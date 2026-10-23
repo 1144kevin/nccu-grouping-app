@@ -239,3 +239,19 @@ it('keeps only undecided live opportunities on the quick screen', async () => {
   await waitFor(() => expect(screen.getAllByRole('button', { name: '接受機會' })).toHaveLength(1));
   expect(screen.queryByText('你已同意聊聊，等待夥伴回覆。')).toBeNull();
 });
+
+it('allows text and photo picking in an opened chat even when its invitation has expired', async () => {
+  jest.mocked(stealthApi.matches).mockResolvedValue({items: [{...match, status: 'unavailable', coordination_opened: true}]} as never);
+  jest.mocked(stealthApi.room).mockResolvedValue({opened: true, can_send: true, items: []});
+  let resolve!: (v: never) => void;
+  jest.mocked(stealthApi.roomSend).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+  const screen = await render(wrap(<StealthCoordinationChat id="pair" />));
+  await waitFor(() => expect(screen.getByLabelText('偷揪聊天室訊息')).toHaveProp('editable', true));
+  expect(screen.getByRole('button', {name: '傳送照片'})).toBeEnabled();
+  await fireEvent.changeText(screen.getByLabelText('偷揪聊天室訊息'), '我可以先去拿便當');
+  await fireEvent.press(screen.getByRole('button', {name: '傳送'}));
+  await waitFor(() => expect(screen.getByText('我可以先去拿便當')).toBeTruthy());
+  await act(async () => resolve({id: 'stealth-confirmed'} as never));
+  await waitFor(() => expect(screen.getByLabelText('偷揪聊天室訊息')).toHaveProp('value', ''));
+  expect(screen.getAllByText('我可以先去拿便當')).toHaveLength(1);
+});
