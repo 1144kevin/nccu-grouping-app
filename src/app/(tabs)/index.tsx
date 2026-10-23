@@ -16,7 +16,6 @@ import { useCorePosts } from '@/lib/core-hooks';
 import { CorePostActions } from '@/components/core-post-actions';
 import { CorePostImage } from '@/components/core-post-image';
 import { CoreRecommendationReasons } from '@/components/core-recommendation-reasons';
-import { CoreSemanticFeed } from '@/components/core-semantic-feed';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
@@ -26,32 +25,79 @@ export default function HomeScreen() {
 }
 
 function CoreHomeScreen() {
-  const [recommended,setRecommended]=useState(false);
-  const [semantic,setSemantic]=useState(false);
   const latest = useCorePosts();
-  const recommendations=useCoreRecommendations(recommended && !semantic);
-  const query=recommended?recommendations:latest;
-  const recommendationV2=query.posts.some((post)=>post.recommendation?.version==='rules_v2');
-  const recommendationHint = query.isPending
-    ? '正在載入推薦拼單與推薦理由…'
-    : recommendationV2
-      ? '依標籤、地點偏好、剩餘名額及截止時間排序可加入的拼單。可到「推薦偏好」調整，沒有分析私人聊天。'
-      : '尚未取得可顯示的新版推薦理由。請重新整理；沒有可加入拼單時，可調整偏好或建立新的拼單。';
-  return <Screen>
-    <AppHeader searchScope="posts" />
-    {CORE_SUPABASE_MODE?<View style={{padding:12,gap:8}}><View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><PrimaryButton secondary={recommended || semantic} onPress={()=>{setRecommended(false);setSemantic(false);}}>最新拼單</PrimaryButton><PrimaryButton secondary={!recommended || semantic} onPress={()=>{setRecommended(true);setSemantic(false);}}>依我的偏好</PrimaryButton><PrimaryButton secondary={!semantic} onPress={()=>setSemantic(true)}>AI 語義推薦</PrimaryButton></View>{recommended && !semantic?<Text style={{color:colors.muted,fontSize:13}}>{recommendationHint}</Text>:null}</View>:null}
-    {semantic ? <CoreSemanticFeed renderPost={(post) => <PostItem post={toFeedPost(post)} corePost={post} />} /> : <FlatList
-      data={query.posts}
-      keyExtractor={(post) => post.id}
-      renderItem={({ item }) => <PostItem post={toFeedPost(item)} corePost={item} />}
-      ItemSeparatorComponent={() => <View style={styles.divider} />}
-      refreshControl={<RefreshControl refreshing={query.isFetching && !query.isFetchingNextPage} onRefresh={() => { void query.refetch(); }} tintColor={colors.yellow} />}
-      ListHeaderComponent={query.error ? <View><Text accessibilityRole="alert">{coreError(query.error)}</Text>{recommended?<PrimaryButton secondary disabled={query.isFetching} onPress={()=>{void query.refetch();}}>重新整理推薦</PrimaryButton>:null}</View> : null}
-      ListEmptyComponent={<EmptyState icon="text-box-search-outline" title={query.isPending ? '載入拼單中…' : query.error ? '無法取得拼單，請下拉重試' : '目前沒有拼單，建立第一筆吧'} action={<PrimaryButton secondary onPress={() => query.error ? void query.refetch() : router.push('/create')}>{query.error ? '重試' : '建立拼單'}</PrimaryButton>} />}
-      ListFooterComponent={query.hasNextPage ? <PrimaryButton secondary disabled={query.isFetchingNextPage} onPress={() => { void query.fetchNextPage(); }}>載入更多</PrimaryButton> : null}
-      contentContainerStyle={query.posts.length ? styles.feed : styles.emptyFeed}
-    />}
-  </Screen>;
+  const recommendations = useCoreRecommendations(CORE_SUPABASE_MODE);
+  const query = CORE_SUPABASE_MODE ? recommendations : latest;
+  return (
+    <Screen>
+      <AppHeader searchScope="posts" />
+      <FlatList
+        data={query.posts}
+        keyExtractor={(post) => post.id}
+        renderItem={({ item }) => <PostItem post={toFeedPost(item)} corePost={item} />}
+        ItemSeparatorComponent={() => <View style={styles.divider} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={query.isFetching && !query.isFetchingNextPage}
+            onRefresh={() => {
+              void query.refetch();
+            }}
+            tintColor={colors.yellow}
+          />
+        }
+        ListHeaderComponent={
+          query.error ? (
+            <View>
+              <Text accessibilityRole="alert">{coreError(query.error)}</Text>
+              <PrimaryButton
+                secondary
+                disabled={query.isFetching}
+                onPress={() => {
+                  void query.refetch();
+                }}
+              >
+                重試
+              </PrimaryButton>
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon="text-box-search-outline"
+            title={
+              query.isPending
+                ? '載入拼單中…'
+                : query.error
+                  ? '無法取得拼單，請下拉重試'
+                  : '目前沒有拼單，建立第一筆吧'
+            }
+            action={
+              <PrimaryButton
+                secondary
+                onPress={() => (query.error ? void query.refetch() : router.push('/create'))}
+              >
+                {query.error ? '重試' : '建立拼單'}
+              </PrimaryButton>
+            }
+          />
+        }
+        ListFooterComponent={
+          query.hasNextPage ? (
+            <PrimaryButton
+              secondary
+              disabled={query.isFetchingNextPage}
+              onPress={() => {
+                void query.fetchNextPage();
+              }}
+            >
+              載入更多
+            </PrimaryButton>
+          ) : null
+        }
+        contentContainerStyle={query.posts.length ? styles.feed : styles.emptyFeed}
+      />
+    </Screen>
+  );
 }
 
 function DemoHomeScreen() {

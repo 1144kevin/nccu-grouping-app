@@ -1,21 +1,41 @@
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  View,
+} from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
-import { DetailHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
+import {
+  Avatar,
+  DetailHeader,
+  EmptyState,
+  IconButton,
+  PrimaryButton,
+  Screen,
+} from '@/components/primitives';
+import { CorePostRow, shortDate } from '@/components/list-ui';
+import { CoreSemanticFeed } from '@/components/core-semantic-feed';
 import { coreApi, coreError, type CoreSearchItem } from '@/lib/core-api';
 import { useCorePosts, useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, typography } from '@/theme/tokens';
 
-type Scope = 'posts' | 'users' | 'messages' | 'history';
+type Scope = 'posts' | 'semantic' | 'users' | 'messages' | 'history';
 const scopes: [Scope, string][] = [
-  ['posts', '貼文'],
+  ['posts', '拼單'],
+  ['semantic', 'AI 找拼單'],
   ['users', '使用者'],
-  ['messages', '我的訊息'],
-  ['history', '我的紀錄'],
+  ['messages', '訊息'],
+  ['history', '紀錄'],
 ];
+const popularTags = ['晚餐', '飲料', '便當', '披薩', '宵夜'];
 export function CloudSearchScreen({
   initialQuery = '',
   initialScope,
@@ -26,49 +46,112 @@ export function CloudSearchScreen({
   const [input, setInput] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery.trim());
   const [scope, setScope] = useState<Scope>(
-    initialScope === 'messages'
-      ? 'messages'
-      : initialScope === 'users'
-        ? 'users'
-        : initialScope === 'history' || initialScope === 'orders'
-          ? 'history'
-          : 'posts',
+    initialScope === 'orders'
+      ? 'history'
+      : scopes.some(([s]) => s === initialScope)
+        ? (initialScope as Scope)
+        : 'posts',
   );
   const [activeOnly, setActiveOnly] = useState(false);
+  const submit = () => setQuery(input.trim());
   return (
     <Screen>
-      <DetailHeader title="搜尋" />
-      <View style={styles.row}>
-        <TextInput
-          accessibilityLabel="搜尋內容"
-          placeholder="貼文、公開資料或自己的聊天室訊息"
-          value={input}
-          onChangeText={setInput}
-          maxLength={80}
-          returnKeyType="search"
-          onSubmitEditing={() => setQuery(input.trim())}
-          style={styles.input}
-        />
-        <PrimaryButton onPress={() => setQuery(input.trim())}>搜尋</PrimaryButton>
-      </View>
-      <View style={styles.tabs}>
-        {scopes.map(([key, label]) => (
-          <PrimaryButton key={key} secondary={scope !== key} onPress={() => setScope(key)}>
-            {label}
-          </PrimaryButton>
-        ))}
-      </View>
-      {scope === 'posts' ? (
-        <>
-          <View style={styles.row}>
-            <Text style={styles.hint}>只顯示尚未截止且未取消的拼單</Text>
-            <Switch
-              accessibilityLabel="只顯示未截止拼單"
-              value={activeOnly}
-              onValueChange={setActiveOnly}
+      {scope === 'semantic' ? (
+        <DetailHeader title="搜尋" />
+      ) : (
+        <View style={styles.header}>
+          <IconButton
+            icon="chevron-left"
+            label="返回"
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace('/');
+            }}
+          />
+          <View style={styles.inputWrap}>
+            <MaterialCommunityIcons name="magnify" size={19} color={colors.muted} />
+            <TextInput
+              accessibilityLabel="搜尋內容"
+              placeholder="搜尋拼單、使用者或訊息"
+              value={input}
+              onChangeText={setInput}
+              maxLength={80}
+              returnKeyType="search"
+              onSubmitEditing={submit}
+              style={styles.input}
             />
+            {input ? (
+              <IconButton
+                icon="close-circle"
+                label="清除搜尋"
+                onPress={() => {
+                  setInput('');
+                  setQuery('');
+                }}
+              />
+            ) : null}
           </View>
-          <PostResults query={query} activeOnly={activeOnly} />
+          <IconButton icon="arrow-right" label="搜尋" onPress={submit} />
+        </View>
+      )}
+      <View style={styles.filters}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterContent}
+        >
+          {scopes.map(([key, label]) => (
+            <Pressable
+              key={key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: scope === key }}
+              onPress={() => setScope(key)}
+              style={[styles.filter, scope === key && styles.filterActive]}
+            >
+              <Text style={[styles.filterText, scope === key && styles.filterTextActive]}>
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+      {scope === 'semantic' ? (
+        <CoreSemanticFeed initialQuery={input} renderPost={(post) => <CorePostRow post={post} />} />
+      ) : scope === 'posts' ? (
+        <>
+          {query ? (
+            <View style={styles.toggle}>
+              <Text style={styles.hint}>未截止的拼單</Text>
+              <Switch
+                accessibilityLabel="只顯示未截止拼單"
+                value={activeOnly}
+                onValueChange={setActiveOnly}
+              />
+            </View>
+          ) : null}
+          {query ? (
+            <PostResults query={query} activeOnly={activeOnly} />
+          ) : (
+            <View style={styles.discovery}>
+              <Text style={styles.sectionTitle}>熱門搜尋</Text>
+              <View style={styles.tags}>
+                {popularTags.map((tag) => (
+                  <Pressable
+                    key={tag}
+                    onPress={() => {
+                      setInput(tag);
+                      setQuery(tag);
+                    }}
+                    style={styles.tag}
+                  >
+                    <MaterialCommunityIcons name="trending-up" size={14} color={colors.brown} />
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <EmptyState icon="magnify" title="找找今天想吃什麼" />
+            </View>
+          )}
         </>
       ) : (
         <PrivateResults key={scope} scope={scope} query={query} />
@@ -76,7 +159,6 @@ export function CloudSearchScreen({
     </Screen>
   );
 }
-
 function PostResults({ query, activeOnly }: { query: string; activeOnly: boolean }) {
   const result = useCorePosts('feed', query, activeOnly);
   return (
@@ -91,12 +173,12 @@ function PostResults({ query, activeOnly }: { query: string; activeOnly: boolean
         keyboardShouldPersistTaps="handled"
         data={result.posts}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.results}
         ListEmptyComponent={
           result.isPending ? (
             <ActivityIndicator />
           ) : (
-            <EmptyState icon="magnify-close" title={result.error ? '搜尋失敗' : '沒有符合的拼單'} />
+            <EmptyState icon="magnify-close" title="沒有符合的拼單" />
           )
         }
         ListFooterComponent={
@@ -112,27 +194,18 @@ function PostResults({ query, activeOnly }: { query: string; activeOnly: boolean
             </PrimaryButton>
           ) : null
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            style={styles.card}
-            onPress={() => router.push(`/post/${item.id}`)}
-          >
-            <Text style={styles.title}>{item.content}</Text>
-            <Text style={styles.hint}>
-              {item.author_name} · {item.joined}/{item.capacity}人
-            </Text>
-            <Text style={styles.hint}>{item.tags.map((tag) => `#${tag}`).join('　')}</Text>
-            <Text style={styles.hint}>
-              截止：{new Date(item.deadline_at).toLocaleString('zh-TW')}
-            </Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => <CorePostRow post={item} />}
       />
     </>
   );
 }
-function PrivateResults({ scope, query }: { scope: Exclude<Scope, 'posts'>; query: string }) {
+function PrivateResults({
+  scope,
+  query,
+}: {
+  scope: Exclude<Scope, 'posts' | 'semantic'>;
+  query: string;
+}) {
   const actor = useAuthStore((state) => state.user?.id);
   const focused = useCoreScreenFocused();
   const valid = query.length >= 2 && query.length <= 80;
@@ -146,21 +219,9 @@ function PrivateResults({ scope, query }: { scope: Exclude<Scope, 'posts'>; quer
     gcTime: 0,
   });
   const items = result.data?.pages.flatMap((page) => page.items) ?? [];
-  if (!valid)
-    return (
-      <Text style={styles.note}>
-        請輸入2～80字並按搜尋。使用者只查公開名稱與介紹；訊息只查目前可進入的聊天室；紀錄只查自己相關且已結束的拼單。
-      </Text>
-    );
+  if (!valid) return <EmptyState icon="magnify" title="輸入至少 2 個字開始搜尋" />;
   return (
     <>
-      <Text style={styles.note}>
-        {scope === 'users'
-          ? '只搜尋公開名稱與介紹，不搜尋信箱。'
-          : scope === 'messages'
-            ? '只包含目前仍有權進入的聊天室；不會因搜尋而標成已讀。'
-            : '只包含你曾申請或主揪、已截止或已取消的拼單。'}
-      </Text>
       <ErrorAndRetry
         error={result.error}
         retry={() => {
@@ -171,15 +232,12 @@ function PrivateResults({ scope, query }: { scope: Exclude<Scope, 'posts'>; quer
         keyboardShouldPersistTaps="handled"
         data={items}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={styles.results}
         ListEmptyComponent={
           result.isPending ? (
             <ActivityIndicator />
           ) : (
-            <EmptyState
-              icon="magnify-close"
-              title={result.error ? '搜尋失敗' : '沒有符合且可查看的結果'}
-            />
+            <EmptyState icon="magnify-close" title="沒有符合的結果" />
           )
         }
         ListFooterComponent={
@@ -210,18 +268,32 @@ function SearchResult({ item }: { item: CoreSearchItem }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`查看搜尋結果 ${item.title}`}
-      style={styles.card}
       onPress={open}
+      style={({ pressed }) => [styles.resultRow, pressed && styles.pressed]}
     >
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.body}>{item.detail}</Text>
-      <Text style={styles.hint}>{new Date(item.created_at).toLocaleString('zh-TW')}</Text>
+      {item.kind === 'user' || item.kind === 'message' ? (
+        <Avatar name={item.title} badge="🍱" size={44} />
+      ) : (
+        <View style={styles.resultIcon}>
+          <MaterialCommunityIcons name="clipboard-text-outline" size={22} color={colors.brown} />
+        </View>
+      )}
+      <View style={styles.resultText}>
+        <Text numberOfLines={1} style={styles.resultTitle}>
+          {item.title}
+        </Text>
+        <Text numberOfLines={2} style={styles.resultDetail}>
+          {item.detail}
+        </Text>
+        <Text style={styles.hint}>{shortDate(item.created_at)}</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} />
     </Pressable>
   );
 }
 function ErrorAndRetry({ error, retry }: { error: unknown; retry: () => void }) {
   return error ? (
-    <View style={styles.note}>
+    <View style={styles.discovery}>
       <Text accessibilityRole="alert" style={styles.error}>
         {coreError(error)}
       </Text>
@@ -232,30 +304,94 @@ function ErrorAndRetry({ error, retry }: { error: unknown; retry: () => void }) 
   ) : null;
 }
 const styles = StyleSheet.create({
-  row: { padding: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  tabs: { padding: spacing.sm, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  header: {
+    minHeight: 58,
+    paddingHorizontal: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  inputWrap: {
+    flex: 1,
+    height: 42,
+    paddingLeft: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
   input: {
     flex: 1,
-    minWidth: 0,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    height: '100%',
+    paddingHorizontal: spacing.sm,
+    color: colors.ink,
+    fontFamily: typography.regular,
+    fontSize: 16,
+  },
+  filters: { height: 51, borderBottomWidth: 1, borderBottomColor: colors.border },
+  filterContent: { paddingHorizontal: spacing.lg, alignItems: 'center', gap: spacing.sm },
+  filter: {
+    height: 31,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+  },
+  filterActive: { backgroundColor: colors.yellow },
+  filterText: { color: colors.muted, fontSize: 14 },
+  filterTextActive: { color: colors.ink, fontWeight: '700' },
+  toggle: {
+    paddingHorizontal: spacing.lg,
+    minHeight: 42,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  results: { paddingBottom: 100 },
+  discovery: { padding: spacing.lg },
+  sectionTitle: {
+    marginVertical: spacing.md,
+    fontSize: 16,
+    fontFamily: typography.rounded,
+    fontWeight: '700',
     color: colors.ink,
   },
-  list: { padding: spacing.md, paddingBottom: 100 },
-  card: {
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tag: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
   },
-  title: { color: colors.ink, fontSize: 16, lineHeight: 24, fontWeight: '700' },
-  body: { color: colors.ink, fontSize: 14, lineHeight: 21 },
-  hint: { flexShrink: 1, color: colors.muted, fontSize: 13, lineHeight: 20 },
-  note: { padding: spacing.md },
+  tagText: { color: colors.brown, fontSize: 14 },
+  resultRow: {
+    minHeight: 82,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  resultIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resultText: { flex: 1, minWidth: 0 },
+  resultTitle: { color: colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 21 },
+  resultDetail: { marginVertical: 4, color: colors.muted, fontSize: 13, lineHeight: 19 },
+  hint: { color: colors.muted, fontSize: 12 },
   error: { color: colors.danger },
+  pressed: { opacity: 0.62 },
 });

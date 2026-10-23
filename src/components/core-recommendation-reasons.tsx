@@ -1,11 +1,10 @@
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import type { CorePost } from '@/lib/core-api';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 export function CoreRecommendationReasons({ post }: { post: CorePost }) {
   const info = post.recommendation;
-  const semantic = post.semantic_recommendation;
   if (
     !info ||
     info.version !== 'rules_v2' ||
@@ -13,31 +12,29 @@ export function CoreRecommendationReasons({ post }: { post: CorePost }) {
     post.joined >= post.capacity
   )
     return null;
+  const reasons = info.reasons
+    .filter((r) => r.code === 'preferred_tags' || r.code === 'preferred_location')
+    .slice(0, 2);
+  if (!reasons.length && !post.semantic_recommendation) return null;
   return (
-    <View testID={`recommendation-reasons-${post.id}`} style={styles.box}>
-      <Text style={styles.title}>為什麼推薦這一團</Text>
-      {semantic ? <Text style={styles.body}>• 已用 AI 比較貼文與需求的語義，並結合原有規則排序。</Text> : null}
-      {info.reasons.map((reason) => (
-        <Text key={reason.code} style={styles.body}>
-          • {reason.text}
+    <View testID={`recommendation-reasons-${post.id}`} style={styles.row}>
+      {post.semantic_recommendation ? <Text style={styles.tag}>符合你的需求</Text> : null}
+      {reasons.map((reason) => (
+        <Text key={reason.code} numberOfLines={1} style={styles.tag}>
+          {reason.text}
         </Text>
       ))}
-      <Text style={styles.hint}>
-        {semantic ? '語義相似度並非成團機率，也不代表符合所有飲食條件。加入前會重新檢查名額與期限。' : '依偏好、剩餘名額及截止時間排序，並非成團機率。加入前會重新檢查名額與期限。'}
-      </Text>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  box: {
-    padding: spacing.sm,
-    marginTop: spacing.sm,
-    gap: 4,
-    borderRadius: radius.sm,
+  row: { marginTop: spacing.sm, flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tag: {
+    color: colors.brown,
+    fontSize: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     backgroundColor: colors.yellowSoft,
+    borderRadius: radius.pill,
   },
-  title: { fontSize: 14, fontWeight: '700', color: colors.ink },
-  body: { fontSize: 13, lineHeight: 21, color: colors.ink },
-  hint: { fontSize: 12, lineHeight: 19, color: colors.muted },
 });

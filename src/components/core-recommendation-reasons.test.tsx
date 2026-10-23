@@ -26,10 +26,9 @@ const post = {
 
 it('shows server reasons without presenting a score as a probability or joining', async () => {
   const screen = await render(<CoreRecommendationReasons post={post} />);
-  expect(screen.getByText('為什麼推薦這一團')).toBeTruthy();
-  expect(screen.getByText('• 尚有 1 個名額')).toBeTruthy();
-  expect(screen.getByText('• 符合你的標籤偏好：便當')).toBeTruthy();
-  expect(screen.getByText(/並非成團機率/)).toBeTruthy();
+  expect(screen.getByText('符合你的標籤偏好：便當')).toBeTruthy();
+  expect(screen.queryByText('為什麼推薦這一團')).toBeNull();
+  expect(screen.queryByText(/成團機率/)).toBeNull();
   expect(screen.queryByRole('button')).toBeNull();
 });
 
@@ -50,10 +49,14 @@ it('hides reasons for latest-feed records, full groups and closed groups', async
 });
 
 it('distinguishes embedding comparison from rule reasons without promising a successful group', async () => {
-  const screen = await render(<CoreRecommendationReasons post={{ ...post,
-    semantic_recommendation: { similarity: 0.8, model_id: 'synthetic', combined_score: 64 },
-  }} />);
-  expect(screen.getByText(/已用 AI 比較/)).toBeTruthy();
-  expect(screen.getByText(/不代表符合所有飲食條件/)).toBeTruthy();
-  expect(screen.getByText('• 尚有 1 個名額')).toBeTruthy();
+  const screen = await render(
+    <CoreRecommendationReasons
+      post={{
+        ...post,
+        semantic_recommendation: { similarity: 0.8, model_id: 'synthetic', combined_score: 64 },
+      }}
+    />,
+  );
+  expect(screen.getByText('符合你的需求')).toBeTruthy();
+  expect(screen.getByText('符合你的標籤偏好：便當')).toBeTruthy();
 });
