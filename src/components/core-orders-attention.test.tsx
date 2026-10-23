@@ -1,5 +1,5 @@
 import { afterEach, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { coreApi } from '@/lib/core-api';
@@ -126,4 +126,40 @@ it('shows participation as a compact host/content/status row with separate profi
   expect(router.push).toHaveBeenCalledWith('/user/host');
   await fireEvent.press(s.getByRole('button', { name: '查看拼單 普通拼單' }));
   expect(router.push).toHaveBeenCalledWith('/order/visible-post');
+});
+
+it('removes the entire applicant row before a slow acceptance completes', async () => {
+  let resolve!: (v: never) => void;
+  jest.mocked(coreApi.decide).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  const screen = await render(ui());
+  await fireEvent.press(screen.getByRole('button', { name: '接受' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: '查看 小安 的公開資料' })).toBeNull(),
+  );
+  expect(screen.getAllByText('沒有待處理的申請').length).toBeGreaterThan(0);
+  await act(async () => resolve({} as never));
+});
+it('restores the applicant row when an optimistic rejection fails', async () => {
+  let reject!: (e: Error) => void;
+  jest.mocked(coreApi.decide).mockImplementationOnce(
+    () =>
+      new Promise((_r, fail) => {
+        reject = fail;
+      }),
+  );
+  const screen = await render(ui());
+  await fireEvent.press(screen.getByRole('button', { name: '拒絕 小安 的申請' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: '查看 小安 的公開資料' })).toBeNull(),
+  );
+  await act(async () => reject(new Error('offline')));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: '查看 小安 的公開資料' })).toBeTruthy(),
+  );
+  expect(screen.getByText(/申請已恢復，可重試/)).toBeTruthy();
 });

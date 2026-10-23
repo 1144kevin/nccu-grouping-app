@@ -328,7 +328,21 @@ function MissingHostedGroup({ id }: { id: string }) {
 }
 function HostedApplicants({ post }: { post: CorePost }) {
   const query = useCoreRequests(post.id);
-  const pending = query.data?.filter((r) => r.status === 'pending') ?? [];
+  const [hidden, setHidden] = useState<string[]>([]);
+  const decision = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'accepted' | 'rejected' }) =>
+      coreApi.decide(id, status),
+    onMutate: ({ id }) => {
+      setHidden((old) => [...old, id]);
+    },
+    onError: (_error, { id }) => {
+      setHidden((old) => old.filter((value) => value !== id));
+    },
+    onSettled: () => {
+      void invalidateCore();
+    },
+  });
+  const pending = query.data?.filter((r) => r.status === 'pending' && !hidden.includes(r.id)) ?? [];
   const closed = post.status === 'expired' || post.status === 'cancelled';
   return (
     <View style={styles.applicationGroup}>
@@ -355,7 +369,12 @@ function HostedApplicants({ post }: { post: CorePost }) {
       <View style={styles.applicants}>
         {query.isPending ? <ActivityIndicator /> : null}
         {pending.map((request) => (
-          <RequestCard key={request.id} request={request} closed={closed} />
+          <RequestCard
+            key={request.id}
+            request={request}
+            closed={closed}
+            onDecision={(status) => decision.mutate({ id: request.id, status })}
+          />
         ))}
         {!query.isPending && !query.error && !pending.length ? (
           <Text style={styles.emptyApplicants}>沒有待處理的申請</Text>
@@ -369,6 +388,11 @@ function HostedApplicants({ post }: { post: CorePost }) {
           >
             重新載入申請
           </PrimaryButton>
+        ) : null}
+        {decision.error ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {coreError(decision.error)} 申請已恢復，可重試。
+          </Text>
         ) : null}
       </View>
     </View>
@@ -484,10 +508,20 @@ function HostManagement({ post }: { post: CorePost }) {
   );
 }
 
-export function RequestCard({ request, closed }: { request: CoreJoin; closed: boolean }) {
+export function RequestCard({
+  request,
+  closed,
+  onDecision,
+}: {
+  request: CoreJoin;
+  closed: boolean;
+  onDecision?: (status: 'accepted' | 'rejected') => void;
+}) {
   const mutation = useMutation({
     mutationFn: (status: 'accepted' | 'rejected') => coreApi.decide(request.id, status),
-    onSettled: invalidateCore,
+    onSettled: () => {
+      void invalidateCore();
+    },
   });
   return (
     <View style={[styles.member, request.status === 'pending' && !closed && styles.pendingMember]}>
@@ -516,14 +550,14 @@ export function RequestCard({ request, closed }: { request: CoreJoin; closed: bo
             accessibilityRole="button"
             accessibilityLabel={`拒絕 ${request.requester_name} 的申請`}
             disabled={mutation.isPending}
-            onPress={() => mutation.mutate('rejected')}
+            onPress={() => (onDecision ? onDecision('rejected') : mutation.mutate('rejected'))}
           >
             <Text style={styles.hint}>刪除</Text>
           </Pressable>
           <PrimaryButton
             style={{ minHeight: 36, paddingHorizontal: 14 }}
             disabled={mutation.isPending}
-            onPress={() => mutation.mutate('accepted')}
+            onPress={() => (onDecision ? onDecision('accepted') : mutation.mutate('accepted'))}
           >
             接受
           </PrimaryButton>
