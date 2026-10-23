@@ -4,22 +4,20 @@ import { CORE_API_ENABLED, CORE_SUPABASE_MODE, type CorePost } from '@/lib/core-
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 
-export type ThreadKind = 'group' | 'direct';
-export type InboxFilter = 'all' | ThreadKind;
+export type ThreadKind = 'group' | 'direct' | 'stealth';
+export type InboxFilter = 'all' | 'primary' | 'group' | 'direct';
 export type ThreadMessage = {
   id: string;
   thread_id?: string;
-  sender_id: string;
+  sender_id: string | null;
   sender_name: string;
   sender_badge: string;
   sender_level?: number;
   content: string;
   created_at: string;
 };
-export type InboxThread = {
+type ThreadBase = {
   id: string;
-  kind: ThreadKind;
-  post: CorePost;
   peer_id: string;
   peer_name: string;
   peer_badge: string;
@@ -32,6 +30,15 @@ export type InboxThread = {
   muted: boolean;
   deleted: boolean;
 };
+export type PostInboxThread = ThreadBase & { kind: 'group' | 'direct'; post: CorePost };
+export type InboxThread =
+  | PostInboxThread
+  | (ThreadBase & {
+      kind: 'stealth';
+      post: null;
+      title: string;
+      preview: string;
+    });
 export type InboxPage = { items: InboxThread[]; next_cursor: string | null; total_unread: number };
 export type OrderSummary = {
   post: CorePost;
@@ -59,11 +66,11 @@ export const socialApi = {
     (await api.patch<InboxThread>(`/inbox/${thread.kind}/${encodeURIComponent(thread.id)}`, value))
       .data,
   start: async (postId: string) =>
-    (await api.post<InboxThread>('/direct-messages', { post_id: postId })).data,
+    (await api.post<PostInboxThread>('/direct-messages', { post_id: postId })).data,
   messages: async (id: string, cursor?: string) =>
     (
       await api.get<{
-        thread: InboxThread;
+        thread: PostInboxThread;
         messages: ThreadMessage[];
         can_send: boolean;
         next_cursor: string | null;

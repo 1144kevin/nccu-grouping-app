@@ -1,5 +1,3 @@
-import { StealthConversations } from '@/components/stealth-conversations';
-import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useCallback, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -24,6 +22,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, typography } from '@/theme/tokens';
 
 export function threadTitle(item: InboxThread) {
+  if (item.kind === 'stealth') return `【偷揪】${item.title}`;
   return `【${item.kind === 'group' ? '群組' : '私訊'}】${item.post.content.split('\n')[0]}`;
 }
 export function UnifiedInbox() {
@@ -87,7 +86,7 @@ function Inbox() {
       )}
       {!deleted ? (
         <View style={styles.tabs}>
-          {(['all', 'group', 'direct'] as const).map((kind) => (
+          {(['all', 'primary', 'group', 'direct'] as const).map((kind) => (
             <Pressable
               key={kind}
               accessibilityRole="tab"
@@ -99,7 +98,7 @@ function Inbox() {
               style={[styles.tab, tab === kind && styles.activeTab]}
             >
               <Text style={styles.tabText}>
-                {{ all: '全部', group: '群組', direct: '私訊' }[kind]}
+                {{ all: '全部', primary: '主要', group: '群組', direct: '私訊' }[kind]}
               </Text>
             </Pressable>
           ))}
@@ -134,7 +133,6 @@ function Inbox() {
             }}
           />
         }
-        ListHeaderComponent={!deleted && tab !== 'direct' ? <StealthConversations /> : null}
         ListEmptyComponent={
           query.isPending ? (
             <ActivityIndicator />
@@ -310,6 +308,7 @@ function InboxRow({
           <SwipeAction
             icon="inbox-outline"
             label="一般"
+            secondary
             disabled={busy || side !== 'right'}
             onPress={() => act({ inbox: 'general' })}
           />
@@ -324,12 +323,22 @@ function InboxRow({
         accessibilityLabel={`開啟 ${threadTitle(item)}`}
         onPress={() => {
           if (swipe.current?.shouldIgnorePress()) return;
-          router.push(item.kind === 'group' ? `/chat/${item.post.id}` : `/direct-chat/${item.id}`);
+          router.push(
+            item.kind === 'stealth'
+              ? `/stealth-chat/${item.id}`
+              : item.kind === 'group'
+                ? `/chat/${item.post.id}`
+                : `/direct-chat/${item.id}`,
+          );
         }}
         style={styles.rowButton}
       >
         <View>
-          <Avatar name={item.peer_name} badge={item.peer_badge ?? '🍱'} size={54} />
+          <Avatar
+            name={item.kind === 'stealth' ? item.peer_name : item.post.author_name}
+            badge={item.kind === 'stealth' ? item.peer_badge : (item.post.author_badge ?? '🍱')}
+            size={54}
+          />
           {item.unread_count > 0 ? <View style={styles.unreadDot} /> : null}
         </View>
         <View style={styles.body}>
@@ -345,16 +354,10 @@ function InboxRow({
           <Text numberOfLines={1} style={[styles.preview, item.unread_count > 0 && styles.unread]}>
             {item.last_message
               ? `${item.last_message.sender_name}：${item.last_message.content}`
-              : '還沒有訊息'}
+              : item.kind === 'stealth'
+                ? item.preview
+                : '還沒有訊息'}
           </Text>
-          <Text numberOfLines={1} style={styles.category}>
-            {item.inbox === 'primary' ? '主要' : '一般'} ·{' '}
-            {item.kind === 'group'
-              ? `主揪 ${item.post.author_name} · ${item.post.joined} 人`
-              : item.peer_name}
-            {item.muted ? ' · 靜音' : ''}
-          </Text>
-          <ReputationBadge level={item.peer_level ?? item.post.author_level} />
         </View>
       </Pressable>
       <IconButton
@@ -398,12 +401,14 @@ function MenuItem({
   onPress,
   danger,
   disabled,
+  secondary,
 }: {
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
   onPress: () => void;
   danger?: boolean;
   disabled?: boolean;
+  secondary?: boolean;
 }) {
   return (
     <Pressable
@@ -424,6 +429,7 @@ function SwipeAction({
   onPress,
   danger,
   disabled,
+  secondary,
 }: React.ComponentProps<typeof MenuItem>) {
   return (
     <Pressable
@@ -431,7 +437,10 @@ function SwipeAction({
       accessibilityLabel={label}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.swipeAction, { backgroundColor: danger ? colors.danger : colors.yellow }]}
+      style={[
+        styles.swipeAction,
+        { backgroundColor: danger ? colors.danger : secondary ? colors.border : colors.yellow },
+      ]}
     >
       <MaterialCommunityIcons name={icon} size={22} color={danger ? '#fff' : colors.ink} />
       <Text style={{ color: danger ? '#fff' : colors.ink }}>{label}</Text>
@@ -489,7 +498,6 @@ const styles = StyleSheet.create({
   unread: { color: colors.ink, fontWeight: '800' },
   time: { color: colors.muted, fontSize: 12 },
   preview: { marginTop: 4, color: colors.muted, fontSize: 14 },
-  category: { marginTop: 4, color: colors.muted, fontSize: 12 },
   end: { paddingVertical: 16, textAlign: 'center', color: colors.subtle, fontSize: 14 },
   swipeActions: { flex: 1, flexDirection: 'row', width: 152 },
   swipeAction: { width: 76, justifyContent: 'center', alignItems: 'center', gap: 6 },
