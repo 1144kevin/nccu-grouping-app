@@ -23,6 +23,7 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/primitives';
+import { MessageHostButton } from '@/components/message-host-button';
 import { PostInfo } from '@/components/post-location';
 import { CorePostActions } from '@/components/core-post-actions';
 import { CorePostImage } from '@/components/core-post-image';
@@ -36,8 +37,7 @@ import {
 } from '@/lib/core-api';
 import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/lib/core-hooks';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { CorePostRow, SegmentedTabs, shortDate } from '@/components/list-ui';
+import { CorePostRow, shortDate } from '@/components/list-ui';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
 import { ReportButton } from '@/components/core-reports';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -115,6 +115,7 @@ export function CorePostDetail({ id }: { id: string }) {
           ))}
         </View>
         <PostInfo post={toFeedPost(post)} />
+        <MessageHostButton post={post} />
         {CORE_SUPABASE_MODE && ['host', 'accepted'].includes(post.my_status) ? (
           <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>
             進入拼單聊天室
@@ -158,30 +159,44 @@ export function CoreOrdersScreen() {
         : 'hosted';
   const query = useCorePosts(scope);
   const activity = useCoreOrderActivity(true);
-  const [onlyPending, setOnlyPending] = useState(false);
-  const pending = new Map(activity.groups.map((group) => [group.postId, group]));
+  const pendingIds = new Set(activity.groups.map((group) => group.postId));
   const posts = [...query.posts].sort(
-    (a, b) => Number(pending.has(b.id)) - Number(pending.has(a.id)),
+    (a, b) => Number(pendingIds.has(b.id)) - Number(pendingIds.has(a.id)),
   );
+  const missing =
+    scope === 'hosted'
+      ? activity.groups.filter((group) => !posts.some((p) => p.id === group.postId))
+      : [];
   return (
     <Screen>
       <AppHeader searchScope="orders" />
-      <SegmentedTabs
-        value={scope}
-        onChange={(value) => {
-          setOnlyPending(false);
-          router.setParams({ scope: value });
-        }}
-        options={[
-          { value: 'hosted', label: '我主揪的', count: activity.pendingCount },
-          { value: 'participating', label: '想被揪的' },
-          { value: 'history', label: '過往紀錄' },
-        ]}
-      />
+      <View style={styles.orderTabs}>
+        {(
+          [
+            { value: 'hosted', label: '我主揪的' },
+            { value: 'participating', label: '想被揪的' },
+          ] as const
+        ).map((item) => (
+          <Pressable
+            key={item.value}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: scope === item.value }}
+            onPress={() => router.setParams({ scope: item.value })}
+            style={[styles.orderTab, scope === item.value && styles.orderTabActive]}
+          >
+            <Text style={[styles.tabLabel, scope === item.value && styles.tabLabelActive]}>
+              {item.label}
+              {item.value === 'hosted' && activity.pendingCount
+                ? ` (${activity.pendingCount})`
+                : ''}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <FlatList
-        data={onlyPending ? [] : posts}
+        data={posts}
         keyExtractor={(post) => post.id}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: 120 }}
         refreshControl={
           <RefreshControl
             refreshing={query.isFetching && !query.isFetchingNextPage}
@@ -193,78 +208,18 @@ export function CoreOrdersScreen() {
         }
         ListHeaderComponent={
           <>
-            {activity.pendingCount > 0 ? (
-              <View style={styles.attention}>
-                <View style={styles.row}>
-                  <MaterialCommunityIcons
-                    name="bell-badge-outline"
-                    size={20}
-                    color={colors.danger}
-                  />
-                  <Text style={styles.title}>{activity.pendingCount} 位夥伴等你審核</Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => setOnlyPending(!onlyPending)}
-                  >
-                    <Text style={styles.link}>{onlyPending ? '顯示全部' : '只看待處理'}</Text>
-                  </Pressable>
-                </View>
-                {activity.groups.map((group) => (
-                  <Pressable
-                    key={group.postId}
-                    accessibilityRole="button"
-                    accessibilityLabel={`審核 ${group.content} 的 ${group.count} 筆申請`}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/order/[id]',
-                        params: { id: group.postId, focus: 'requests' },
-                      })
-                    }
-                    style={styles.attentionRow}
-                  >
-                    <Avatar name={group.names[0]} badge="🍱" size={38} />
-                    <View style={{ flex: 1, gap: 4 }}>
-                      <Text numberOfLines={1} style={styles.requestName}>
-                        {group.names.slice(0, 2).join('、')}
-                        {group.count > 2 ? ` 等 ${group.count} 人` : ''}
-                      </Text>
-                      <Text numberOfLines={1} style={styles.hint}>
-                        {group.content}
-                      </Text>
-                    </View>
-                    <Text style={styles.link}>審核申請</Text>
-                    <MaterialCommunityIcons name="chevron-right" size={17} color={colors.brown} />
-                  </Pressable>
-                ))}
-                {activity.isFetchingNextPage ? (
-                  <ActivityIndicator accessibilityLabel="載入待審申請" />
-                ) : null}
-                {activity.error ? (
-                  <Text accessibilityRole="alert" style={styles.error}>
-                    {coreError(activity.error)}
-                  </Text>
-                ) : null}
-                {activity.hasNextPage ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      void activity.fetchNextPage();
-                    }}
-                  >
-                    <Text style={styles.link}>載入更多動態</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
-            {query.error ? (
+            {missing.map((group) => (
+              <MissingHostedGroup key={group.postId} id={group.postId} />
+            ))}
+            {query.error || activity.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
-                {coreError(query.error)}
+                {coreError(query.error || activity.error)}
               </Text>
             ) : null}
           </>
         }
         ListEmptyComponent={
-          !onlyPending ? (
+          !missing.length ? (
             <LoadState
               pending={query.isPending}
               error={query.error}
@@ -275,29 +230,88 @@ export function CoreOrdersScreen() {
           ) : null
         }
         ListFooterComponent={
-          !onlyPending && query.hasNextPage ? (
-            <PrimaryButton
-              secondary
-              disabled={query.isFetchingNextPage}
-              onPress={() => {
-                void query.fetchNextPage();
-              }}
-            >
-              載入更多
-            </PrimaryButton>
-          ) : null
+          <>
+            {activity.hasNextPage && scope === 'hosted' ? (
+              <PrimaryButton
+                secondary
+                disabled={activity.isFetchingNextPage}
+                onPress={() => {
+                  void activity.fetchNextPage();
+                }}
+              >
+                更多申請
+              </PrimaryButton>
+            ) : null}
+            {query.hasNextPage ? (
+              <PrimaryButton
+                secondary
+                disabled={query.isFetchingNextPage}
+                onPress={() => {
+                  void query.fetchNextPage();
+                }}
+              >
+                更多拼單
+              </PrimaryButton>
+            ) : null}
+          </>
         }
-        renderItem={({ item }) => (
-          <CorePostRow
-            post={item}
-            order
-            notice={
-              pending.has(item.id) ? `${pending.get(item.id)!.count} 筆申請待審核` : undefined
-            }
-          />
-        )}
+        renderItem={({ item }) =>
+          scope === 'hosted' ? <HostedApplicants post={item} /> : <CorePostRow post={item} order />
+        }
       />
     </Screen>
+  );
+}
+function MissingHostedGroup({ id }: { id: string }) {
+  const query = useCorePost(id);
+  return query.data?.my_status === 'host' ? <HostedApplicants post={query.data} /> : null;
+}
+function HostedApplicants({ post }: { post: CorePost }) {
+  const query = useCoreRequests(post.id);
+  const pending = query.data?.filter((r) => r.status === 'pending') ?? [];
+  const closed = post.status === 'expired' || post.status === 'cancelled';
+  return (
+    <View style={styles.applicationGroup}>
+      <View style={styles.row}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`查看完整拼單 ${post.content}`}
+          style={{ flex: 1 }}
+          onPress={() => router.push(`/order/${post.id}`)}
+        >
+          <Text numberOfLines={2} style={styles.groupTitle}>
+            {post.content.split('\n')[0]}
+          </Text>
+          <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`查看 ${post.content} 的團員與貼文`}
+          onPress={() => router.push(`/order/${post.id}`)}
+        >
+          <Text style={styles.link}>查看全部</Text>
+        </Pressable>
+      </View>
+      <View style={styles.applicants}>
+        {query.isPending ? <ActivityIndicator /> : null}
+        {pending.map((request) => (
+          <RequestCard key={request.id} request={request} closed={closed} />
+        ))}
+        {!query.isPending && !query.error && !pending.length ? (
+          <Text style={styles.emptyApplicants}>沒有待處理的申請</Text>
+        ) : null}
+        {query.error ? (
+          <PrimaryButton
+            secondary
+            onPress={() => {
+              void query.refetch();
+            }}
+          >
+            重新載入申請
+          </PrimaryButton>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -407,7 +421,7 @@ function HostManagement({ post }: { post: CorePost }) {
   );
 }
 
-function RequestCard({ request, closed }: { request: CoreJoin; closed: boolean }) {
+export function RequestCard({ request, closed }: { request: CoreJoin; closed: boolean }) {
   const mutation = useMutation({
     mutationFn: (status: 'accepted' | 'rejected') => coreApi.decide(request.id, status),
     onSettled: invalidateCore,
@@ -419,11 +433,16 @@ function RequestCard({ request, closed }: { request: CoreJoin; closed: boolean }
         accessibilityLabel={`查看 ${request.requester_name} 的公開資料`}
         onPress={() => router.push(`/user/${request.requester_id}`)}
       >
-        <Avatar name={request.requester_name} badge="🍱" size={42} />
+        <Avatar name={request.requester_name} badge={request.requester_badge ?? '🍱'} size={42} />
       </Pressable>
       <View style={{ flex: 1 }}>
-        <Text style={styles.requestName}>{request.requester_name}</Text>
-        <Text style={styles.hint}>{shortDate(request.created_at)}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push(`/user/${request.requester_id}`)}
+        >
+          <Text style={styles.requestName}>{request.requester_name}</Text>
+        </Pressable>
+        <Text style={styles.hint}>{request.requester_level ? `${request.requester_badge ?? '🍱'} Lv.${request.requester_level} · ` : ''}{shortDate(request.created_at)}</Text>
       </View>
       {request.status === 'pending' && !closed ? (
         <View style={styles.row}>
@@ -458,6 +477,33 @@ function RequestCard({ request, closed }: { request: CoreJoin; closed: boolean }
 }
 
 const styles = StyleSheet.create({
+  orderTabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
+  orderTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 18,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  orderTabActive: { borderBottomColor: colors.yellow },
+  tabLabel: { color: colors.muted, fontSize: 16 },
+  tabLabelActive: { color: colors.ink, fontWeight: '700' },
+  applicationGroup: { marginBottom: 28, gap: 8 },
+  groupTitle: {
+    color: colors.ink,
+    fontFamily: typography.rounded,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 26,
+  },
+  applicants: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    paddingHorizontal: 12,
+  },
+  emptyApplicants: { paddingVertical: 20, color: colors.muted, textAlign: 'center' },
   author: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   bottom: {
@@ -510,7 +556,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  pendingMember: { backgroundColor: '#FFF9DF', borderRadius: radius.md, paddingHorizontal: 10 },
+  pendingMember: { paddingVertical: 16 },
   card: {
     padding: spacing.md,
     gap: spacing.sm,

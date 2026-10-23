@@ -5,12 +5,12 @@ import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-nat
 import { Avatar, DetailHeader, EmptyState, IconButton, Pill, PrimaryButton, Screen, SectionTitle } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';
-import { CorePostDetail } from '@/components/core-order-screens';
+import { CoreOrderDetail } from '@/components/core-order-detail';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return CORE_API_ENABLED ? <CorePostDetail id={id} /> : <DemoOrderDetailScreen />;
+  return CORE_API_ENABLED ? <CoreOrderDetail id={id} /> : <DemoOrderDetailScreen />;
 }
 
 function DemoOrderDetailScreen() {
