@@ -34,6 +34,7 @@ import {
 import { mediaApi, validPickedImage } from '@/lib/media-api';
 import { useCoreClock } from '@/lib/core-clock';
 import { invalidateCore } from '@/lib/core-hooks';
+import { PostWritingAssistant } from '@/components/post-writing-assistant';
 import { TagChip } from '@/components/tag-chip';
 import { SettingField } from '@/components/setting-field';
 import { parsePrice, priceInputSchema } from '@/lib/price';
@@ -126,6 +127,7 @@ function CreateForm({
     defaultValues: { content: '', price: '', capacity: '4' },
   });
   const content = useWatch({ control, name: 'content' });
+  const writingFields = useWatch({ control });
   const capacityInput = useWatch({ control, name: 'capacity' });
   // A server error must not lock an otherwise valid draft out of retrying.
   const formReady = schema.safeParse(useWatch({ control })).success;
@@ -426,6 +428,7 @@ function CreateForm({
             <Text style={styles.error}>{errors.content?.message}</Text>
             <Text style={styles.counter}>{content.length}/500</Text>
           </View>
+          {CORE_API_ENABLED ? <PostWritingAssistant content={content} context={JSON.stringify({ tags, deadline, capacity: writingFields.capacity, price: writingFields.price, location: writingFields.location })} disabled={isSubmitting} onApply={(text) => setValue('content', text, { shouldDirty: true, shouldValidate: true })} /> : null}
           <SectionTitle>主題標籤</SectionTitle>
           <View style={styles.tagRow}>
             {[...new Set([...suggestedTags, ...tags])].map((tag) => (

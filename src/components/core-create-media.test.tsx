@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 
 let mockActor = 'synthetic-actor';
 jest.mock('@/store/auth-store', () => ({
-  useAuthStore: { getState: () => ({ user: { id: mockActor } }) },
+  useAuthStore: Object.assign((select: (s: { user: { id: string } }) => unknown) => select({ user: { id: mockActor } }), { getState: () => ({ user: { id: mockActor } }) }),
 }));
 jest.mock('@/store/app-store', () => ({
   useAppStore: (select: (s: unknown) => unknown) => select({ publishPost: jest.fn() }),
