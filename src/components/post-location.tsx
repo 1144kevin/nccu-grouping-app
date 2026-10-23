@@ -178,8 +178,9 @@ export function PostInfo({
 const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   chip: {
-    maxWidth: '100%',
-    minHeight: 36,
+    width: '48%',
+    flexGrow: 1,
+    minHeight: 38,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: '#CCCBC5',
