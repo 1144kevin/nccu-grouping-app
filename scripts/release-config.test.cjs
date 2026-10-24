@@ -55,7 +55,7 @@ test('dynamic app config retains existing settings and maps only a valid Expo pr
   }
 });
 
-test('connected build removes unused camera/mic/background audio; demo preserves recording', () => {
+test('connected build enables speech microphone but removes unused camera/background audio', () => {
   const appConfig = require('../app.config.js');
   const saved = process.env.EXPO_PUBLIC_CORE_API_ENABLED;
   const input = {
@@ -68,7 +68,8 @@ test('connected build removes unused camera/mic/background audio; demo preserves
   try {
     process.env.EXPO_PUBLIC_CORE_API_ENABLED = 'true';
     const value = appConfig({ config: input });
-    assert.equal(value.plugins[0][1].microphonePermission, false);
+    assert.ok(value.plugins[0][1].microphonePermission.includes('口述'));
+    assert.ok(value.ios.infoPlist.NSSpeechRecognitionUsageDescription);
     assert.equal(value.plugins[0][1].enableBackgroundPlayback, false);
     assert.equal(value.plugins[1][1].cameraPermission, false);
     process.env.EXPO_PUBLIC_CORE_API_ENABLED = 'false';

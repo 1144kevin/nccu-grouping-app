@@ -102,6 +102,7 @@ function CreateForm({
   const uploadedImage = useRef<{ key: string; id: string } | null>(null);
   const [imageError, setImageError] = useState('');
   const [imageBusy, setImageBusy] = useState(false);
+  const [writingBusy, setWritingBusy] = useState(false);
   const [voiceUri, setVoiceUri] = useState<string>();
   const [deadline, setDeadline] = useState(() => createInitialDeadline(now()));
   const [draftDeadline, setDraftDeadline] = useState(deadline);
@@ -156,9 +157,8 @@ function CreateForm({
         return Alert.alert('需要照片權限', '請允許讀取照片，才能加入拼單圖片。');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.7,
-        allowsEditing: true,
-        aspect: [4, 3],
+        quality: 0.85,
+        allowsEditing: false,
         base64: CORE_API_ENABLED && CORE_SUPABASE_MODE,
       });
       if (!result.canceled) {
@@ -219,7 +219,7 @@ function CreateForm({
 
   const submit = () =>
     handleSubmit(async (values) => {
-      if (publishing.current || imageBusy) return;
+      if (publishing.current || imageBusy || writingBusy) return;
       if (!tags.length) return Alert.alert('請選擇標籤', '至少需要一個主題標籤。');
       publishing.current = true;
       const actor = useAuthStore.getState().user?.id;
@@ -313,11 +313,11 @@ function CreateForm({
         <Text style={styles.title}>建立新貼文</Text>
         <Pressable
           accessibilityRole="button"
-          disabled={!formReady || !tags.length || isSubmitting || imageBusy}
+          disabled={!formReady || !tags.length || isSubmitting || imageBusy || writingBusy}
           onPress={submit}
           style={[
             styles.publish,
-            (!formReady || !tags.length || isSubmitting || imageBusy) && styles.publishDisabled,
+            (!formReady || !tags.length || isSubmitting || imageBusy || writingBusy) && styles.publishDisabled,
           ]}
         >
           <Text style={styles.publishText}>{isSubmitting ? '發布中…' : '發布'}</Text>
@@ -431,6 +431,7 @@ function CreateForm({
           {CORE_API_ENABLED ? (
             <PostWritingAssistant
               content={content}
+              imageBase64={imageData?.base64}
               context={JSON.stringify({
                 tags,
                 deadline,
@@ -438,7 +439,8 @@ function CreateForm({
                 price: writingFields.price,
                 location: writingFields.location,
               })}
-              disabled={isSubmitting}
+              disabled={isSubmitting || imageBusy}
+              onBusyChange={setWritingBusy}
               onApply={(text) =>
                 setValue('content', text, { shouldDirty: true, shouldValidate: true })
               }

@@ -23,10 +23,17 @@ module.exports = ({ config }) => {
     ...config,
     ios: {
       ...config.ios,
+      infoPlist: {
+        ...config.ios?.infoPlist,
+        NSMicrophoneUsageDescription: '使用麥克風將你口述的拼單需求轉為文字。',
+        NSSpeechRecognitionUsageDescription: '辨識你的口述需求，結束後交給 AI 整理成拼單草稿。',
+      },
       ...(process.env.EXPO_PUBLIC_APP_PROFILE === 'device'
         ? {
             infoPlist: {
               ...config.ios?.infoPlist,
+              NSMicrophoneUsageDescription: '使用麥克風將你口述的拼單需求轉為文字。',
+              NSSpeechRecognitionUsageDescription: '辨識你的口述需求，結束後交給 AI 整理成拼單草稿。',
               NSLocalNetworkUsageDescription: '連線至你指定的測試電腦，以測試登入、拼單與聊天。',
             },
           }
@@ -45,7 +52,7 @@ module.exports = ({ config }) => {
             name,
             {
               ...options,
-              microphonePermission: false,
+              microphonePermission: '使用麥克風將你口述的拼單需求轉為文字。',
               recordAudioAndroid: false,
               enableBackgroundRecording: false,
               enableBackgroundPlayback: false,

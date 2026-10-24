@@ -4,15 +4,24 @@ import CreateScreen from '@/app/(tabs)/create';
 import { mediaApi } from '@/lib/media-api';
 import { coreApi } from '@/lib/core-api';
 import { router } from 'expo-router';
+import { AppState } from 'react-native';
 
 let mockActor = 'synthetic-actor';
 jest.mock('@/store/auth-store', () => ({
-  useAuthStore: Object.assign((select: (s: { user: { id: string } }) => unknown) => select({ user: { id: mockActor } }), { getState: () => ({ user: { id: mockActor } }) }),
+  useAuthStore: Object.assign(
+    (select: (s: { user: { id: string } }) => unknown) => select({ user: { id: mockActor } }),
+    { getState: () => ({ user: { id: mockActor } }) },
+  ),
 }));
 jest.mock('@/store/app-store', () => ({
   useAppStore: (select: (s: unknown) => unknown) => select({ publishPost: jest.fn() }),
 }));
-jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
+jest.mock('expo-router', () => ({
+  router: { replace: jest.fn() },
+  useFocusEffect: (callback: () => () => void) => {
+    jest.requireActual<typeof import('react')>('react').useEffect(callback, [callback]);
+  },
+}));
 jest.mock('expo-audio', () => ({
   RecordingPresets: { HIGH_QUALITY: {} },
   useAudioRecorder: () => ({}),
@@ -21,15 +30,26 @@ jest.mock('expo-audio', () => ({
 }));
 jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: async () => ({ granted: true }),
-  launchImageLibraryAsync: async () => ({
-    canceled: false,
-    assets: [{ uri: 'synthetic://image', base64: 'YQ==', width: 480, height: 320 }],
-  }),
+  launchImageLibraryAsync: async () => ({ canceled: false, assets: [{ uri: 'synthetic://image', base64: 'YQ==', width: 480, height: 320 }] }),
 }));
-jest.mock('@/components/location-picker', () => ({ LocationPicker: ({ onChange }: { onChange: (p: unknown) => void }) => {
-  const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
-  return <Button title="確認測試取餐點" onPress={() => onChange({ name: '測試取餐點', latitude: 24.987, longitude: 121.576, address: '\n取餐說明：右側桌子' })} />;
-} }));
+jest.mock('@/components/location-picker', () => ({
+  LocationPicker: ({ onChange }: { onChange: (p: unknown) => void }) => {
+    const { Button } = jest.requireActual<typeof import('react-native')>('react-native');
+    return (
+      <Button
+        title="確認測試取餐點"
+        onPress={() =>
+          onChange({
+            name: '測試取餐點',
+            latitude: 24.987,
+            longitude: 121.576,
+            address: '\n取餐說明：右側桌子',
+          })
+        }
+      />
+    );
+  },
+}));
 jest.mock('@/components/deadline-picker', () => ({
   DeadlinePickerModal: () => null,
   createInitialDeadline: (n: number) => new Date(n + 3_600_000),
@@ -56,6 +76,7 @@ jest.mock('@/lib/media-api', () => ({
 }));
 
 beforeEach(() => {
+  jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
   mockActor = 'synthetic-actor';
   jest
     .mocked(mediaApi.upload)
@@ -63,6 +84,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   jest.resetAllMocks();
+  jest.restoreAllMocks();
 });
 
 async function filledForm() {

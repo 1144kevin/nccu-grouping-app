@@ -1,4 +1,4 @@
 {
   "platforms": ["apple"],
-  "apple": { "modules": ["AppleIntakeModule"] }
+  "apple": { "modules": ["AppleIntakeModule", "PostSpeechModule"] }
 }

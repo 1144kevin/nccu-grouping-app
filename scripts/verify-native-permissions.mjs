@@ -34,7 +34,8 @@ for (const profile of ['simulator', 'device', 'release']) {
   const config = JSON.parse(result.stdout);
   const plist = config._internal?.modResults?.ios?.infoPlist;
   assert.ok(plist, 'Expected generated iOS Info.plist configuration');
-  assert.equal(plist.NSMicrophoneUsageDescription, undefined);
+  assert.ok(plist.NSMicrophoneUsageDescription);
+  assert.ok(plist.NSSpeechRecognitionUsageDescription);
   assert.equal(plist.NSCameraUsageDescription, undefined);
   assert.ok(plist.NSPhotoLibraryUsageDescription);
   assert.ok(plist.NSLocationWhenInUseUsageDescription);
@@ -56,6 +57,6 @@ for (const profile of ['simulator', 'device', 'release']) {
       'localhost',
     ]);
   console.log(
-    'Native permission introspection passed: photos/location/local network, no camera/mic/background audio or ATS bypass. No build, upload or trust changes.',
+    'Native permission introspection passed: photos/location/speech/microphone/local network, no camera/background audio or ATS bypass. No build, upload or trust changes.',
   );
 }
