@@ -1,18 +1,11 @@
+import { PageLoading } from '@/components/page-loading';
 import { useCoreClock } from '@/lib/core-clock';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Share,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, Share, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   AppHeader,
@@ -290,27 +283,21 @@ export function ParticipatingOrderRow({ post }: { post: CorePost }) {
         accessibilityRole="button"
         accessibilityLabel={`查看拼單 ${post.content}`}
         onPress={() => router.push(`/order/${post.id}`)}
-        style={{ flex: 1, gap: 7 }}
+        style={{ flex: 1 }}
       >
         <View style={[styles.row, { alignItems: 'flex-start' }]}>
-          <View
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Text numberOfLines={1} style={[styles.title, { flexShrink: 1 }]}>
-              {post.author_name}
-            </Text>
-            <ReputationBadge level={post.author_level} />
+          <View style={{ flex: 1, gap: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text numberOfLines={1} style={styles.participatingName}>
+                {post.author_name}
+              </Text>
+              <ReputationBadge level={post.author_level} />
+            </View>
+            <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
           </View>
           <Pill tone={post.my_status === 'accepted' ? 'success' : 'plain'}>{label}</Pill>
         </View>
-        <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
-        <Text numberOfLines={2} style={styles.body}>
+        <Text numberOfLines={2} style={[styles.body, { marginTop: 6 }]}>
           {post.content}
         </Text>
       </Pressable>
@@ -367,7 +354,7 @@ function HostedApplicants({ post }: { post: CorePost }) {
         </Pressable>
       </View>
       <View style={styles.applicants}>
-        {query.isPending ? <ActivityIndicator /> : null}
+        {query.isPending ? <PageLoading /> : null}
         {pending.map((request) => (
           <RequestCard
             key={request.id}
@@ -408,7 +395,7 @@ function LoadState({
   error: unknown;
   retry: () => void;
 }) {
-  if (pending) return <ActivityIndicator accessibilityLabel="載入拼單中" />;
+  if (pending) return <PageLoading accessibilityLabel="載入拼單中" />;
   return (
     <EmptyState
       icon="clipboard-text-outline"
@@ -458,7 +445,7 @@ function HostManagement({ post }: { post: CorePost }) {
         </View>
         <Pill tone="yellow">主揪</Pill>
       </View>
-      {query.isPending ? <ActivityIndicator /> : null}
+      {query.isPending ? <PageLoading /> : null}
       {query.error ? (
         <View>
           <Text accessibilityRole="alert" style={styles.error}>
@@ -577,6 +564,13 @@ export function RequestCard({
 }
 
 const styles = StyleSheet.create({
+  participatingName: {
+    flexShrink: 1,
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
   participatingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',

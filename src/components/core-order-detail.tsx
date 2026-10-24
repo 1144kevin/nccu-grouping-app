@@ -1,9 +1,10 @@
+import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   Avatar,
@@ -14,11 +15,9 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/primitives';
-import { CorePostGallery } from '@/components/post-photo-carousel';
-import { PostInfo } from '@/components/post-location';
+import { FeedPostCard } from '@/components/feed-post-card';
 import { RequestCard } from '@/components/core-order-screens';
 import { postEmoji } from '@/components/core-profile';
-import { MessageHostButton } from '@/components/message-host-button';
 import {
   useCorePost,
   useCoreRequests,
@@ -55,7 +54,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
       <Screen>
         <DetailHeader title="拼單詳情" />
         {postQuery.isPending ? (
-          <ActivityIndicator />
+          <PageLoading />
         ) : (
           <EmptyState
             icon="clipboard-text-off-outline"
@@ -119,7 +118,9 @@ export function CoreOrderDetail({ id }: { id: string }) {
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{post.content.split('\n')[0]}</Text>
+            <Text numberOfLines={2} ellipsizeMode="tail" style={styles.title}>
+              {post.content}
+            </Text>
             <Text style={styles.detail}>
               {new Date(post.created_at).toLocaleDateString('zh-TW', {
                 month: 'long',
@@ -156,7 +157,6 @@ export function CoreOrderDetail({ id }: { id: string }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.memberName}>{member.name}</Text>
               <ReputationBadge level={member.level} />
-              <Text style={styles.detail}>{member.host ? '主揪' : '團員'}</Text>
             </View>
             <Pill tone={member.host ? 'yellow' : 'success'}>{member.host ? '主揪' : '已加入'}</Pill>
           </Pressable>
@@ -186,16 +186,14 @@ export function CoreOrderDetail({ id }: { id: string }) {
           </Text>
         ) : null}
         <SectionTitle>完整貼文</SectionTitle>
-        <Text style={styles.body}>{post.content}</Text>
-        <CorePostGallery post={post} />
-        <View style={styles.tags}>
-          {post.tags.map((tag) => (
-            <Text key={tag} style={styles.tag}>
-              #{tag}
-            </Text>
-          ))}
+        <View style={{ marginHorizontal: -spacing.lg }}>
+          <FeedPostCard
+            post={toFeedPost(post)}
+            corePost={post}
+            respectHidden={false}
+            onManage={() => router.push(`/post/${post.id}`)}
+          />
         </View>
-        <PostInfo post={toFeedPost(post)} />
         {['host', 'accepted'].includes(post.my_status) ? (
           <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>
             進入群組聊天室
@@ -206,7 +204,6 @@ export function CoreOrderDetail({ id }: { id: string }) {
             管理貼文
           </PrimaryButton>
         ) : null}
-        <MessageHostButton post={post} />
       </ScrollView>
     </Screen>
   );
@@ -286,8 +283,5 @@ const styles = StyleSheet.create({
   },
   memberName: { color: colors.ink, fontSize: 15, fontWeight: '700' },
   empty: { paddingVertical: 24, color: colors.muted, textAlign: 'center', fontSize: 14 },
-  body: { color: colors.ink, fontSize: 15, lineHeight: 23 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tag: { color: colors.brown, fontSize: 14 },
   error: { color: colors.danger, fontSize: 13 },
 });
