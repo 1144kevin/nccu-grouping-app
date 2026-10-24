@@ -20,6 +20,7 @@ export function CorePostImage({
   frameHeight?: number;
   fit?: 'contain' | 'cover';
   intrinsicHeight?: number;
+  backgroundColor?: string;
 }) {
   const actor = useAuthStore((state) => state.user?.id);
   return <SignedPostImage key={`${actor}:${props.imageId}`} {...props} actor={actor} />;
@@ -31,6 +32,7 @@ function SignedPostImage({
   frameHeight,
   fit = 'contain',
   intrinsicHeight,
+  backgroundColor,
   actor,
 }: {
   imageId: string;
@@ -38,6 +40,7 @@ function SignedPostImage({
   frameHeight?: number;
   fit?: 'contain' | 'cover';
   intrinsicHeight?: number;
+  backgroundColor?: string;
   actor?: string;
 }) {
   const focused = useCoreScreenFocused();
@@ -77,6 +80,7 @@ function SignedPostImage({
                 borderRadius: 16,
               }
             : compact && { minHeight: 120 },
+        backgroundColor ? { backgroundColor } : null,
       ]}
     >
       {!focused || query.isPending || query.isFetching ? (

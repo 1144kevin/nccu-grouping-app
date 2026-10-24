@@ -4,6 +4,9 @@ import { StyleSheet } from 'react-native';
 import { PhotoCarousel, photoFrame } from './post-photo-carousel';
 
 jest.mock('@/components/core-post-image', () => ({ CorePostImage: () => null }));
+jest.mock('react-native-safe-area-context', () => ({
+  useSafeAreaInsets: () => ({ top: 24, right: 0, bottom: 24, left: 0 }),
+}));
 jest.mock('@/lib/font-size-storage', () => ({
   fontSizeStorage: { getItem: () => null, setItem: jest.fn(), removeItem: jest.fn() },
 }));
@@ -38,4 +41,21 @@ it('opens original photos without replacing the horizontal feed with a cropped g
   expect(screen.getByRole('button', { name: '關閉照片' })).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '關閉照片' }));
   expect(screen.queryByRole('button', { name: '關閉照片' })).toBeNull();
+});
+it('opens at the tapped photo, tracks swipes and resets correctly when reopened', async () => {
+  const screen = await render(<PhotoCarousel photos={photos} />);
+  await fireEvent.press(screen.getByRole('button', { name: '查看照片 3' }));
+  expect(screen.getByText('3 / 5')).toBeTruthy();
+  const viewer = screen.getByTestId('photo-viewer-scroll');
+  const width = StyleSheet.flatten(viewer.props.style).width;
+  expect(viewer.props.contentOffset.x).toBe(2 * width);
+  await fireEvent(viewer, 'contentSizeChange', width * 5, 600);
+  await fireEvent.scroll(viewer, { nativeEvent: { contentOffset: { x: 3 * width, y: 0 } } });
+  expect(screen.getByText('4 / 5')).toBeTruthy();
+  expect(StyleSheet.flatten(screen.getByTestId('photo-viewer').props.style).backgroundColor).toBe(
+    '#000000',
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '關閉照片' }));
+  await fireEvent.press(screen.getByRole('button', { name: '查看照片 2' }));
+  expect(screen.getByText('2 / 5')).toBeTruthy();
 });
