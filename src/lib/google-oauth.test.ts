@@ -41,3 +41,29 @@ it('requires a same-tab proof and a single authorization code', () => {
 it('does not expose provider error descriptions as UI text', () => {
   expect(() => readGoogleCallback(`${GOOGLE_CALLBACK}?error=access_denied&error_description=private-value`, flow)).toThrow('google_login_cancelled');
 });
+
+it('public web rejects a callback from a different origin, route or local client', () => {
+  const previous = process.env.EXPO_PUBLIC_APP_PROFILE;
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  try {
+    process.env.EXPO_PUBLIC_APP_PROFILE = 'web';
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true, value: { location: { origin: 'https://campus-demo.trycloudflare.com' } },
+    });
+    jest.isolateModules(() => {
+      const oauth = jest.requireActual<typeof import('./google-oauth')>('./google-oauth');
+      expect(oauth.GOOGLE_CALLBACK).toBe('https://campus-demo.trycloudflare.com/auth/callback');
+      const publicAuthorize = authorize.replace(encodeURIComponent(GOOGLE_CALLBACK), encodeURIComponent(oauth.GOOGLE_CALLBACK));
+      expect(() => oauth.validateGoogleStart(publicAuthorize, flow)).not.toThrow();
+      expect(() => oauth.validateGoogleStart(authorize, flow)).toThrow();
+      expect(() => oauth.readGoogleCallback(`${GOOGLE_CALLBACK}?code=x`, flow)).toThrow();
+      expect(() => oauth.readGoogleCallback('https://other.trycloudflare.com/auth/callback?code=x', flow)).toThrow();
+      expect(() => oauth.readGoogleCallback('https://campus-demo.trycloudflare.com/elsewhere?code=x', flow)).toThrow();
+    });
+  } finally {
+    if (previous === undefined) delete process.env.EXPO_PUBLIC_APP_PROFILE;
+    else process.env.EXPO_PUBLIC_APP_PROFILE = previous;
+    if (descriptor) Object.defineProperty(globalThis, 'window', descriptor);
+    else Reflect.deleteProperty(globalThis, 'window');
+  }
+});

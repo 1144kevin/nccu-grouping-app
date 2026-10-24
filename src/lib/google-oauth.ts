@@ -1,5 +1,10 @@
-export const GOOGLE_CALLBACK = process.env.EXPO_PUBLIC_ACCOUNT_WEB === 'true'
-  ? 'http://localhost:8082/auth/callback' : 'http://localhost:8081/auth/callback';
+export const GOOGLE_PUBLIC_WEB = process.env.EXPO_PUBLIC_APP_PROFILE === 'web';
+// The public app returns to the same browser origin. The server independently
+// restricts redirects to its operator-configured exact HTTPS callback.
+export const GOOGLE_CALLBACK = GOOGLE_PUBLIC_WEB && typeof window !== 'undefined'
+  ? `${window.location.origin}/auth/callback`
+  : process.env.EXPO_PUBLIC_ACCOUNT_WEB === 'true'
+    ? 'http://localhost:8082/auth/callback' : 'http://localhost:8081/auth/callback';
 export const GOOGLE_IOS_CALLBACK = 'nccugrouping://auth/callback';
 const AUTHORIZE = 'https://axdwbfhrkbovgrbngrrh.supabase.co/auth/v1/authorize';
 

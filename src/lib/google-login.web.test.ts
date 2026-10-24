@@ -60,3 +60,41 @@ it('handles cancellation without echoing provider descriptions or retaining proo
   expect(coreApi.googleFinish).not.toHaveBeenCalled();
   expect(storage.size).toBe(0);
 });
+
+it('starts and completes public HTTPS login with same-tab proof and the public client', async () => {
+  const previous = process.env.EXPO_PUBLIC_APP_PROFILE;
+  try {
+    process.env.EXPO_PUBLIC_APP_PROFILE = 'web';
+    const origin = 'https://campus-demo.trycloudflare.com';
+    const callback = `${origin}/auth/callback`;
+    browser.location.origin = origin;
+    browser.location.href = `${callback}?code=synthetic-public-code`;
+    let publicLogin!: typeof import('./google-login.web');
+    let publicApi!: typeof coreApi;
+    jest.isolateModules(() => {
+      publicLogin = jest.requireActual<typeof import('./google-login.web')>('./google-login.web');
+      publicApi = jest.requireMock<typeof import('./core-api')>('./core-api').coreApi;
+    });
+    const authorize = new URL('https://axdwbfhrkbovgrbngrrh.supabase.co/auth/v1/authorize');
+    authorize.search = new URLSearchParams({
+      provider: 'google', redirect_to: callback,
+      code_challenge_method: 's256', code_challenge: 'c'.repeat(43),
+    }).toString();
+    jest.mocked(publicApi.googleStart).mockResolvedValue({
+      authorize_url: authorize.href, flow_id: flowId, expires_in: 600,
+    });
+    const session = { access_token: 'synthetic-token' } as CoreSession;
+    jest.mocked(publicApi.googleFinish).mockResolvedValue(session);
+    await publicLogin.beginGoogleSignIn();
+    expect(publicApi.googleStart).toHaveBeenCalledWith('web_public');
+    expect(storage.get(key)).toBe(flowId);
+    expect(browser.location.assign).toHaveBeenCalledWith(authorize.href);
+    await expect(publicLogin.finishGoogleSignIn()).resolves.toEqual(session);
+    expect(publicApi.googleFinish).toHaveBeenCalledWith(flowId, 'synthetic-public-code');
+    expect(storage.has(key)).toBe(false);
+    expect(browser.history.replaceState).toHaveBeenCalledWith(null, '', callback);
+  } finally {
+    if (previous === undefined) delete process.env.EXPO_PUBLIC_APP_PROFILE;
+    else process.env.EXPO_PUBLIC_APP_PROFILE = previous;
+  }
+});

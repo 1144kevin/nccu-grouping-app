@@ -189,7 +189,7 @@ export const coreApi = {
     ).data,
   clearDemo: async () =>
     (await api.delete<{ deleted_posts: number; kept_posts: number }>('/development/demo')).data,
-  googleStart: async (client: 'web' | 'web_account' | 'ios' = 'web') =>
+  googleStart: async (client: 'web' | 'web_account' | 'web_public' | 'ios' = 'web') =>
     (await api.post<GoogleStart>('/auth/google/start', { client })).data,
   setAppPassword: async (password: string, expectedUserId: string) => {
     await api.post('/auth/password', { password, expected_user_id: expectedUserId });
