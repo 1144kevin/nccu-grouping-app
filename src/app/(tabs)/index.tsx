@@ -237,7 +237,7 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
           onPress={() => setOptionsVisible(true)}
         />
       </View>
-      <Pressable onPress={() => router.push(`/post/${post.id}`)}>
+      <View>
         <Text style={styles.content}>{post.content}</Text>
         {corePost?.image_id ? (
           <CorePostImage imageId={corePost.image_id} />
@@ -251,7 +251,7 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
             />
           )
         )}
-      </Pressable>
+      </View>
       <View style={styles.tags}>
         {post.tags.map((tag) => (
           <Pressable
