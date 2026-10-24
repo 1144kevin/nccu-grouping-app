@@ -229,6 +229,11 @@ export const stealthApi = {
     ).data,
   room: async (id: string) =>
     (await api.get<StealthRoom>(`${root}/matches/${encodeURIComponent(id)}/room`)).data,
+  replySuggestions: async (id: string, batch: number, signal?: AbortSignal, previous: string[] = []) =>
+    (await api.post<{ suggestions: string[]; context_key: string; is_llm: boolean }>(
+      `${root}/matches/${encodeURIComponent(id)}/reply-suggestions`, { batch, previous },
+      { timeout: 100_000, signal },
+    )).data,
   roomSend: async (id: string, content: string, key: string) =>
     (
       await api.post<StealthRoomMessage>(

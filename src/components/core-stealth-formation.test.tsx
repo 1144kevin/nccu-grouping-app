@@ -18,6 +18,7 @@ it('preserves a losing proposal after a conflict refresh and requires explicit r
   const refresh = jest.fn(async () => undefined);
   const screen = await render(<QueryClientProvider client={client}><StealthFormation match={{ ...match, terms: null, terms_revision: 0, agent_draft: draft }} refresh={refresh} /></QueryClientProvider>);
   await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團公開說明'), '另一人同時送出時，我的草稿必須保留。'); });
+  await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團每人費用'), '90'); await fireEvent.press(screen.getByRole('button', { name: '成員 1下單' })); await fireEvent.press(screen.getByRole('button', { name: '成員 3取餐' })); });
   await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
   await waitFor(() => expect(refresh).toHaveBeenCalled());
   await screen.rerender(<QueryClientProvider client={client}><StealthFormation match={match} refresh={refresh} /></QueryClientProvider>);
@@ -90,14 +91,16 @@ it('uses service time and rejects a deadline outside the shared availability win
   expect(stealthApi.terms).not.toHaveBeenCalled();
 });
 
-it('prefills the automatic draft but saves only after explicit review and editing', async () => {
+it('ignores automatic assignments and requires negotiated fields before saving', async () => {
   jest.mocked(stealthApi.terms).mockResolvedValue(match);
   const screen = await render(<QueryClientProvider client={client}><StealthFormation match={{ ...match, terms: null, terms_revision: 0, agent_draft: draft }} refresh={async () => undefined} /></QueryClientProvider>);
-  expect(screen.getByDisplayValue('90')).toBeTruthy();
-  expect(screen.getByDisplayValue(draft.content)).toBeTruthy();
+  expect(screen.getByLabelText('成團每人費用').props.value).toBe('');
+  expect(screen.queryByDisplayValue(draft.content)).toBeNull();
+  expect(screen.queryByText('分身建議')).toBeNull();
   expect(stealthApi.terms).not.toHaveBeenCalled();
   expect(stealthApi.consent).not.toHaveBeenCalled();
   await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團公開說明'), '大家修正後一起分享披薩並確認費用。'); });
+  await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團每人費用'), '90'); await fireEvent.press(screen.getByRole('button', { name: '成員 1下單' })); await fireEvent.press(screen.getByRole('button', { name: '成員 3取餐' })); });
   await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
   await waitFor(() => expect(stealthApi.terms).toHaveBeenCalledWith('proposal', 0, expect.objectContaining({ content: '大家修正後一起分享披薩並確認費用。', cost_per_person_twd: 90, order_member: 1, pickup_member: 3 })));
   expect(stealthApi.consent).not.toHaveBeenCalled();
@@ -129,6 +132,7 @@ it('requires a visible explanation for changing the known price and stays within
   jest.mocked(stealthApi.terms).mockResolvedValue(match);
   const screen = await render(<QueryClientProvider client={client}><StealthFormation match={{ ...match, terms: null, terms_revision: 0, known_cost_twd: 90, budget_max_twd: 120, agent_draft: draft }} refresh={async () => undefined} /></QueryClientProvider>);
   await act(async () => { await fireEvent.changeText(screen.getByLabelText('成團每人費用'), '100'); });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '成員 1下單' })); await fireEvent.press(screen.getByRole('button', { name: '成員 3取餐' })); });
   await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '提出方案，請全員確認' })); });
   expect(stealthApi.terms).not.toHaveBeenCalled();
   await act(async () => { await fireEvent.changeText(screen.getByLabelText('費用調整原因（本組成員可見）'), '補上每人十元已協調運費'); });
