@@ -1,5 +1,5 @@
 import { PageLoading } from '@/components/page-loading';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
@@ -13,11 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 export function CorePostImage({
-  imageId,
-  compact = false,
-  frameHeight,
-  fit = 'contain',
-  intrinsicHeight,
+  ...props
 }: {
   imageId: string;
   compact?: boolean;
@@ -26,8 +22,27 @@ export function CorePostImage({
   intrinsicHeight?: number;
 }) {
   const actor = useAuthStore((state) => state.user?.id);
+  return <SignedPostImage key={`${actor}:${props.imageId}`} {...props} actor={actor} />;
+}
+
+function SignedPostImage({
+  imageId,
+  compact = false,
+  frameHeight,
+  fit = 'contain',
+  intrinsicHeight,
+  actor,
+}: {
+  imageId: string;
+  compact?: boolean;
+  frameHeight?: number;
+  fit?: 'contain' | 'cover';
+  intrinsicHeight?: number;
+  actor?: string;
+}) {
   const focused = useCoreScreenFocused();
-  const [failed, setFailed] = useState(false);
+  const [failedAttempt, setFailedAttempt] = useState<string | null>(null);
+  const automaticRefreshes = useRef(0);
   const query = useQuery({
     queryKey: ['core', actor, 'image-link', imageId],
     queryFn: async () => {
@@ -37,8 +52,12 @@ export function CorePostImage({
     enabled: !!actor && focused,
     retry: false,
     staleTime: 45_000,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
     gcTime: 0,
   });
+  const attempt = `${query.data?.url}:${query.dataUpdatedAt}`;
+  const failed = failedAttempt === attempt;
   const intrinsicWidth =
     intrinsicHeight && query.data
       ? (intrinsicHeight * query.data.width) / query.data.height
@@ -60,15 +79,27 @@ export function CorePostImage({
             : compact && { minHeight: 120 },
       ]}
     >
-      {query.isPending ? (
+      {!focused || query.isPending || query.isFetching ? (
         <PageLoading accessibilityLabel="正在載入拼單圖片" />
       ) : query.data && !failed ? (
         <Image
+          key={attempt}
           accessibilityLabel="拼單附圖"
           source={{ uri: query.data.url }}
           cachePolicy="memory"
           contentFit={fit}
-          onError={() => setFailed(true)}
+          onLoad={() => {
+            automaticRefreshes.current = 0;
+          }}
+          onError={() => {
+            setFailedAttempt(attempt);
+            // An expired cached URL or a transient image download gets one fresh
+            // signed link automatically; a genuine failure keeps an explicit retry.
+            if (automaticRefreshes.current === 0) {
+              automaticRefreshes.current = 1;
+              void query.refetch();
+            }
+          }}
           style={
             frameHeight || intrinsicHeight
               ? { width: '100%', height: frameHeight ?? intrinsicHeight }
@@ -88,7 +119,8 @@ export function CorePostImage({
             secondary
             disabled={query.isFetching}
             onPress={() => {
-              setFailed(false);
+              setFailedAttempt(null);
+              automaticRefreshes.current = 0;
               void query.refetch();
             }}
           >
