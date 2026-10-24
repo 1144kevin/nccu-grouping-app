@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { BrandLogo } from '@/components/brand-logo';
 import { useNavigationStore } from '@/store/navigation-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -49,7 +50,7 @@ export function AppHeader({
             accessibilityLabel="返回首頁"
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
           >
-            <MaterialCommunityIcons name="bowl-mix-outline" size={26} color={colors.ink} />
+            <BrandLogo size={30} />
           </Pressable>
         </Link>
       )}

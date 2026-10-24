@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/brand-logo';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar } from '@/components/primitives';
 import { selectUnreadNotificationCount, useAppStore } from '@/store/app-store';
@@ -45,7 +46,7 @@ export function AppDrawer() {
         >
           <View style={styles.topBar}>
             <View style={styles.brand}>
-              <MaterialCommunityIcons name="bowl-mix-outline" size={23} color={colors.ink} />
+              <BrandLogo size={28} />
               <Text style={styles.brandText}>政缺一咖</Text>
             </View>
             <Pressable

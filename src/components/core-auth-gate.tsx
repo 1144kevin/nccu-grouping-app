@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/brand-logo';
 import { useEffect, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -114,6 +115,7 @@ function LoginForm() {
   }
   return (
     <Screen scroll style={styles.form}>
+      <BrandLogo size={64} />
       <Text style={styles.title}>政缺一咖</Text>
       {accountDeleted ? (
         <Text accessibilityRole="alert" style={styles.hint}>
