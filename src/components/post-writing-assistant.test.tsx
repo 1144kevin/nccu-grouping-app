@@ -156,3 +156,27 @@ it('ignores an old account response and rejects model drafts shorter than 50 cha
   await waitFor(() => expect(next.getByText('暫時失敗')).toBeTruthy());
   expect(next.queryByLabelText('AI 貼文草稿')).toBeNull();
 });
+
+it('uses the entire selected album with no typed content and shows the triggering button spinner', async () => {
+  let resolve!: (value: { text: string }) => void;
+  jest.mocked(socialApi.writePost).mockReturnValue(
+    new Promise((r) => {
+      resolve = r;
+    }),
+  );
+  const screen = await render(
+    <PostWritingAssistant {...props} imageBase64s={['first-photo', 'second-photo']} />,
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '圖片辨識生成文案' }));
+  expect(socialApi.writePost).toHaveBeenCalledWith('image', '', '', [
+    'first-photo',
+    'second-photo',
+  ]);
+  expect(screen.getByLabelText('AI 正在辨識照片')).toBeTruthy();
+  expect(
+    screen.getByRole('button', { name: '圖片辨識生成文案' }).props.accessibilityState.busy,
+  ).toBe(true);
+  await act(async () => resolve({ text: DRAFT }));
+  await waitFor(() => expect(screen.queryByLabelText('AI 正在辨識照片')).toBeNull());
+  expect(screen.getByLabelText('AI 貼文草稿').props.value).toBe(DRAFT);
+});

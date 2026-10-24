@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -16,12 +16,25 @@ type WritingProps = {
   content: string;
   context: string;
   imageBase64?: string;
+  imageBase64s?: string[];
   disabled: boolean;
   onApply: (text: string) => void;
   onBusyChange?: (busy: boolean) => void;
 };
-type Source = { content: string; context: string; imageBase64?: string; actor?: string };
-type Preview = { source: Source; text: string; sourceText: string; mode: 'image' | 'voice' };
+type Source = {
+  content: string;
+  context: string;
+  imageBase64?: string;
+  imageBase64s?: string[];
+  actor?: string;
+};
+type Preview = {
+  source: Source;
+  text: string;
+  sourceText: string;
+  mode: 'image' | 'voice';
+  draftMethod?: 'model' | 'recognized_facts';
+};
 const draftLength = (text: string) => [...text.replace(/\s/g, '')].length;
 
 export function PostWritingAssistant(props: WritingProps) {
@@ -32,21 +45,23 @@ function WritingSession({
   content,
   context,
   imageBase64,
+  imageBase64s,
   disabled,
   onApply,
   onBusyChange,
   actor,
 }: WritingProps & { actor?: string }) {
-  const current = useRef<Source>({ content, context, imageBase64, actor });
+  const current = useRef<Source>({ content, context, imageBase64, imageBase64s, actor });
   useEffect(() => {
-    current.current = { content, context, imageBase64, actor };
-  }, [content, context, imageBase64, actor]);
+    current.current = { content, context, imageBase64, imageBase64s, actor };
+  }, [content, context, imageBase64, imageBase64s, actor]);
   const mounted = useRef(true);
   const generation = useRef(0);
   const capture = useRef<SpeechCapture | null>(null);
   const pendingSpeech = useRef<AbortController | null>(null);
   const running = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [activeMode, setActiveMode] = useState<'image' | 'voice'>('image');
   const [listening, setListening] = useState(false);
   const [starting, setStarting] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -98,7 +113,11 @@ function WritingSession({
     source.actor === actor &&
     source.content === current.current.content &&
     source.context === current.current.context &&
-    source.imageBase64 === current.current.imageBase64;
+    source.imageBase64 === current.current.imageBase64 &&
+    (source.imageBase64s?.length ?? 0) === (current.current.imageBase64s?.length ?? 0) &&
+    (source.imageBase64s ?? []).every(
+      (photo, index) => photo === current.current.imageBase64s?.[index],
+    );
 
   async function generate(
     mode: 'image' | 'voice',
@@ -109,6 +128,7 @@ function WritingSession({
     if (!alive(id)) return;
     running.current = true;
     setBusy(true);
+    setActiveMode(mode);
     setError('');
     setPreview(undefined);
     try {
@@ -116,7 +136,11 @@ function WritingSession({
         mode,
         mode === 'voice' ? spoken : source.content,
         source.context,
-        mode === 'image' ? source.imageBase64 : undefined,
+        mode === 'image'
+          ? source.imageBase64s?.length
+            ? source.imageBase64s
+            : source.imageBase64
+          : undefined,
       );
       if (!alive(id)) return;
       if (!sourceMatches(source)) {
@@ -125,7 +149,13 @@ function WritingSession({
       }
       if (draftLength(result.text) < 50 || [...result.text].length > 500)
         throw new Error('post_writing_invalid_output');
-      setPreview({ source, text: result.text, sourceText: result.source_text || spoken, mode });
+      setPreview({
+        source,
+        text: result.text,
+        sourceText: result.source_text || spoken,
+        mode,
+        draftMethod: result.draft_method,
+      });
       setVoiceOpen(false);
     } catch (e) {
       if (alive(id)) setError(coreError(e));
@@ -139,6 +169,7 @@ function WritingSession({
   async function beginVoice() {
     if (running.current || disabled || !actor) return;
     cancelWork();
+    setActiveMode('voice');
     const id = ++generation.current;
     const source = { ...current.current };
     let ended = false;
@@ -217,30 +248,50 @@ function WritingSession({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="圖片辨識生成文案"
-          disabled={disabled || locked || !actor || !imageBase64}
+          accessibilityState={{ busy: busy && activeMode === 'image' }}
+          disabled={disabled || locked || !actor || !(imageBase64s?.length || imageBase64)}
           onPress={() => {
             if (!running.current) void generate('image', { ...current.current });
           }}
-          style={[styles.button, (disabled || locked || !actor || !imageBase64) && styles.disabled]}
+          style={[
+            styles.button,
+            (disabled || locked || !actor || !(imageBase64s?.length || imageBase64)) &&
+              styles.disabled,
+          ]}
         >
-          <MaterialCommunityIcons name="image-text" size={20} color={colors.ink} />
+          {busy && activeMode === 'image' ? (
+            <ActivityIndicator
+              accessibilityLabel="AI 正在辨識照片"
+              size="small"
+              color={colors.ink}
+            />
+          ) : (
+            <MaterialCommunityIcons name="image-text" size={20} color={colors.ink} />
+          )}
           <Text style={styles.buttonText}>圖片辨識生成文案</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="語音潤稿"
+          accessibilityState={{ busy: busy && activeMode === 'voice' }}
           disabled={disabled || locked || !actor}
           onPress={() => {
             void beginVoice();
           }}
           style={[styles.button, (disabled || locked || !actor) && styles.disabled]}
         >
-          <MaterialCommunityIcons name="microphone-outline" size={20} color={colors.ink} />
+          {busy && activeMode === 'voice' ? (
+            <ActivityIndicator accessibilityLabel="AI 正在潤稿" size="small" color={colors.ink} />
+          ) : (
+            <MaterialCommunityIcons name="microphone-outline" size={20} color={colors.ink} />
+          )}
           <Text style={styles.buttonText}>語音潤稿</Text>
         </Pressable>
       </View>
-      {!imageBase64 ? (
-        <Text style={styles.hint}>先加入照片，就能辨識宣傳單、菜單或餐點資訊。</Text>
+      {!(imageBase64s?.length || imageBase64) ? (
+        <Text style={styles.hint}>
+          不用打字，選擇 1～5 張宣傳單、食物、物品或品牌照片，就能生成拼單貼文。
+        </Text>
       ) : null}
       {busy && !voiceOpen ? (
         <Text accessibilityLiveRegion="polite">正在辨識資訊並整理文案…</Text>
@@ -306,6 +357,7 @@ function WritingSession({
               結束說話並潤稿
             </PrimaryButton>
           ) : null}
+          {busy ? <PrimaryButton loading>正在整理口述文案…</PrimaryButton> : null}
           {!locked ? (
             <>
               <PrimaryButton
@@ -343,7 +395,11 @@ function WritingSession({
         >
           <Text style={styles.title}>確認貼文草稿</Text>
           <Text style={styles.hint}>
-            {preview?.mode === 'image' ? '照片辨識資訊，請核對優惠與限制條件' : '語音辨識內容'}
+            {preview?.draftMethod === 'recognized_facts'
+              ? '文案修正後仍未通過檢查，已保留照片辨識原文整理成草稿，請核對後編輯。'
+              : preview?.mode === 'image'
+                ? '照片辨識資訊，請核對優惠與限制條件'
+                : '語音辨識內容'}
           </Text>
           <Text style={styles.body}>{preview?.sourceText}</Text>
           <Text style={styles.hint}>文案草稿 · 可編輯</Text>

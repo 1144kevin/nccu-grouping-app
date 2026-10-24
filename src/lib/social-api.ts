@@ -96,13 +96,26 @@ export const socialApi = {
     mode: 'image' | 'voice',
     content: string,
     context: string,
-    image_base64?: string,
+    image_base64?: string | string[],
   ) =>
     (
-      await api.post<{ text: string; source_text?: string }>(
+      await api.post<{
+        text: string;
+        source_text?: string;
+        draft_method?: 'model' | 'recognized_facts';
+      }>(
         '/ai/post-writing',
-        { mode, content, context, ...(image_base64 ? { image_base64 } : {}) },
-        { timeout: mode === 'image' ? 210_000 : 120_000 },
+        {
+          mode,
+          content,
+          context,
+          ...(Array.isArray(image_base64)
+            ? { images_base64: image_base64 }
+            : image_base64
+              ? { image_base64 }
+              : {}),
+        },
+        { timeout: mode === 'image' ? 420_000 : 150_000 },
       )
     ).data,
 };
