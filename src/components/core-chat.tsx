@@ -1,12 +1,14 @@
+import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardViewport } from '@/components/keyboard-layout';
-import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { AppText as Text } from '@/components/app-text';
+import { ChatTextInput as TextInput } from '@/components/chat-text-input';
 import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { coreApi, coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
@@ -123,7 +125,7 @@ function GroupChat({ id }: { id: string }) {
       {!current || denied ? (
         <View style={styles.list}>
           {query.isPending ? (
-            <ActivityIndicator />
+            <PageLoading />
           ) : (
             <Text accessibilityRole="alert" style={styles.error}>
               {coreError(query.error)}
@@ -147,7 +149,7 @@ function GroupChat({ id }: { id: string }) {
               accessibilityRole="button"
               accessibilityLabel="查看這筆拼單"
               style={styles.topic}
-              onPress={() => router.push(`/post/${id}`)}
+              onPress={() => router.push(`/order/${id}`)}
             >
               <Text numberOfLines={2} style={styles.title}>
                 {current.post.content.split('\n')[0]}

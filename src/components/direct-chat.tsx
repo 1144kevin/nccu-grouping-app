@@ -1,10 +1,12 @@
+import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
-import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { FlatList, StyleSheet, View } from 'react-native';
+import { AppText as Text } from '@/components/app-text';
+import { ChatTextInput as TextInput } from '@/components/chat-text-input';
 import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { KeyboardViewport } from '@/components/keyboard-layout';
 import { coreError, newRequestKey } from '@/lib/core-api';
@@ -95,8 +97,8 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           page ? (
             <IconButton
               icon="text-box-outline"
-              label="查看貼文"
-              onPress={() => router.push(`/post/${page.thread.post.id}`)}
+              label="查看拼單詳情"
+              onPress={() => router.push(`/order/${page.thread.post.id}`)}
             />
           ) : undefined
         }
@@ -125,7 +127,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           </View>
         ) : null}
         {query.isPending ? (
-          <ActivityIndicator />
+          <PageLoading />
         ) : (
           <FlatList
             inverted
