@@ -1,9 +1,9 @@
-import { CorePostRow } from '@/components/list-ui';
+import { FeedPostCard } from '@/components/feed-post-card';
 import { useState } from 'react';
 import { FlatList, StyleSheet, Switch, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { DetailHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
-import { CORE_SUPABASE_MODE, coreError } from '@/lib/core-api';
+import { CORE_SUPABASE_MODE, coreError, toFeedPost } from '@/lib/core-api';
 import { CloudSearchScreen } from '@/components/cloud-search';
 import { useCorePosts } from '@/lib/core-hooks';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -91,7 +91,8 @@ function LocalPostSearch({ initialQuery = '' }: { initialQuery?: string }) {
             </PrimaryButton>
           ) : null
         }
-        renderItem={({ item }) => <CorePostRow post={item} />}
+        ItemSeparatorComponent={() => <View style={styles.divider} />}
+        renderItem={({ item }) => <FeedPostCard post={toFeedPost(item)} corePost={item} />}
       />
     </Screen>
   );
@@ -109,7 +110,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     color: colors.ink,
   },
-  list: { padding: spacing.md, paddingBottom: 120 },
+  list: { paddingBottom: 120 },
+  divider: { height: 1, backgroundColor: colors.border },
   card: {
     padding: spacing.md,
     marginBottom: spacing.md,

@@ -7,9 +7,10 @@ import { router } from 'expo-router';
 import { FlatList, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { Avatar, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
-import { CorePostRow, shortDate } from '@/components/list-ui';
+import { shortDate } from '@/components/list-ui';
+import { FeedPostCard } from '@/components/feed-post-card';
 import { CoreSemanticFeed } from '@/components/core-semantic-feed';
-import { coreApi, coreError, type CoreSearchItem } from '@/lib/core-api';
+import { coreApi, coreError, toFeedPost, type CorePost, type CoreSearchItem } from '@/lib/core-api';
 import { useCorePosts, useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -112,7 +113,7 @@ export function CloudSearchScreen({
       {scope === 'semantic' ? (
         <CoreSemanticFeed
           search={{ query: input, revision }}
-          renderPost={(post) => <CorePostRow post={post} />}
+          renderPost={(post) => <FeedPostCard post={toFeedPost(post)} corePost={post} />}
         />
       ) : scope === 'all' && query ? (
         <AllResults query={query} onScope={setScope} />
@@ -230,7 +231,9 @@ function AllResults({ query, onScope }: { query: string; onScope: (scope: Scope)
           ) : index === 0 ? (
             postResult?.status === 'fulfilled' ? (
               postResult.value.items.map((p) => (
-                <CorePostRow key={p.id} post={p as import('@/lib/core-api').CorePost} />
+                <View key={p.id} style={styles.postResult}>
+                  <FeedPostCard post={toFeedPost(p as CorePost)} corePost={p as CorePost} />
+                </View>
               ))
             ) : null
           ) : (
@@ -313,7 +316,8 @@ function PostResults({
             </PrimaryButton>
           ) : null
         }
-        renderItem={({ item }) => <CorePostRow post={item} />}
+        ItemSeparatorComponent={() => <View style={styles.divider} />}
+        renderItem={({ item }) => <FeedPostCard post={toFeedPost(item)} corePost={item} />}
       />
     </>
   );
@@ -424,6 +428,8 @@ function ErrorAndRetry({ error, retry }: { error: unknown; retry: () => void }) 
   ) : null;
 }
 const styles = StyleSheet.create({
+  divider: { height: 1, backgroundColor: colors.border },
+  postResult: { borderBottomWidth: 1, borderBottomColor: colors.border },
   quickRow: {
     minHeight: 62,
     flexDirection: 'row',

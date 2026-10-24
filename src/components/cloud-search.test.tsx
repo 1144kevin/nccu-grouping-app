@@ -1,10 +1,17 @@
 import { afterEach, expect, it, jest } from '@jest/globals';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Text as MockText } from 'react-native';
 import { CloudSearchScreen } from './cloud-search';
-import { coreApi } from '@/lib/core-api';
+import { coreApi, type CorePost } from '@/lib/core-api';
+
+let mockPosts: CorePost[] = [];
+jest.mock('@/components/feed-post-card', () => ({
+  FeedPostCard: ({ post }: { post: CorePost }) => (
+    <MockText testID={`feed-card-${post.id}`}>{post.content}</MockText>
+  ),
+}));
 
 jest.mock('@/components/core-semantic-feed', () => ({
   CoreSemanticFeed: () => {
@@ -14,11 +21,12 @@ jest.mock('@/components/core-semantic-feed', () => ({
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/lib/core-hooks', () => ({
   useCoreScreenFocused: () => true,
-  useCorePosts: () => ({ posts: [], isPending: false }),
+  useCorePosts: () => ({ posts: mockPosts, isPending: false }),
 }));
 jest.mock('@/lib/core-api', () => ({
-  coreApi: { search: jest.fn() },
+  coreApi: { search: jest.fn(), posts: jest.fn() },
   coreError: () => '操作失敗',
+  toFeedPost: (post: unknown) => post,
 }));
 jest.mock('@/store/auth-store', () => ({
   useAuthStore: (selector: (state: { user: { id: string } }) => unknown) =>
@@ -29,11 +37,40 @@ jest.mock('@/lib/font-size-storage', () => ({
 }));
 const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
 afterEach(async () => {
+  await cleanup();
   await act(async () => {
     client.clear();
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
   jest.clearAllMocks();
+  mockPosts = [];
+});
+
+it('uses the home feed card for post search results instead of a separate role/status row', async () => {
+  mockPosts = [{ id: 'found', content: '和首頁相同的完整貼文', my_status: 'host' } as CorePost];
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <CloudSearchScreen initialScope="posts" initialQuery="晚餐" />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByTestId('feed-card-found')).toBeTruthy();
+  expect(screen.queryByText('我主揪的')).toBeNull();
+});
+
+it('also reuses the home feed card inside all search results', async () => {
+  jest
+    .mocked(coreApi.posts)
+    .mockResolvedValue({
+      items: [{ id: 'found-all', content: '全部搜尋的完整貼文' } as CorePost],
+      next_cursor: null,
+    });
+  jest.mocked(coreApi.search).mockResolvedValue({ items: [], next_cursor: null });
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <CloudSearchScreen initialScope="all" initialQuery="晚餐" />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(screen.getByTestId('feed-card-found-all')).toBeTruthy());
 });
 
 it('only submits a scoped search after explicit search and opens the permitted group', async () => {

@@ -148,6 +148,8 @@ function SemanticFeedSession({
       data={posts}
       keyExtractor={(post) => post.id}
       renderItem={({ item }) => renderPost(item)}
+      ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.border }} />}
+      contentContainerStyle={{ paddingBottom: 100 }}
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
         <View style={{ padding: 16, gap: 10 }}>
