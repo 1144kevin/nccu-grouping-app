@@ -168,7 +168,17 @@ export function FeedPostCard({
       ) : null}
       <View style={styles.actions}>
         {corePost ? (
-          corePost.my_status === 'host' && !showManagement ? null : (
+          corePost.my_status === 'host' && !showManagement ? (
+            corePost.can_edit && ['open', 'full'].includes(corePost.status) ? (
+              <PrimaryButton
+                secondary
+                style={{ flex: 1 }}
+                onPress={() => router.push(`/edit-post/${corePost.id}`)}
+              >
+                編輯拼單
+              </PrimaryButton>
+            ) : null
+          ) : (
             <CorePostActions post={corePost} onManage={onManage} />
           )
         ) : (

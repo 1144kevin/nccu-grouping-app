@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import { View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
@@ -18,11 +17,6 @@ export function HostPostControls({ post }: { post: CorePost }) {
   const closed = post.status === 'expired' || post.status === 'cancelled';
   return (
     <View style={{ gap: 12 }}>
-      {post.can_edit && !closed ? (
-        <PrimaryButton secondary onPress={() => router.push(`/edit-post/${post.id}`)}>
-          編輯拼單
-        </PrimaryButton>
-      ) : null}
       {!closed && !confirm ? (
         <PrimaryButton secondary onPress={() => setConfirm(true)}>
           取消拼單

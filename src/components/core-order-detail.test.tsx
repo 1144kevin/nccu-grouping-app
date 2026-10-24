@@ -97,7 +97,7 @@ afterEach(async () => {
 it('integrates host controls, hides self reporting and keeps only one order chat entry', async () => {
   jest.mocked(coreApi.cancel).mockResolvedValue({} as never);
   const screen = await mount();
-  expect(screen.getByRole('button', { name: '編輯拼單' })).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: '編輯拼單' })).toHaveLength(1);
   expect(screen.getAllByRole('button', { name: '進入拼單聊天室' })).toHaveLength(1);
   expect(screen.queryByText('管理貼文')).toBeNull();
   expect(screen.queryByText('管理拼單')).toBeNull();
