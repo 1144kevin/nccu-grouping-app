@@ -1,8 +1,9 @@
+import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar, DetailHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
 import { coreError, type CoreOrderActivity } from '@/lib/core-api';
@@ -67,7 +68,7 @@ function CoreRequestActivity() {
         }
         ListEmptyComponent={
           query.isPending ? (
-            <ActivityIndicator />
+            <PageLoading />
           ) : (
             <EmptyState
               icon="bell-outline"
@@ -179,7 +180,7 @@ function CoreDeadlineReminders() {
         }
         ListEmptyComponent={
           query.isPending ? (
-            <ActivityIndicator />
+            <PageLoading />
           ) : (
             <EmptyState
               icon="bell-outline"

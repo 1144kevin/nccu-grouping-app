@@ -397,6 +397,7 @@ export function QuickStealthComposer({
         <>
           <PrimaryButton
             secondary
+            loading={phase === 'interview'}
             disabled={disabled || busy || !inputValid}
             onPress={() => {
               if (!locked.current) void analyze([...turns, text.trim()]);
@@ -405,6 +406,7 @@ export function QuickStealthComposer({
             補充給分身
           </PrimaryButton>
           <PrimaryButton
+            loading={phase === 'saving'}
             disabled={disabled || busy || !signal || !!text.trim()}
             onPress={() => {
               if (signal) void save(signal);
@@ -428,6 +430,7 @@ export function QuickStealthComposer({
             未指定時，先找正門、接下來兩小時；有近期同類需求時會參考地點與預算。
           </Text>
           <PrimaryButton
+            loading={phase === 'saving'}
             disabled={disabled || busy || !inputValid}
             onPress={() => {
               void save();
@@ -437,6 +440,7 @@ export function QuickStealthComposer({
           </PrimaryButton>
           <PrimaryButton
             secondary
+            loading={phase === 'interview'}
             disabled={disabled || busy || !inputValid}
             onPress={() => {
               setChat(true);

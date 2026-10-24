@@ -285,6 +285,7 @@ export function AppleStealthIntake({
         </Text>
       ) : null}
       <PrimaryButton
+        loading={busy}
         disabled={
           disabled || busy || availability !== 'available' || !text.trim() || !!inputProblem
         }

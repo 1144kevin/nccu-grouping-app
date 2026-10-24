@@ -1,6 +1,7 @@
+import { PageLoading } from '@/components/page-loading';
 import { BrandLogo } from '@/components/brand-logo';
 import { useEffect, useState, type PropsWithChildren } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { PrimaryButton, Screen } from '@/components/primitives';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreError } from '@/lib/core-api';
@@ -67,7 +68,7 @@ export function CoreLoginScreen() {
   if (!ready)
     return (
       <Screen>
-        <ActivityIndicator accessibilityLabel="正在確認登入" />
+        <PageLoading accessibilityLabel="正在確認登入" />
       </Screen>
     );
   return <LoginForm />;

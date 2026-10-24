@@ -1,17 +1,10 @@
+import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { Avatar, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { CorePostRow, shortDate } from '@/components/list-ui';
@@ -217,7 +210,7 @@ function AllResults({ query, onScope }: { query: string; onScope: (scope: Scope)
       {query.length < 2 ? (
         <EmptyState icon="magnify" title="輸入至少 2 個字開始搜尋" />
       ) : result.isPending ? (
-        <ActivityIndicator />
+        <PageLoading />
       ) : null}
       {responses?.map((entry, index) => (
         <View key={index}>
@@ -302,7 +295,7 @@ function PostResults({
         contentContainerStyle={styles.results}
         ListEmptyComponent={
           result.isPending ? (
-            <ActivityIndicator />
+            <PageLoading />
           ) : (
             <EmptyState icon="magnify-close" title="沒有符合的拼單" />
           )
@@ -361,7 +354,7 @@ function PrivateResults({
         contentContainerStyle={styles.results}
         ListEmptyComponent={
           result.isPending ? (
-            <ActivityIndicator />
+            <PageLoading />
           ) : (
             <EmptyState icon="magnify-close" title="沒有符合的結果" />
           )

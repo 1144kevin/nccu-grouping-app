@@ -194,6 +194,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
         {details && active.length ? (
           <PrimaryButton
             secondary
+            loading={retry.isPending}
             disabled={busy || !capability.data?.ready}
             onPress={() => retry.mutate()}
           >

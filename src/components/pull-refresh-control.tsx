@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { RefreshControl } from 'react-native';
+import { colors } from '@/theme/tokens';
 
 // Network polling must never impersonate the user's pull gesture.
 export function PullRefreshControl({
@@ -20,6 +21,9 @@ export function PullRefreshControl({
   return (
     <RefreshControl
       {...props}
+      tintColor={colors.muted}
+      colors={[colors.muted]}
+      progressViewOffset={20}
       refreshing={refreshing}
       onRefresh={() => {
         if (busy.current) return;

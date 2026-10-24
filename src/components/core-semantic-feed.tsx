@@ -131,7 +131,18 @@ function SemanticFeedSession({
     }
   }, [text, focused, actor, version]);
   const lastTrigger = useRef(0);
-  useEffect(() => { if (!search?.revision || lastTrigger.current === search.revision || !focused || !actor || version === undefined) return; lastTrigger.current = search.revision; void run(); }, [search?.revision, focused, actor, version, run]);
+  useEffect(() => {
+    if (
+      !search?.revision ||
+      lastTrigger.current === search.revision ||
+      !focused ||
+      !actor ||
+      version === undefined
+    )
+      return;
+    lastTrigger.current = search.revision;
+    void run();
+  }, [search?.revision, focused, actor, version, run]);
   return (
     <FlatList
       data={posts}
@@ -140,30 +151,35 @@ function SemanticFeedSession({
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
         <View style={{ padding: 16, gap: 10 }}>
-          {!search ? <><TextInput
-            accessibilityLabel="語義搜尋需求"
-            placeholder="想找晚餐，也可以是活動剩餘便當"
-            value={text}
-            onChangeText={setText}
-            maxLength={160}
-            editable={!busy}
-            style={{
-              borderWidth: 1,
-              borderColor: colors.border,
-              color: colors.ink,
-              borderRadius: radius.md,
-              padding: 12,
-              fontSize: 16,
-            }}
-          />
-          <PrimaryButton
-            disabled={busy || !focused || !actor || version === undefined || !text.trim()}
-            onPress={() => {
-              void run();
-            }}
-          >
-            {busy ? 'AI 正在比較貼文…' : '用 AI 找相關拼單'}
-          </PrimaryButton></> : null}
+          {!search ? (
+            <>
+              <TextInput
+                accessibilityLabel="語義搜尋需求"
+                placeholder="想找晚餐，也可以是活動剩餘便當"
+                value={text}
+                onChangeText={setText}
+                maxLength={160}
+                editable={!busy}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  color: colors.ink,
+                  borderRadius: radius.md,
+                  padding: 12,
+                  fontSize: 16,
+                }}
+              />
+              <PrimaryButton
+                loading={busy}
+                disabled={busy || !focused || !actor || version === undefined || !text.trim()}
+                onPress={() => {
+                  void run();
+                }}
+              >
+                {busy ? 'AI 正在比較貼文…' : '用 AI 找相關拼單'}
+              </PrimaryButton>
+            </>
+          ) : null}
           {error ? <Text accessibilityRole="alert">{error} 請稍後再試。</Text> : null}
           {preferenceError ? <Text accessibilityRole="alert">{preferenceError}</Text> : null}
           {result ? (

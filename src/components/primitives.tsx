@@ -5,7 +5,7 @@ import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -66,7 +66,14 @@ export function AppHeader({
 export function DetailHeader({ title, right }: { title: string; right?: ReactNode }) {
   return (
     <View style={styles.header}>
-      <IconButton icon="chevron-left" label="返回" onPress={() => { if (router.canGoBack()) router.back(); else router.replace('/'); }} />
+      <IconButton
+        icon="chevron-left"
+        label="返回"
+        onPress={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/');
+        }}
+      />
       <Text numberOfLines={1} style={styles.headerTitle}>
         {title}
       </Text>
@@ -117,7 +124,9 @@ export function Avatar({ name, badge, size = 48 }: { name: string; badge: string
         { width: size, height: size, borderRadius: size / 2, backgroundColor: palette[index] },
       ]}
     >
-      <Text fixedSize style={{ fontSize: size * 0.44 }}>{badge}</Text>
+      <Text fixedSize style={{ fontSize: size * 0.44 }}>
+        {badge}
+      </Text>
     </View>
   );
 }
@@ -157,6 +166,7 @@ export function PrimaryButton({
   onPress,
   disabled = false,
   secondary = false,
+  loading = false,
   style,
   textColor,
   accessibilityLabel,
@@ -164,6 +174,7 @@ export function PrimaryButton({
   onPress?: () => void;
   disabled?: boolean;
   secondary?: boolean;
+  loading?: boolean;
   style?: ViewStyle;
   textColor?: string;
   accessibilityLabel?: string;
@@ -172,17 +183,31 @@ export function PrimaryButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      disabled={disabled}
+      accessibilityState={{ busy: loading, disabled: disabled || loading }}
+      disabled={disabled || loading}
       onPress={onPress}
       style={({ pressed }) => [
         styles.primaryButton,
         secondary && styles.secondaryButton,
-        disabled && styles.disabledButton,
+        (disabled || loading) && styles.disabledButton,
         style,
         pressed && styles.pressed,
       ]}
     >
-      <Text style={[styles.primaryButtonText, textColor ? { color: textColor } : undefined]}>{children}</Text>
+      <View
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+      >
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={textColor ?? colors.ink}
+            accessibilityLabel="AI 正在產出"
+          />
+        ) : null}
+        <Text style={[styles.primaryButtonText, textColor ? { color: textColor } : undefined]}>
+          {children}
+        </Text>
+      </View>
     </Pressable>
   );
 }

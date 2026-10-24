@@ -4,7 +4,12 @@ import { View, StyleSheet } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
 import { coreError } from '@/lib/core-api';
-import { intakeToForm, stealthApi, type SignalForm, type StealthIntake as IntakeResult } from '@/lib/stealth-api';
+import {
+  intakeToForm,
+  stealthApi,
+  type SignalForm,
+  type StealthIntake as IntakeResult,
+} from '@/lib/stealth-api';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { APPLE_INTAKE_ENABLED } from '@/lib/apple-intake';
 import { AppleStealthIntake } from '@/components/apple-stealth-intake';
@@ -17,7 +22,11 @@ export function StealthIntake({
   disabled: boolean;
   onApplySummary?: (summary: string) => void;
 }) {
-  return APPLE_INTAKE_ENABLED ? <AppleStealthIntake disabled={props.disabled} onApplySummary={onApplySummary} /> : <LegacyStealthIntake {...props} />;
+  return APPLE_INTAKE_ENABLED ? (
+    <AppleStealthIntake disabled={props.disabled} onApplySummary={onApplySummary} />
+  ) : (
+    <LegacyStealthIntake {...props} />
+  );
 }
 
 function LegacyStealthIntake({
@@ -35,7 +44,10 @@ function LegacyStealthIntake({
   const query = useMutation({
     gcTime: 0,
     retry: false,
-    mutationFn: async (next: string[]) => ({ result: await stealthApi.intake(next, result?.facts), next }),
+    mutationFn: async (next: string[]) => ({
+      result: await stealthApi.intake(next, result?.facts),
+      next,
+    }),
     onSuccess: (value) => {
       setResult(value.result);
       setTurns(value.next);
@@ -65,10 +77,28 @@ function LegacyStealthIntake({
       ))}
       {result ? (
         <View accessibilityLiveRegion="polite">
-          <Text style={styles.hint}>已整理的資訊會保留；只需補充下方缺項。也可明確更正，套用前仍須本人核對。</Text>
-          {query.isError ? <Text style={styles.hint}>以下是上次整理結果；最新補充尚未成功，請重試後再套用。</Text> : null}
+          <Text style={styles.hint}>
+            已整理的資訊會保留；只需補充下方缺項。也可明確更正，套用前仍須本人核對。
+          </Text>
+          {query.isError ? (
+            <Text style={styles.hint}>以下是上次整理結果；最新補充尚未成功，請重試後再套用。</Text>
+          ) : null}
           <Text style={styles.body}>分身理解：{result.facts.title}</Text>
-          <Text style={styles.body}>地點：{result.facts.location_id ? ({ main_gate: '政大正門', east_gate: '政大東側門', south_gate: '政大南門' })[result.facts.location_id] : '待補'}；本人願意的分工：{result.facts.roles.map((role) => ({ order: '下單', pickup: '取餐', coupon: '提供優惠券', share: '分食' })[role]).join('、') || (result.facts.roles_confirmed ? '暫不負責' : '待確認')}</Text>
+          <Text style={styles.body}>
+            地點：
+            {result.facts.location_id
+              ? { main_gate: '政大正門', east_gate: '政大東側門', south_gate: '政大南門' }[
+                  result.facts.location_id
+                ]
+              : '待補'}
+            ；本人願意的分工：
+            {result.facts.roles
+              .map(
+                (role) =>
+                  ({ order: '下單', pickup: '取餐', coupon: '提供優惠券', share: '分食' })[role],
+              )
+              .join('、') || (result.facts.roles_confirmed ? '暫不負責' : '待確認')}
+          </Text>
           <Text style={styles.body}>
             每人預算：
             {result.facts.budget_max_twd === null ? '未知' : `NT$ ${result.facts.budget_max_twd}`}
@@ -144,6 +174,7 @@ function LegacyStealthIntake({
         style={styles.input}
       />
       <PrimaryButton
+        loading={query.isPending}
         disabled={
           busy || !text.trim() || turns.length >= 8 || turns.join('').length + text.length > 4000
         }

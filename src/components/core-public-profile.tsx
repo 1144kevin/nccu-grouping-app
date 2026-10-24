@@ -1,7 +1,8 @@
+import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   Avatar,
@@ -49,7 +50,7 @@ export function CorePublicProfile({ id }: { id: string }) {
         <EmptyState icon="account-question-outline" title="找不到這位使用者" />
       ) : !user ? (
         profile.isPending ? (
-          <ActivityIndicator />
+          <PageLoading />
         ) : (
           <View style={styles.content}>
             <Text accessibilityRole="alert" style={styles.error}>
@@ -98,7 +99,7 @@ export function CorePublicProfile({ id }: { id: string }) {
           }
           ListEmptyComponent={
             posts.isPending ? (
-              <ActivityIndicator />
+              <PageLoading />
             ) : (
               <Text style={styles.hint}>
                 {posts.error ? '拼單暫時無法載入，請重試。' : '目前沒有公開拼單。'}

@@ -1,7 +1,8 @@
+import { PageLoading } from '@/components/page-loading';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
@@ -184,7 +185,7 @@ export function CoreHelpScreen() {
           </PrimaryButton>
         ) : null}
         <Text style={styles.title}>我的回報</Text>
-        {query.isPending ? <ActivityIndicator /> : null}
+        {query.isPending ? <PageLoading /> : null}
         {query.error ? (
           <>
             <Text accessibilityRole="alert" style={styles.error}>

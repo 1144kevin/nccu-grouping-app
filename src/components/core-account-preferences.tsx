@@ -1,7 +1,8 @@
+import { PageLoading } from '@/components/page-loading';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { Avatar, DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
@@ -64,7 +65,7 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
           </>
         ) : null}
         {query.isPending ? (
-          <ActivityIndicator />
+          <PageLoading />
         ) : query.data ? (
           <PreferencesForm
             key={`${user?.id}:${query.data.version}:${mode}`}

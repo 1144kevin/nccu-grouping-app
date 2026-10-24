@@ -1,7 +1,8 @@
+import { PageLoading } from '@/components/page-loading';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   AppHeader,
@@ -117,7 +118,7 @@ export function CoreProfileScreen() {
           </Text>
         ) : null}
         {history.isPending ? (
-          <ActivityIndicator />
+          <PageLoading />
         ) : history.posts.length ? (
           history.posts.map((post) => (
             <HistoryRow
