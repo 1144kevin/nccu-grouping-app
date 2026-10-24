@@ -8,10 +8,18 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import * as ImagePicker from 'expo-image-picker';
+import { pickPostImages } from '@/lib/pick-post-images';
 import { router } from 'expo-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  ScrollView as NativeScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { KeyboardScrollView as ScrollView, KeyboardViewport } from '@/components/keyboard-layout';
 import { z } from 'zod';
 import { IconButton, PrimaryButton, SectionTitle, Screen } from '@/components/primitives';
@@ -35,7 +43,6 @@ import { mediaApi, validPickedImage } from '@/lib/media-api';
 import { useCoreClock } from '@/lib/core-clock';
 import { invalidateCore } from '@/lib/core-hooks';
 import { PostWritingAssistant } from '@/components/post-writing-assistant';
-import { PhotoCarousel } from '@/components/post-photo-carousel';
 import { TagChip } from '@/components/tag-chip';
 import { SettingField } from '@/components/setting-field';
 import { parsePrice, priceInputSchema } from '@/lib/price';
@@ -99,7 +106,9 @@ function CreateForm({
   const publication = useRef<{ payload: string; key: string } | null>(null);
   const publishing = useRef(false);
   const [tags, setTags] = useState(['拼單']);
-  const [photos, setPhotos] = useState<{ id: string; uri: string; width: number; height: number; base64?: string }[]>([]);
+  const [photos, setPhotos] = useState<
+    { id: string; uri: string; width: number; height: number; base64?: string }[]
+  >([]);
   const uploadedImages = useRef(new Map<string, string>());
   const [imageError, setImageError] = useState('');
   const [imageBusy, setImageBusy] = useState(false);
@@ -156,25 +165,19 @@ function CreateForm({
     setImageError('');
     setImageBusy(true);
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted)
-        return Alert.alert('需要照片權限', '請允許讀取照片，才能加入拼單圖片。');
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-        allowsEditing: false,
-        allowsMultipleSelection: true,
-        orderedSelection: true,
-        selectionLimit: 5 - photos.length,
-        base64: CORE_API_ENABLED && CORE_SUPABASE_MODE,
-      });
+      const result = await pickPostImages(5 - photos.length);
       if (useAuthStore.getState().user?.id !== actor) return;
       if (!result.canceled) {
         if (photos.length + result.assets.length > 5) throw new Error('too_many_post_images');
         const selected = result.assets.map((asset) => ({
-          id: newRequestKey(), uri: asset.uri, width: asset.width, height: asset.height,
-          base64: CORE_API_ENABLED && CORE_SUPABASE_MODE
-            ? validPickedImage(asset.base64, asset.width, asset.height) : undefined,
+          id: newRequestKey(),
+          uri: asset.uri,
+          width: asset.width,
+          height: asset.height,
+          base64:
+            CORE_API_ENABLED && CORE_SUPABASE_MODE
+              ? validPickedImage(asset.base64, asset.width, asset.height)
+              : undefined,
         }));
         setPhotos((current) => [...current, ...selected]);
       }
@@ -251,7 +254,8 @@ function CreateForm({
           if (photos.length && CORE_SUPABASE_MODE) {
             const ids: string[] = [];
             for (const photo of photos) {
-              if (useAuthStore.getState().user?.id !== actor) throw new Error('invalid_or_expired_session');
+              if (useAuthStore.getState().user?.id !== actor)
+                throw new Error('invalid_or_expired_session');
               let uploaded = uploadedImages.current.get(photo.id);
               if (!uploaded) {
                 const asset = await mediaApi.upload(photo.base64!, photo.id);
@@ -260,7 +264,8 @@ function CreateForm({
               }
               ids.push(uploaded);
             }
-            if (useAuthStore.getState().user?.id !== actor) throw new Error('invalid_or_expired_session');
+            if (useAuthStore.getState().user?.id !== actor)
+              throw new Error('invalid_or_expired_session');
             await mediaApi.publish(input, ids, publication.current.key);
           } else await coreApi.create(input, publication.current.key);
           if (useAuthStore.getState().user?.id !== actor) return;
@@ -319,12 +324,14 @@ function CreateForm({
   return (
     <Screen>
       <View style={styles.header}>
-        <IconButton
-          icon="close"
-          label="關閉"
-          disabled={isSubmitting || imageBusy}
-          onPress={close}
-        />
+        <View style={styles.headerSide}>
+          <IconButton
+            icon="close"
+            label="關閉"
+            disabled={isSubmitting || imageBusy}
+            onPress={close}
+          />
+        </View>
         <Text style={styles.title}>建立新貼文</Text>
         <Pressable
           accessibilityRole="button"
@@ -355,14 +362,35 @@ function CreateForm({
             <Text style={styles.fieldHint}>目前可發布文字拼單。</Text>
           ) : (
             <>
-              {photos.length ? <>
-                <PhotoCarousel photos={photos} renderOverlay={(photo, index) => <Pressable
-                  accessibilityRole="button" accessibilityLabel={`移除第 ${index + 1} 張圖片`}
-                  disabled={isSubmitting || imageBusy} onPress={() => { void removeImage(photo.id); }}
-                  style={styles.removeMedia}><MaterialCommunityIcons name="close" size={18} color="#FFFFFF" /></Pressable>} />
-                <Text style={styles.fieldHint}>已選 {photos.length}/5 張，保留原始比例，可向左滑動。圖片辨識使用第一張照片。</Text>
-              </> : null}
-              <View style={styles.mediaRow}>
+              <NativeScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                style={styles.mediaScroller}
+                contentContainerStyle={styles.mediaRow}
+              >
+                {photos.map((photo, index) => (
+                  <View key={photo.id} style={styles.photoTile}>
+                    <Image
+                      accessibilityLabel={`待發佈的圖片預覽 ${index + 1}`}
+                      source={{ uri: photo.uri }}
+                      resizeMode="cover"
+                      style={styles.thumbnail}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`移除第 ${index + 1} 張圖片`}
+                      disabled={isSubmitting || imageBusy}
+                      onPress={() => {
+                        void removeImage(photo.id);
+                      }}
+                      hitSlop={8}
+                      style={styles.removeMedia}
+                    >
+                      <MaterialCommunityIcons name="close" size={13} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="新增圖片"
@@ -374,7 +402,7 @@ function CreateForm({
                 >
                   <MaterialCommunityIcons name="image-plus-outline" size={21} color={colors.ink} />
                   <Text style={styles.mediaLabel}>
-                    {imageBusy ? '處理中…' : `新增圖片（${photos.length}/5）`}
+                    {imageBusy ? '處理中…' : `新增圖片\n(${photos.length}/5)`}
                   </Text>
                 </Pressable>
                 {!CORE_API_ENABLED ? (
@@ -396,9 +424,12 @@ function CreateForm({
                     </Text>
                   </Pressable>
                 ) : null}
-              </View>
+              </NativeScrollView>
               {CORE_API_ENABLED ? (
-                <Text style={styles.fieldHint}>可加入一張圖片，最大 4MB。</Text>
+                <Text style={[styles.fieldHint, styles.mediaHint]}>
+                  最多可加入 5 張圖片，支援 HEIC；大圖會自動壓縮後上傳。
+                  {photos.length ? `會一起辨識這 ${photos.length} 張照片，不用輸入文字。` : ''}
+                </Text>
               ) : null}
               {imageError ? (
                 <Text accessibilityRole="alert" style={{ color: colors.danger }}>
@@ -434,7 +465,7 @@ function CreateForm({
           {CORE_API_ENABLED ? (
             <PostWritingAssistant
               content={content}
-              imageBase64={photos[0]?.base64}
+              imageBase64s={photos.flatMap((photo) => (photo.base64 ? [photo.base64] : []))}
               context={JSON.stringify({
                 tags,
                 deadline,
@@ -637,6 +668,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  headerSide: { width: 64, alignItems: 'flex-start' },
   title: {
     flex: 1,
     textAlign: 'center',
@@ -661,14 +693,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   content: { padding: spacing.lg, paddingBottom: 120 },
-  mediaRow: { height: 84, flexDirection: 'row', gap: 10 },
+  mediaScroller: { flexGrow: 0 },
+  mediaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  mediaHint: { marginTop: 12, marginBottom: 12, lineHeight: 20 },
+  photoTile: { width: 84, height: 84 },
+  thumbnail: { width: 84, height: 84, borderRadius: radius.md },
   removeMedia: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#00000099',
@@ -684,7 +720,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   recording: { borderColor: colors.danger, backgroundColor: '#FFF4F4' },
-  mediaLabel: { color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
+  mediaLabel: {
+    color: colors.muted,
+    fontFamily: typography.regular,
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    alignSelf: 'stretch',
+  },
   editor: {
     minHeight: 185,
     paddingTop: 18,
