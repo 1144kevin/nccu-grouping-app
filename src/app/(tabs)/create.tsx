@@ -449,7 +449,6 @@ function CreateForm({
               <TextInput
                 accessibilityLabel="拼單內容"
                 editable={!isSubmitting}
-                autoFocus
                 multiline
                 maxLength={500}
                 value={value}
