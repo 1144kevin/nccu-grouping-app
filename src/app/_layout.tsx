@@ -11,6 +11,7 @@ import { CoreAuthGate } from '@/components/core-auth-gate';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { Screen } from '@/components/primitives';
+import { PostLoginReturn } from '@/components/post-login-return';
 
 export default function RootLayout() {
   const user = useAuthStore((state) => state.user);
@@ -21,6 +22,7 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <CoreAuthGate>
             <RootNavigator />
+            {CORE_API_ENABLED ? <PostLoginReturn /> : null}
             {!CORE_API_ENABLED || (user && !user.profile_setup_required) ? <AppDrawer /> : null}
           </CoreAuthGate>
         </QueryClientProvider>
@@ -71,6 +73,7 @@ function RootNavigator() {
         <Stack.Screen name="sign-in" />
       </Stack.Protected>
       <Stack.Screen name="auth/callback" />
+      <Stack.Screen name="s/[token]" />
     </Stack>
   );
 }

@@ -18,6 +18,7 @@ import {
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { CorePostActions } from '@/components/core-post-actions';
+import { PostShareButton } from '@/components/post-share-button';
 import { CorePostGallery, PhotoCarousel } from '@/components/post-photo-carousel';
 import { CoreRecommendationReasons } from '@/components/core-recommendation-reasons';
 import type { FeedPost } from '@/types/domain';
@@ -190,11 +191,15 @@ export function FeedPostCard({
           </PrimaryButton>
         )}
         {corePost ? <MessageHostButton post={corePost} compact /> : null}
-        <IconButton
-          icon="share-variant-outline"
-          label="分享貼文"
-          onPress={() => Share.share({ message: `政缺一咖拼單：${post.content}` })}
-        />
+        {corePost ? (
+          <PostShareButton postId={corePost.id} content={post.content} />
+        ) : (
+          <IconButton
+            icon="share-variant-outline"
+            label="分享貼文"
+            onPress={() => Share.share({ message: `政缺一咖拼單：${post.content}` })}
+          />
+        )}
       </View>
       <Modal
         transparent

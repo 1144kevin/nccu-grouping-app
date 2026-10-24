@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText as Text } from '@/components/app-text';
 import { CorePostImage } from '@/components/core-post-image';
+import { PostShareButton } from '@/components/post-share-button';
 import type { CorePost } from '@/lib/core-api';
 import { colors } from '@/theme/tokens';
 
@@ -64,9 +65,13 @@ export function PhotoCarousel({
   photos,
   compact = false,
   shareMessage,
+  sharePost,
+  onPhotoPress,
 }: {
   photos: PostPhoto[];
   shareMessage?: string;
+  sharePost?: { id: string; content: string };
+  onPhotoPress?: () => void;
   compact?: boolean;
 }) {
   const [selected, setSelected] = useState<number | null>(null);
@@ -91,7 +96,7 @@ export function PhotoCarousel({
               key={photo.id}
               accessibilityRole="button"
               accessibilityLabel={`查看照片 ${index + 1}`}
-              onPress={() => setSelected(index)}
+              onPress={() => (onPhotoPress ? onPhotoPress() : setSelected(index))}
               style={[styles.cell, photo.width > 0 ? frame : { height }]}
             >
               {photo.width > 0 || photo.uri ? (
@@ -115,6 +120,7 @@ export function PhotoCarousel({
             photos={photos}
             initialIndex={selected}
             shareMessage={shareMessage}
+            sharePost={sharePost}
             onClose={() => setSelected(null)}
           />
         ) : null}
@@ -130,10 +136,12 @@ function PhotoViewer({
   initialIndex,
   onClose,
   shareMessage,
+  sharePost,
 }: {
   photos: PostPhoto[];
   initialIndex: number;
   shareMessage?: string;
+  sharePost?: { id: string; content: string };
   onClose: () => void;
 }) {
   const { width, height } = useWindowDimensions();
@@ -170,7 +178,9 @@ function PhotoViewer({
         >
           <MaterialCommunityIcons name="close" size={26} color="#FFFFFF" />
         </Pressable>
-        {shareMessage ? (
+        {sharePost ? (
+          <PostShareButton postId={sharePost.id} content={sharePost.content} dark />
+        ) : shareMessage ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="分享貼文"
@@ -230,17 +240,26 @@ export function CorePostGallery({
   post,
   compact = false,
 }: {
-  post: Pick<CorePost, 'images' | 'image_id'> & Partial<Pick<CorePost, 'content'>>;
+  post: Pick<CorePost, 'images' | 'image_id'> & Partial<Pick<CorePost, 'content' | 'id'>>;
   compact?: boolean;
 }) {
   const shareMessage = post.content ? `政缺一咖拼單：${post.content}` : undefined;
+  const sharePost = post.id && post.content ? { id: post.id, content: post.content } : undefined;
   if (post.images?.length)
-    return <PhotoCarousel photos={post.images} compact={compact} shareMessage={shareMessage} />;
+    return (
+      <PhotoCarousel
+        photos={post.images}
+        compact={compact}
+        shareMessage={shareMessage}
+        sharePost={sharePost}
+      />
+    );
   return post.image_id ? (
     <PhotoCarousel
       photos={[{ id: post.image_id, width: 0, height: 0 }]}
       compact={compact}
       shareMessage={shareMessage}
+      sharePost={sharePost}
     />
   ) : null;
 }
