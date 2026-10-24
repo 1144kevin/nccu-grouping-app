@@ -16,10 +16,19 @@ const publicHeaders = {
 };
 before(async () => {
   root = mkdtempSync(join(tmpdir(), 'nccu-web-'));
-  writeFileSync(join(root, 'index.html'), '<html lang="zh-Hant">政缺一咖</html>');
+  writeFileSync(
+    join(root, 'index.html'),
+    '<html lang="zh-Hant"><head><title>政缺一咖</title></head><body>政缺一咖</body></html>',
+  );
   writeFileSync(join(root, 'manifest.webmanifest'), '{"name":"政缺一咖"}');
   mkdirSync(join(root, '_expo'));
   api = createServer(async (req, res) => {
+    if (req.url === `/api/v1/public/posts/${'a'.repeat(64)}`) {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      return res.end(
+        JSON.stringify({ author_name: '分享主揪', content: '一起喝飲料', images: [] }),
+      );
+    }
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     res.writeHead(200, {
@@ -139,6 +148,26 @@ test('allows only top-level OAuth return navigation across sites, preserving API
     (await call('/auth/callback', { headers: { ...headers, 'sec-fetch-dest': 'iframe' } })).status,
     403,
   );
+});
+
+test('allows a shared post opened from LINE while keeping cross-site API and embedded-page requests blocked', async () => {
+  const headers = {
+    ...publicHeaders,
+    'sec-fetch-site': 'cross-site',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-dest': 'document',
+  };
+  const page = await call(`/s/${'a'.repeat(64)}`, { headers });
+  assert.equal(page.status, 200);
+  assert.match(page.body, /og:title/);
+  assert.match(page.body, /分享主揪/);
+  assert.equal(
+    (await call(`/s/${'a'.repeat(64)}`, { headers: { ...headers, 'sec-fetch-dest': 'iframe' } }))
+      .status,
+    403,
+  );
+  assert.equal((await call(`/api/v1/public/posts/${'a'.repeat(64)}`, { headers })).status, 403);
+  assert.equal((await call('/api/v1/auth/me', { headers })).status, 403);
 });
 test('does not expose development tools, alternate API roots, private files or source maps', async () => {
   for (const path of [

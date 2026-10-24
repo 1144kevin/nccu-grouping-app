@@ -2,6 +2,7 @@ import { createReadStream, existsSync, readFileSync, realpathSync, statSync } fr
 import { createServer, request as httpRequest } from 'node:http';
 import { Buffer } from 'node:buffer';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { loadSharePreview, sharePreviewHTML } from './post-share-preview.mjs';
 
 const MAX_BODY = 6 * 1024 * 1024;
 const mime = {
@@ -99,7 +100,17 @@ export function createWebAppServer({
         req.url?.split('?')[0] === '/auth/callback' &&
         req.headers['sec-fetch-mode'] === 'navigate' &&
         req.headers['sec-fetch-dest'] === 'document';
-      if (req.headers['sec-fetch-site'] === 'cross-site' && !oauthReturn)
+      const sharePage = /^\/s\/[0-9a-f]{64}$/.test(req.url?.split('?')[0] ?? '');
+      const publicImage = /^\/api\/v1\/public\/posts\/[0-9a-f]{64}\/images\/[0-9a-f-]{36}$/.test(
+        req.url?.split('?')[0] ?? '',
+      );
+      const publicRead =
+        ['GET', 'HEAD'].includes(req.method) &&
+        ((sharePage &&
+          req.headers['sec-fetch-mode'] === 'navigate' &&
+          req.headers['sec-fetch-dest'] === 'document') ||
+          (publicImage && req.headers['sec-fetch-dest'] === 'image'));
+      if (req.headers['sec-fetch-site'] === 'cross-site' && !oauthReturn && !publicRead)
         return fail(403, 'cross_site_request');
       if (!local && req.headers['x-forwarded-proto'] !== 'https')
         return fail(403, 'https_required');
@@ -179,6 +190,20 @@ export function createWebAppServer({
       if (pathname === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         return res.end('{"status":"ok","app":"web"}');
+      }
+      if (sharePage) {
+        const token = pathname.slice(3);
+        const preview = await loadSharePreview(backendPort, token);
+        res.writeHead(preview.status, { 'Content-Type': 'text/html; charset=utf-8' });
+        if (req.method === 'HEAD') return res.end();
+        return res.end(
+          sharePreviewHTML(
+            readFileSync(resolve(root, 'index.html'), 'utf8'),
+            preview.data,
+            expectedOrigin,
+            token,
+          ),
+        );
       }
       const requested = resolve(root, `.${pathname}`);
       let file =
