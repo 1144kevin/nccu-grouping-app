@@ -281,6 +281,7 @@ const messages: Record<string, string> = {
   post_speech_busy: '麥克風正在使用中，請結束其他錄音後重試。',
   post_speech_interrupted: '語音辨識已暫停，已辨識的文字仍保留。',
   post_speech_start_timeout: '等待語音權限逾時，請確認權限後重試。',
+  quick_interview_unavailable: '聊天整理目前無法使用，請稍後重試；仍可用一句話直接幫你揪。',
   invalid_social_input: '操作未完成，請重新整理後再試。',
   invalid_social_cursor: '清單已更新，請重新整理。',
   invalid_block_input: '請選擇有效使用者；不能封鎖自己。',
