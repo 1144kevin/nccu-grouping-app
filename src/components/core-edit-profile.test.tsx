@@ -32,6 +32,20 @@ it('opens the profile after saving a directly opened edit page', async () => {
   expect(router.back).not.toHaveBeenCalled();
 });
 
+it('requires a successful save before completing new-user setup', async () => {
+  useAuthStore.setState({ user: { ...user, profile_setup_required: true } });
+  jest.mocked(coreApi.updateProfile).mockRejectedValueOnce(new Error('offline'));
+  const screen = await render(<QueryClientProvider client={client}><CoreEditProfileScreen onboarding /></QueryClientProvider>);
+  expect(screen.queryByRole('button', { name: '返回' })).toBeNull();
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '儲存並進入 App' })); });
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  expect(useAuthStore.getState().user?.profile_setup_required).toBe(true);
+  jest.mocked(coreApi.updateProfile).mockResolvedValueOnce({ ...user, version: 2, profile_setup_required: false });
+  await act(async () => { await fireEvent.press(screen.getByRole('button', { name: '儲存並進入 App' })); });
+  await waitFor(() => expect(useAuthStore.getState().user?.profile_setup_required).toBe(false));
+  expect(router.replace).toHaveBeenCalledWith('/');
+});
+
 it('does not navigate a different account when an old save finishes refreshing', async () => {
   let finishRefresh: () => void = () => undefined;
   jest.mocked(invalidateCore).mockImplementation(() => new Promise<void>((resolve) => { finishRefresh = resolve; }));

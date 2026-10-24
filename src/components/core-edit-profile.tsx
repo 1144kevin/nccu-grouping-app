@@ -12,13 +12,13 @@ import { colors, radius, spacing } from '@/theme/tokens';
 
 const badges: NonNullable<CoreUser['badge']>[] = ['🍜', '🥐', '🍕', '🧋', '🍱', '🍍'];
 
-export function CoreEditProfileScreen() {
+export function CoreEditProfileScreen({ onboarding }: { onboarding?: boolean } = {}) {
   const user = useAuthStore((state) => state.user);
   if (!user) return null;
-  return <ProfileForm key={user.id} user={user} />;
+  return <ProfileForm key={user.id} user={user} onboarding={onboarding ?? !!user.profile_setup_required} />;
 }
 
-function ProfileForm({ user }: { user: CoreUser }) {
+function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean }) {
   const [name, setName] = useState(user.display_name);
   const [bio, setBio] = useState(user.bio ?? '');
   const [badge, setBadge] = useState<NonNullable<CoreUser['badge']>>(user.badge ?? '🍱');
@@ -29,7 +29,8 @@ function ProfileForm({ user }: { user: CoreUser }) {
       if (!applyProfileUpdate(updated)) return;
       await invalidateCore();
       if (useAuthStore.getState().user?.id === updated.id) {
-        if (router.canGoBack()) router.back(); else router.replace('/profile');
+        if (onboarding) router.replace('/');
+        else if (router.canGoBack()) router.back(); else router.replace('/profile');
       }
     },
   });
@@ -43,7 +44,7 @@ function ProfileForm({ user }: { user: CoreUser }) {
   });
   const busy = mutation.isPending || reload.isPending;
   return <Screen>
-    <DetailHeader title="編輯個人資料" />
+    {onboarding ? <Text style={[styles.label, { padding: spacing.lg }]}>歡迎加入！先完成個人資料</Text> : <DetailHeader title="編輯個人資料" />}
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       <View style={styles.preview}><Avatar name={name || user.display_name} badge={badge} size={78} /></View>
       <Text style={styles.hint}>顯示名稱、圖示與介紹會出現在公開個人資料；信箱不會公開。</Text>
@@ -54,7 +55,8 @@ function ProfileForm({ user }: { user: CoreUser }) {
       <Text style={styles.label}>公開個人介紹</Text>
       <TextInput accessibilityLabel="個人介紹" value={bio} onChangeText={setBio} maxLength={160} multiline editable={!busy} style={[styles.input, { minHeight: 100, textAlignVertical: 'top' }]} />
       {mutation.error || reload.error ? <View><Text accessibilityRole="alert" style={styles.error}>{coreError(mutation.error ?? reload.error)}</Text><PrimaryButton secondary disabled={busy} onPress={() => reload.mutate()}>重新載入已儲存資料</PrimaryButton></View> : null}
-      <PrimaryButton disabled={busy || !name.trim()} onPress={() => mutation.mutate()}>{busy ? '處理中…' : '儲存變更'}</PrimaryButton>
+      <PrimaryButton disabled={busy || !name.trim()} onPress={() => mutation.mutate()}>{busy ? '處理中…' : onboarding ? '儲存並進入 App' : '儲存變更'}</PrimaryButton>
+      {onboarding ? <PrimaryButton secondary disabled={busy} onPress={() => { void useAuthStore.getState().logout(); }}>登出</PrimaryButton> : null}
     </ScrollView>
   </Screen>;
 }
