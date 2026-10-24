@@ -1,7 +1,8 @@
+import { PageLoading } from '@/components/page-loading';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
 import { coreError } from '@/lib/core-api';
@@ -15,10 +16,14 @@ export function CorePostImage({
   imageId,
   compact = false,
   frameHeight,
+  fit = 'contain',
+  intrinsicHeight,
 }: {
   imageId: string;
   compact?: boolean;
   frameHeight?: number;
+  fit?: 'contain' | 'cover';
+  intrinsicHeight?: number;
 }) {
   const actor = useAuthStore((state) => state.user?.id);
   const focused = useCoreScreenFocused();
@@ -34,18 +39,45 @@ export function CorePostImage({
     staleTime: 45_000,
     gcTime: 0,
   });
+  const intrinsicWidth =
+    intrinsicHeight && query.data
+      ? (intrinsicHeight * query.data.width) / query.data.height
+      : intrinsicHeight;
   return (
-    <View style={[styles.imageWrap, frameHeight ? { height: frameHeight, marginVertical: 0, minHeight: 0 } : compact && { minHeight: 120 }]}>
+    <View
+      style={[
+        styles.imageWrap,
+        frameHeight
+          ? { height: frameHeight, marginVertical: 0, minHeight: 0, borderRadius: 0 }
+          : intrinsicHeight
+            ? {
+                width: intrinsicWidth,
+                height: intrinsicHeight,
+                marginVertical: 0,
+                minHeight: 0,
+                borderRadius: 16,
+              }
+            : compact && { minHeight: 120 },
+      ]}
+    >
       {query.isPending ? (
-        <ActivityIndicator accessibilityLabel="正在載入拼單圖片" />
+        <PageLoading accessibilityLabel="正在載入拼單圖片" />
       ) : query.data && !failed ? (
         <Image
           accessibilityLabel="拼單附圖"
           source={{ uri: query.data.url }}
           cachePolicy="memory"
-          contentFit="contain"
+          contentFit={fit}
           onError={() => setFailed(true)}
-          style={frameHeight ? { width: '100%', height: frameHeight } : { width: '100%', aspectRatio: query.data.width / query.data.height, ...(compact ? { maxHeight: 180 } : {}) }}
+          style={
+            frameHeight || intrinsicHeight
+              ? { width: '100%', height: frameHeight ?? intrinsicHeight }
+              : {
+                  width: '100%',
+                  aspectRatio: query.data.width / query.data.height,
+                  maxHeight: compact ? 180 : 450,
+                }
+          }
         />
       ) : (
         <View style={styles.note}>
@@ -83,7 +115,7 @@ export function DraftImageManager() {
       <Text style={styles.hint}>
         離開發佈頁後，可在此清除尚未綁定拼單的雲端圖片。只刪除上傳副本，不會刪手機原始照片；已發佈圖片不能在此移除。
       </Text>
-      {query.isPending ? <ActivityIndicator /> : null}
+      {query.isPending ? <PageLoading /> : null}
       {query.error ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {coreError(query.error)}

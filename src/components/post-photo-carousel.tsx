@@ -1,62 +1,170 @@
-import { useState, type ReactNode } from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Image,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { CorePostImage } from '@/components/core-post-image';
 import type { CorePost } from '@/lib/core-api';
-import { colors, radius } from '@/theme/tokens';
+import { colors } from '@/theme/tokens';
 
 export type PostPhoto = { id: string; uri?: string; width: number; height: number };
 
-export function photoFrame(width: number, photo: Pick<PostPhoto, 'width' | 'height'>, compact = false) {
-  const ratio = photo.width / photo.height;
-  const height = Math.min(width / ratio, compact ? 180 : 520);
+// Every photo shares a fixed height; its width follows the original aspect ratio.
+export function photoFrame(
+  _width: number,
+  photo: Pick<PostPhoto, 'width' | 'height'>,
+  compact = false,
+) {
+  const height = compact ? 180 : 300;
+  const ratio = photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1;
   return { width: height * ratio, height };
 }
 
-type CarouselProps = {
-  photos: PostPhoto[]; compact?: boolean;
-  renderOverlay?: (photo: PostPhoto, index: number) => ReactNode;
-};
-
-export function PhotoCarousel(props: CarouselProps) {
-  return <Carousel key={props.photos.map((p) => p.id).join(',')} {...props} />;
-}
-
-function Carousel({ photos, compact = false, renderOverlay }: CarouselProps) {
-  const [width, setWidth] = useState(0);
-  const [active, setActive] = useState(0);
-  const index = Math.min(active, photos.length - 1);
-  if (!photos.length) return null;
-  const height = width ? photoFrame(width, photos[index], compact).height : 180;
-  return <View testID="post-photo-carousel" style={styles.container} onLayout={(event) => {
-    const next = event.nativeEvent.layout.width;
-    if (next > 0 && next !== width) { setWidth(next); setActive(0); }
-  }}>
-    {width > 0 ? <ScrollView testID="post-photo-scroll" key={`${width}:${photos.map((p) => p.id).join(',')}`} horizontal pagingEnabled
-      showsHorizontalScrollIndicator={false} nestedScrollEnabled directionalLockEnabled
-      keyboardShouldPersistTaps="handled" style={{ height }}
-      onMomentumScrollEnd={(event) => setActive(Math.max(0, Math.min(photos.length - 1, Math.round(event.nativeEvent.contentOffset.x / width))))}>
-      {photos.map((photo, i) => <View key={photo.id} style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
-        {photo.uri ? <Image accessibilityLabel={`待發佈的圖片預覽 ${i + 1}`} source={{ uri: photo.uri }} resizeMode="contain"
-          style={{ width, height }} /> : <CorePostImage imageId={photo.id} frameHeight={height} />}
-        {renderOverlay?.(photo, i)}
-      </View>)}
-    </ScrollView> : null}
-    {photos.length > 1 ? <View style={styles.indicator} pointerEvents="none">
-      <Text style={styles.counter}>{index + 1} / {photos.length}</Text>
-    </View> : null}
-  </View>;
-}
-
-export function CorePostGallery({ post, compact = false }: {
-  post: Pick<CorePost, 'images' | 'image_id'>; compact?: boolean;
+function Photo({
+  photo,
+  index,
+  height,
+  fit,
+}: {
+  photo: PostPhoto;
+  index: number;
+  height: number;
+  fit: 'cover' | 'contain';
 }) {
-  if (post.images?.length) return <PhotoCarousel key={post.images.map((p) => p.id).join(',')} photos={post.images} compact={compact} />;
-  return post.image_id ? <CorePostImage imageId={post.image_id} compact={compact} /> : null;
+  return photo.uri ? (
+    <Image
+      accessibilityLabel={`貼文照片 ${index + 1}`}
+      source={{ uri: photo.uri }}
+      resizeMode={fit}
+      style={{ width: '100%', height }}
+    />
+  ) : (
+    <CorePostImage imageId={photo.id} frameHeight={height} fit={fit} />
+  );
+}
+
+// Kept as the shared gallery entry point for feed, search and order screens.
+export function PhotoCarousel({
+  photos,
+  compact = false,
+}: {
+  photos: PostPhoto[];
+  compact?: boolean;
+}) {
+  const window = useWindowDimensions();
+  const [selected, setSelected] = useState<number | null>(null);
+  if (!photos.length) return null;
+  const height = compact ? 180 : 300;
+  const viewerWidth = Math.max(1, window.width - 32);
+  const viewerHeight = Math.max(100, window.height * 0.7);
+  return (
+    <View testID="post-photo-carousel" style={styles.container}>
+      <ScrollView
+        testID="post-photo-scroll"
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        directionalLockEnabled
+        keyboardShouldPersistTaps="handled"
+        style={{ height, flexGrow: 0 }}
+        contentContainerStyle={styles.rail}
+      >
+        {photos.map((photo, index) => {
+          const frame = photoFrame(0, photo, compact);
+          return (
+            <Pressable
+              key={photo.id}
+              accessibilityRole="button"
+              accessibilityLabel={`查看照片 ${index + 1}`}
+              onPress={() => setSelected(index)}
+              style={[styles.cell, frame]}
+            >
+              <Photo photo={photo} index={index} height={height} fit="contain" />
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      <Modal
+        visible={selected !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelected(null)}
+      >
+        {selected !== null ? (
+          <View style={styles.viewer} accessibilityViewIsModal>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="關閉照片"
+              onPress={() => setSelected(null)}
+              style={styles.close}
+            >
+              <Text style={styles.closeText}>關閉</Text>
+            </Pressable>
+            <ScrollView
+              key={`${selected}-${viewerWidth}`}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              contentOffset={{ x: selected * viewerWidth, y: 0 }}
+              style={{ width: viewerWidth, flexGrow: 0 }}
+            >
+              {photos.map((photo, index) => (
+                <View key={photo.id} style={{ width: viewerWidth, height: viewerHeight }}>
+                  <Photo photo={photo} index={index} height={viewerHeight} fit="contain" />
+                </View>
+              ))}
+            </ScrollView>
+            <Text style={styles.viewerHint}>{photos.length} 張照片 · 左右滑動查看原圖</Text>
+          </View>
+        ) : null}
+      </Modal>
+    </View>
+  );
+}
+
+export function CorePostGallery({
+  post,
+  compact = false,
+}: {
+  post: Pick<CorePost, 'images' | 'image_id'>;
+  compact?: boolean;
+}) {
+  if (post.images?.length) return <PhotoCarousel photos={post.images} compact={compact} />;
+  return post.image_id ? (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ height: compact ? 180 : 300, flexGrow: 0, marginVertical: 8 }}
+    >
+      <CorePostImage imageId={post.image_id} intrinsicHeight={compact ? 180 : 300} />
+    </ScrollView>
+  ) : null;
 }
 
 const styles = StyleSheet.create({
-  container: { width: '100%', marginVertical: 8, borderRadius: radius.md, overflow: 'hidden' },
-  indicator: { position: 'absolute', bottom: 10, right: 10, borderRadius: 16, paddingHorizontal: 9, paddingVertical: 4, backgroundColor: 'rgba(0,0,0,0.55)' },
-  counter: { color: colors.surface, fontSize: 12, fontWeight: '700' },
+  container: { width: '100%', marginVertical: 8 },
+  rail: { gap: 8 },
+  cell: { flexShrink: 0, overflow: 'hidden', borderRadius: 16, backgroundColor: colors.surface },
+  viewer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.95)',
+  },
+  close: {
+    alignSelf: 'flex-end',
+    minHeight: 44,
+    minWidth: 64,
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeText: { color: '#FFFFFF', fontSize: 16 },
+  viewerHint: { color: '#FFFFFF', fontSize: 13, marginTop: 12 },
 });
