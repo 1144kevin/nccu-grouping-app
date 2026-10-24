@@ -35,6 +35,8 @@ const child = spawn(
     '--clear',
     '--platform',
     'web',
+    '--max-workers',
+    '2',
     '--output-dir',
     '.local/web-app/export',
   ],
@@ -53,10 +55,13 @@ child.on('exit', (code) => {
   process.exitCode = code ?? 1;
   if (code !== 0) return;
   // Publish assets before HTML so a rebuild never leaves the shared page blank.
-  // Native app icons stay unchanged; the web page uses its own bowl icon.
+  // App artwork and the in-app BrandLogo are exported with the same build.
   try {
     const index = resolve(staging, 'index.html');
-    const html = readFileSync(index, 'utf8').replace(/<link rel="icon" href="\/favicon\.ico"\s*\/?\s*>/g, '');
+    const html = readFileSync(index, 'utf8').replace(
+      /<link rel="icon" href="\/favicon\.ico"\s*\/?\s*>/g,
+      '',
+    );
     mkdirSync(target, { recursive: true });
     cpSync(staging, target, { recursive: true, filter: (file) => file !== index });
     writeFileSync(resolve(target, 'index.next.html'), html);

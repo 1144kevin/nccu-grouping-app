@@ -131,8 +131,14 @@ test('allows only top-level OAuth return navigation across sites, preserving API
   assert.equal(returned.headers['cache-control'], 'no-store');
   assert.equal((await call('/api/v1/auth/me', { headers })).status, 403);
   assert.equal((await call('/auth/callback', { method: 'POST', headers })).status, 403);
-  assert.equal((await call('/auth/callback', { headers: { ...headers, 'sec-fetch-mode': 'cors' } })).status, 403);
-  assert.equal((await call('/auth/callback', { headers: { ...headers, 'sec-fetch-dest': 'iframe' } })).status, 403);
+  assert.equal(
+    (await call('/auth/callback', { headers: { ...headers, 'sec-fetch-mode': 'cors' } })).status,
+    403,
+  );
+  assert.equal(
+    (await call('/auth/callback', { headers: { ...headers, 'sec-fetch-dest': 'iframe' } })).status,
+    403,
+  );
 });
 test('does not expose development tools, alternate API roots, private files or source maps', async () => {
   for (const path of [
@@ -150,6 +156,39 @@ test('does not expose development tools, alternate API roots, private files or s
     if (path === '/docs') assert.ok(!result.body.includes('swagger'));
     else assert.equal(result.status, 404, path);
   }
+});
+test('forwards the authenticated read-only server clock without exposing development tools', async () => {
+  const clock = await call('/api/v1/development/clock', {
+    headers: { ...publicHeaders, authorization: 'Bearer synthetic-clock-session' },
+  });
+  assert.equal(clock.status, 200);
+  assert.equal(JSON.parse(clock.body).headers.authorization, 'Bearer synthetic-clock-session');
+  for (const path of [
+    '/api/v1/development/clock/',
+    '/api/v1/development/demo',
+    '/api/v1/development/clock/reset',
+  ])
+    assert.equal((await call(path)).status, 404);
+  assert.equal((await call('/api/v1/development/clock', { method: 'POST' })).status, 404);
+});
+test('permits a five-photo JSON payload only on the AI post-writing endpoint', async () => {
+  const body = JSON.stringify({ images_base64: Array(5).fill('a'.repeat(1400000)) });
+  const result = await call('/api/v1/ai/post-writing', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body,
+  });
+  assert.equal(result.status, 200);
+  assert.equal(JSON.parse(JSON.parse(result.body).body).images_base64.length, 5);
+  assert.equal(
+    (
+      await call('/api/v1/ai/post-writing', {
+        method: 'POST',
+        headers: { 'content-length': String(31 * 1024 * 1024) },
+      })
+    ).status,
+    413,
+  );
 });
 test('bounds uploads and only forwards JSON API requests', async () => {
   assert.equal(

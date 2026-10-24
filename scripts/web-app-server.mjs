@@ -119,10 +119,12 @@ export function createWebAppServer({
       )
         return fail(404, 'not_found');
       if (pathname.startsWith('/api/')) {
+        const serverClock = pathname === '/api/v1/development/clock' && req.method === 'GET';
+        const postWriting = pathname === '/api/v1/ai/post-writing' && req.method === 'POST';
         if (
           !pathname.startsWith('/api/v1/') ||
           pathname.includes('//') ||
-          /^\/api\/v1\/(development|demo|stealth)(\/|$)/.test(pathname)
+          (/^\/api\/v1\/(development|demo|stealth)(\/|$)/.test(pathname) && !serverClock)
         )
           return fail(404, 'not_found');
         if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method))
@@ -131,14 +133,15 @@ export function createWebAppServer({
           res.setHeader('Retry-After', '60');
           return fail(429, 'too_many_auth_attempts');
         }
+        const maxBody = postWriting ? 30 * 1024 * 1024 : MAX_BODY;
         const length = Number(req.headers['content-length'] ?? 0);
-        if (!Number.isSafeInteger(length) || length < 0 || length > MAX_BODY)
+        if (!Number.isSafeInteger(length) || length < 0 || length > maxBody)
           return fail(413, 'request_body_too_large');
         const chunks = [];
         let size = 0;
         for await (const chunk of req) {
           size += chunk.length;
-          if (size > MAX_BODY) return fail(413, 'request_body_too_large');
+          if (size > maxBody) return fail(413, 'request_body_too_large');
           chunks.push(chunk);
         }
         if (size && req.headers['content-type']?.split(';')[0] !== 'application/json')
@@ -159,7 +162,9 @@ export function createWebAppServer({
             reply.pipe(res);
           },
         );
-        upstream.setTimeout(90_000, () => upstream.destroy(new Error('timeout')));
+        upstream.setTimeout(postWriting ? 420_000 : 90_000, () =>
+          upstream.destroy(new Error('timeout')),
+        );
         upstream.on('error', () => {
           if (!res.headersSent) fail(502, 'backend_unavailable');
           else res.destroy();
