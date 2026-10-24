@@ -32,6 +32,7 @@ const child = spawn(
   [
     resolve(root, 'node_modules/expo/bin/cli'),
     'export',
+    '--clear',
     '--platform',
     'web',
     '--output-dir',
