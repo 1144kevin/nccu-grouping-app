@@ -117,6 +117,23 @@ test('rejects foreign hosts/origins, insecure public requests, and cross-site re
     403,
   );
 });
+test('allows only top-level OAuth return navigation across sites, preserving API protections', async () => {
+  const headers = {
+    ...publicHeaders,
+    'sec-fetch-site': 'cross-site',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-dest': 'document',
+  };
+  const returned = await call('/auth/callback?code=synthetic-code', { headers });
+  assert.equal(returned.status, 200);
+  assert.match(returned.body, /政缺一咖/);
+  assert.equal(returned.headers['referrer-policy'], 'no-referrer');
+  assert.equal(returned.headers['cache-control'], 'no-store');
+  assert.equal((await call('/api/v1/auth/me', { headers })).status, 403);
+  assert.equal((await call('/auth/callback', { method: 'POST', headers })).status, 403);
+  assert.equal((await call('/auth/callback', { headers: { ...headers, 'sec-fetch-mode': 'cors' } })).status, 403);
+  assert.equal((await call('/auth/callback', { headers: { ...headers, 'sec-fetch-dest': 'iframe' } })).status, 403);
+});
 test('does not expose development tools, alternate API roots, private files or source maps', async () => {
   for (const path of [
     '/docs',

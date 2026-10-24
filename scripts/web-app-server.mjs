@@ -92,7 +92,15 @@ export function createWebAppServer({
       const expectedOrigin = local ? `http://${host}` : shared;
       if (req.headers.origin && req.headers.origin !== expectedOrigin)
         return fail(403, 'share_origin_not_allowed');
-      if (req.headers['sec-fetch-site'] === 'cross-site') return fail(403, 'cross_site_request');
+      // Supabase returns a top-level navigation after Google login. This narrow
+      // exception never permits cross-site API calls, forms or embedded content.
+      const oauthReturn =
+        ['GET', 'HEAD'].includes(req.method) &&
+        req.url?.split('?')[0] === '/auth/callback' &&
+        req.headers['sec-fetch-mode'] === 'navigate' &&
+        req.headers['sec-fetch-dest'] === 'document';
+      if (req.headers['sec-fetch-site'] === 'cross-site' && !oauthReturn)
+        return fail(403, 'cross_site_request');
       if (!local && req.headers['x-forwarded-proto'] !== 'https')
         return fail(403, 'https_required');
       const peer = !local ? String(req.headers['cf-connecting-ip'] ?? 'unknown') : 'local';
