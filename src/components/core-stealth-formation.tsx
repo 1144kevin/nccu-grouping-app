@@ -6,7 +6,7 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { PrimaryButton } from '@/components/primitives';
 import { DeadlinePickerModal, formatDeadline, startOfDay } from '@/components/deadline-picker';
 import { coreError } from '@/lib/core-api';
-import { stealthApi, type StealthAgentTermsDraft, type StealthMatch } from '@/lib/stealth-api';
+import { stealthApi, type StealthMatch } from '@/lib/stealth-api';
 import { colors, radius, spacing } from '@/theme/tokens';
 
 export function StealthFormation({ match, refresh, now }: { match: StealthMatch; refresh: () => Promise<void>; now?: () => number }) {
@@ -15,28 +15,28 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
   const [checkedRevision, setChecked] = useState<number | null>(null);
   const checked = checkedRevision === match.terms_revision;
   const staleDraft = editing && formRevision !== match.terms_revision;
-  const [content, setContent] = useState(match.terms?.content ?? match.agent_draft?.content ?? '偷揪夥伴一起分享餐點，依下列費用與分工協調。');
-  const [cost, setCost] = useState(String(match.terms?.cost_per_person_twd ?? match.agent_draft?.cost_per_person_twd ?? match.known_cost_twd ?? ''));
+  const [content, setContent] = useState(match.terms?.content ?? '偷揪夥伴一起分享餐點，依下列費用與分工協調。');
+  const [cost, setCost] = useState(String(match.terms?.cost_per_person_twd ?? ''));
   const [costNote, setCostNote] = useState(match.terms?.cost_change_note ?? '');
-  const [deadline, setDeadline] = useState(match.terms?.deadline_at ?? match.agent_draft?.deadline_at ?? match.ends_at);
+  const [deadline, setDeadline] = useState(match.terms?.deadline_at ?? match.ends_at);
   const [draftDeadline, setDraftDeadline] = useState(new Date(deadline));
   const [deadlineVisible, setDeadlineVisible] = useState(false);
   const [deadlineStart, setDeadlineStart] = useState(() => startOfDay(Date.parse(match.created_at)));
   const [deadlineError, setDeadlineError] = useState('');
-  const [order, setOrder] = useState(match.terms?.order_member ?? (match.agent_draft ? match.agent_draft.order_member ?? 0 : match.my_member_number));
-  const [pickup, setPickup] = useState(match.terms?.pickup_member ?? (match.agent_draft ? match.agent_draft.pickup_member ?? 0 : match.my_member_number));
+  const [order, setOrder] = useState(match.terms?.order_member ?? 0);
+  const [pickup, setPickup] = useState(match.terms?.pickup_member ?? 0);
   const save = useMutation({ mutationFn: () => stealthApi.terms(match.id, formRevision, { content: content.trim(), cost_per_person_twd: Number(cost), cost_change_note: costNote.trim(), deadline_at: new Date(deadline).toISOString(), order_member: order, pickup_member: pickup }), onSuccess: () => { setEditing(false); setChecked(null); }, onSettled: refresh });
   const consent = useMutation({ mutationFn: () => stealthApi.consent(match.id, match.terms_revision), onSettled: refresh });
   const busy = save.isPending || consent.isPending;
   const error = save.error ?? consent.error;
   const loadCurrentTerms = () => {
     const value = match.terms;
-    setContent(value?.content ?? match.agent_draft?.content ?? '偷揪夥伴一起分享餐點，依下列費用與分工協調。');
-    setCost(String(value?.cost_per_person_twd ?? match.agent_draft?.cost_per_person_twd ?? match.known_cost_twd ?? ''));
+    setContent(value?.content ?? '偷揪夥伴一起分享餐點，依下列費用與分工協調。');
+    setCost(String(value?.cost_per_person_twd ?? ''));
     setCostNote(value?.cost_change_note ?? '');
-    setDeadline(value?.deadline_at ?? match.agent_draft?.deadline_at ?? match.ends_at);
-    setOrder(value?.order_member ?? match.agent_draft?.order_member ?? 0);
-    setPickup(value?.pickup_member ?? match.agent_draft?.pickup_member ?? 0);
+    setDeadline(value?.deadline_at ?? match.ends_at);
+    setOrder(value?.order_member ?? 0);
+    setPickup(value?.pickup_member ?? 0);
     setFormRevision(match.terms_revision); setChecked(null); setDeadlineError('');
     save.reset(); consent.reset(); setEditing(true);
   };
@@ -52,10 +52,9 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
     <PrimaryButton onPress={() => router.push({ pathname: '/order/[id]', params: { id: match.formed_post_id! } })}>查看正式拼單</PrimaryButton>
     <PrimaryButton secondary onPress={() => router.push({ pathname: '/chat/[id]', params: { id: match.formed_post_id! } })}>進入成團聊天室</PrimaryButton>
   </View>;
-  if (match.is_demo) return <View style={styles.panel}>{match.agent_draft ? <AgentDraftSummary draft={match.agent_draft} /> : null}<Text style={styles.body}>示範人物無法提供真人同意，因此這組不能建立正式拼單。請用兩個真實測試帳號體驗成團。</Text></View>;
+  if (match.is_demo) return <View style={styles.panel}><Text style={styles.body}>示範人物無法提供真人同意，因此這組不能建立正式拼單。請用兩個真實測試帳號體驗成團。</Text></View>;
   if (match.status === 'unavailable') return null;
   return <View style={styles.panel}>
-    {match.agent_draft && (!match.terms || editing) ? <AgentDraftSummary draft={match.agent_draft} /> : null}
     <Text style={styles.heading}>確認最終方案</Text>
     <Text style={styles.body}>你是{label(match.my_member_number)}，請確認自己的分工。</Text>
     {match.terms ? <>
@@ -79,12 +78,6 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
         <Text accessibilityRole="alert" style={styles.error}>最新方案已更新，保留你的未送出修改。請先核對新版，再重新編輯；不會自動覆蓋他人方案。</Text>
         <PrimaryButton secondary disabled={busy} onPress={loadCurrentTerms}>捨棄我的草稿，載入最新方案</PrimaryButton>
       </> : null}
-      {match.agent_draft ? <PrimaryButton secondary disabled={busy} onPress={() => {
-        const draft = match.agent_draft!;
-        setContent(draft.content); setCost(draft.cost_per_person_twd === null ? '' : String(draft.cost_per_person_twd)); setCostNote('');
-        setDeadline(draft.deadline_at); setOrder(draft.order_member ?? 0); setPickup(draft.pickup_member ?? 0);
-        setChecked(null); setDeadlineError('');
-      }}>還原分身草案（取代未儲存修改）</PrimaryButton> : null}
       <TextInput accessibilityLabel="成團公開說明" value={content} onChangeText={setContent} maxLength={300} multiline editable={!busy} style={styles.input} />
       <Text>每人費用（整數；含所有已協調費用）</Text><TextInput accessibilityLabel="成團每人費用" value={cost} onChangeText={setCost} keyboardType="number-pad" maxLength={6} editable={!busy} style={styles.input} />
       {overBudget ? <Text accessibilityRole="alert" style={styles.error}>每人費用超過共同預算 NT$ {match.budget_max_twd}，請協調後調整。</Text> : null}
@@ -106,17 +99,6 @@ export function StealthFormation({ match, refresh, now }: { match: StealthMatch;
       if (!now || draftDeadline.getTime() <= now() || draftDeadline.getTime() > Date.parse(match.ends_at)) { setDeadlineError('截止需晚於服務時間，且不超過配合區間結束。'); return; }
       setDeadline(draftDeadline.toISOString()); setDeadlineVisible(false); setDeadlineError('');
     }} />
-  </View>;
-}
-function AgentDraftSummary({ draft }: { draft: StealthAgentTermsDraft }) {
-  return <View style={{ gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: spacing.sm }}>
-    <Text style={styles.heading}>分身建議</Text>
-    <Text style={styles.body}>以下安排可再調整。</Text>
-    <Text style={styles.body}>{draft.cost_per_person_twd === null ? '費用待補：沒有已知價格，預算上限不是售價。' : `依已知費用：每人 NT$ ${draft.cost_per_person_twd}，全團 NT$ ${draft.total_cost_twd}。`}</Text>
-    {draft.budget_limit_twd !== null ? <Text style={styles.body}>每人預算上限 NT$ {draft.budget_limit_twd}</Text> : null}
-    {draft.role_suggestions.map((role) => <Text key={role.role} style={styles.body}>{role.role === 'order' ? '下單' : '取餐'}建議：{role.member_number === null ? '待協調' : `成員 ${role.member_number}`}。{role.reason}</Text>)}
-    {draft.missing_fields.length ? <Text style={styles.body}>原始草案待補：{draft.missing_fields.map((field) => ({ cost: '實際每人費用', order: '下單者', pickup: '取餐者' })[field]).join('、')}。補齊後才能提出方案。</Text> : null}
-    {draft.needs_confirmation.map((item) => <Text key={item} style={styles.body}>• {item}</Text>)}
   </View>;
 }
 const styles = StyleSheet.create({ panel: { gap: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }, heading: { fontSize: 17, fontWeight: '700', color: colors.ink }, body: { fontSize: 14, lineHeight: 23, color: colors.ink }, input: { padding: spacing.sm, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: '#fff', minHeight: 44 }, choice: { padding: spacing.sm, borderWidth: 1, borderColor: colors.brown, borderRadius: radius.md }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, error: { color: colors.danger } });

@@ -5,6 +5,7 @@ export type Coordinates = { latitude: number; longitude: number };
 export type PostLocation = Coordinates & { name: string; address?: string; source?: 'openstreetmap' };
 
 export type FeedPost = {
+  photos?: { id: string; uri: string; width: number; height: number }[];
   id: string;
   name: string;
   badge: string;
@@ -86,6 +87,7 @@ export type UserProfile = {
 };
 
 export type CreatePostInput = {
+  photos?: { id: string; uri: string; width: number; height: number }[];
   pricePerPerson?: number;
   location: PostLocation;
   content: string;

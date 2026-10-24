@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar, Pill } from '@/components/primitives';
-import { CorePostImage } from '@/components/core-post-image';
+import { CorePostGallery } from '@/components/post-photo-carousel';
 import type { CorePost } from '@/lib/core-api';
 import { formatPrice } from '@/lib/price';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -124,9 +124,9 @@ export function CorePostRow({
       <Text numberOfLines={2} style={styles.preview}>
         {post.content}
       </Text>
-      {post.image_id ? (
+      {post.images?.length || post.image_id ? (
         <View style={styles.image}>
-          <CorePostImage imageId={post.image_id} compact />
+          <CorePostGallery post={post} compact />
         </View>
       ) : null}
       <View style={styles.metadata}>
@@ -202,6 +202,6 @@ const styles = StyleSheet.create({
   metaText: { color: colors.muted, fontSize: 12, lineHeight: 18, flexShrink: 1 },
   tags: { color: colors.brown, fontSize: 12, flexShrink: 1 },
   notice: { color: colors.danger, fontSize: 13, fontWeight: '700' },
-  image: { maxHeight: 140, overflow: 'hidden', borderRadius: radius.md },
+  image: { borderRadius: radius.md },
   pressed: { backgroundColor: colors.surface },
 });

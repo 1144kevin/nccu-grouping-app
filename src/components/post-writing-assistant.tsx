@@ -1,20 +1,29 @@
-import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { KeyboardScrollView } from '@/components/keyboard-layout';
 import { PrimaryButton } from '@/components/primitives';
 import { socialApi } from '@/lib/social-api';
 import { coreError } from '@/lib/core-api';
+import { startPostSpeech } from '@/lib/post-speech';
+import type { SpeechCapture } from '@/lib/post-speech.types';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius } from '@/theme/tokens';
 
 type WritingProps = {
   content: string;
   context: string;
+  imageBase64?: string;
   disabled: boolean;
   onApply: (text: string) => void;
+  onBusyChange?: (busy: boolean) => void;
 };
+type Source = { content: string; context: string; imageBase64?: string; actor?: string };
+type Preview = { source: Source; text: string; sourceText: string; mode: 'image' | 'voice' };
+const draftLength = (text: string) => [...text.replace(/\s/g, '')].length;
+
 export function PostWritingAssistant(props: WritingProps) {
   const actor = useAuthStore((s) => s.user?.id);
   return <WritingSession key={actor} {...props} actor={actor} />;
@@ -22,104 +31,229 @@ export function PostWritingAssistant(props: WritingProps) {
 function WritingSession({
   content,
   context,
+  imageBase64,
   disabled,
   onApply,
+  onBusyChange,
   actor,
 }: WritingProps & { actor?: string }) {
-  const current = useRef({ content, context, actor });
+  const current = useRef<Source>({ content, context, imageBase64, actor });
   useEffect(() => {
-    current.current = { content, context, actor };
-  }, [content, context, actor]);
-  const mounted = useRef(false);
+    current.current = { content, context, imageBase64, actor };
+  }, [content, context, imageBase64, actor]);
+  const mounted = useRef(true);
+  const generation = useRef(0);
+  const capture = useRef<SpeechCapture | null>(null);
+  const pendingSpeech = useRef<AbortController | null>(null);
+  const running = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState<Preview>();
+  const [original, setOriginal] = useState<{ before: string; after: string }>();
+  const locked = busy || listening || starting;
+  useEffect(() => {
+    onBusyChange?.(locked);
+  }, [locked, onBusyChange]);
+  const cancelWork = useCallback(() => {
+    generation.current += 1;
+    pendingSpeech.current?.abort();
+    pendingSpeech.current = null;
+    capture.current?.cancel();
+    capture.current = null;
+    running.current = false;
+    setBusy(false);
+    setListening(false);
+    setStarting(false);
+  }, []);
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        cancelWork();
+      },
+      [cancelWork],
+    ),
+  );
   useEffect(() => {
     mounted.current = true;
+    const listener = AppState.addEventListener('change', (state) => {
+      // Permission dialogs temporarily mark iOS inactive; allow them to finish.
+      if (state === 'background') cancelWork();
+    });
     return () => {
       mounted.current = false;
+      generation.current += 1;
+      pendingSpeech.current?.abort();
+      capture.current?.cancel();
+      listener.remove();
+      onBusyChange?.(false);
     };
-  }, []);
-  const [busy, setBusy] = useState(false);
-  const [used, setUsed] = useState(false);
-  if (used && !content.trim()) setUsed(false);
-  const [error, setError] = useState('');
-  const [preview, setPreview] = useState<{
-    original: string;
-    context: string;
-    actor?: string;
-    text: string;
-  }>();
-  const [original, setOriginal] = useState<{ before: string; after: string; actor?: string }>();
-  async function run() {
-    if (!content.trim() || busy || disabled || used || !actor) return;
-    const source = { ...current.current };
+  }, [cancelWork, onBusyChange]);
+  const alive = (id: number) =>
+    mounted.current && generation.current === id && useAuthStore.getState().user?.id === actor;
+  const sourceMatches = (source: Source) =>
+    source.actor === actor &&
+    source.content === current.current.content &&
+    source.context === current.current.context &&
+    source.imageBase64 === current.current.imageBase64;
+
+  async function generate(
+    mode: 'image' | 'voice',
+    source: Source,
+    spoken = '',
+    id = ++generation.current,
+  ) {
+    if (!alive(id)) return;
+    running.current = true;
     setBusy(true);
     setError('');
+    setPreview(undefined);
     try {
-      const result = await socialApi.writePost('generate', source.content, source.context);
-      if (!mounted.current || useAuthStore.getState().user?.id !== source.actor) return;
-      if (
-        current.current.content !== source.content ||
-        current.current.context !== source.context
-      ) {
-        setError('內容已變更，請重新生成。');
+      const result = await socialApi.writePost(
+        mode,
+        mode === 'voice' ? spoken : source.content,
+        source.context,
+        mode === 'image' ? source.imageBase64 : undefined,
+      );
+      if (!alive(id)) return;
+      if (!sourceMatches(source)) {
+        setError('照片或表單已變更，請重新生成。');
         return;
       }
-      setUsed(true);
-      setPreview({
-        original: source.content,
-        context: source.context,
-        actor: source.actor,
-        text: result.text,
-      });
+      if (draftLength(result.text) < 50 || [...result.text].length > 500)
+        throw new Error('post_writing_invalid_output');
+      setPreview({ source, text: result.text, sourceText: result.source_text || spoken, mode });
+      setVoiceOpen(false);
     } catch (e) {
-      if (mounted.current && useAuthStore.getState().user?.id === source.actor)
-        setError(coreError(e));
+      if (alive(id)) setError(coreError(e));
     } finally {
-      if (mounted.current) setBusy(false);
+      if (alive(id)) {
+        running.current = false;
+        setBusy(false);
+      }
+    }
+  }
+  async function beginVoice() {
+    if (running.current || disabled || !actor) return;
+    cancelWork();
+    const id = ++generation.current;
+    const source = { ...current.current };
+    let ended = false;
+    const abort = new AbortController();
+    pendingSpeech.current = abort;
+    running.current = true;
+    setStarting(true);
+    setVoiceOpen(true);
+    setTranscript('');
+    setError('');
+    try {
+      const session = await startPostSpeech(
+        {
+          onText: (text) => {
+            if (alive(id)) setTranscript(text);
+          },
+          onEnd: (text) => {
+            if (!alive(id)) return;
+            ended = true;
+            capture.current = null;
+            setListening(false);
+            setStarting(false);
+            setTranscript(text);
+            if (!text.trim()) {
+              running.current = false;
+              setBusy(false);
+              setError('沒有辨識到語音，請再說一次。');
+              return;
+            }
+            void generate('voice', source, text, id);
+          },
+          onError: (code) => {
+            if (!alive(id)) return;
+            ended = true;
+            capture.current = null;
+            running.current = false;
+            setListening(false);
+            setStarting(false);
+            setBusy(false);
+            setError(coreError(new Error(code)));
+          },
+        },
+        abort.signal,
+      );
+      if (!alive(id) || ended) {
+        session.cancel();
+        return;
+      }
+      capture.current = session;
+      setStarting(false);
+      setListening(true);
+    } catch (e) {
+      if (alive(id)) {
+        running.current = false;
+        setStarting(false);
+        setListening(false);
+        setError(coreError(e));
+      }
     }
   }
   const validPreview =
     preview &&
-    preview.actor === actor &&
-    preview.original === content &&
-    preview.context === context;
+    preview.source.actor === actor &&
+    preview.source.content === content &&
+    preview.source.context === context &&
+    preview.source.imageBase64 === imageBase64;
+  const closeVoice = () => {
+    cancelWork();
+    setVoiceOpen(false);
+  };
   return (
     <View style={styles.wrap}>
-      <View style={styles.strip}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>AI</Text>
-          <Text style={styles.hint}>
-            {busy
-              ? '正在整理草稿…'
-              : used
-                ? '此篇已生成一次，可直接編輯內容'
-                : '每篇生成一次，採用前請確認內容'}
-          </Text>
-        </View>
+      <Text style={styles.title}>AI 文案助手</Text>
+      <Text style={styles.hint}>照片或口述需求都能整理成完整文案，至少 50 字，採用前可編輯。</Text>
+      <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="AI 生成貼文"
-          disabled={disabled || busy || used || !actor || !content.trim()}
+          accessibilityLabel="圖片辨識生成文案"
+          disabled={disabled || locked || !actor || !imageBase64}
           onPress={() => {
-            void run();
+            if (!running.current) void generate('image', { ...current.current });
           }}
-          style={[
-            styles.button,
-            (disabled || busy || used || !actor || !content.trim()) && { opacity: 0.4 },
-          ]}
+          style={[styles.button, (disabled || locked || !actor || !imageBase64) && styles.disabled]}
         >
-          <MaterialCommunityIcons name="creation" size={16} color={colors.ink} />
-          <Text style={styles.buttonText}>{used ? '已生成' : '生成'}</Text>
+          <MaterialCommunityIcons name="image-text" size={20} color={colors.ink} />
+          <Text style={styles.buttonText}>圖片辨識生成文案</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="語音潤稿"
+          disabled={disabled || locked || !actor}
+          onPress={() => {
+            void beginVoice();
+          }}
+          style={[styles.button, (disabled || locked || !actor) && styles.disabled]}
+        >
+          <MaterialCommunityIcons name="microphone-outline" size={20} color={colors.ink} />
+          <Text style={styles.buttonText}>語音潤稿</Text>
         </Pressable>
       </View>
-      {error ? (
+      {!imageBase64 ? (
+        <Text style={styles.hint}>先加入照片，就能辨識宣傳單、菜單或餐點資訊。</Text>
+      ) : null}
+      {busy && !voiceOpen ? (
+        <Text accessibilityLiveRegion="polite">正在辨識資訊並整理文案…</Text>
+      ) : null}
+      {error && !voiceOpen ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
         </Text>
       ) : null}
-      {original && original.actor === actor && original.after === content ? (
+      {original && original.after === content ? (
         <Pressable
           accessibilityRole="button"
-          disabled={disabled || busy}
+          disabled={disabled || locked}
           onPress={() => {
             onApply(original.before);
             setOriginal(undefined);
@@ -128,6 +262,76 @@ function WritingSession({
           <Text style={styles.restore}>還原原文</Text>
         </Pressable>
       ) : null}
+      <Modal visible={voiceOpen} animationType="slide" onRequestClose={closeVoice}>
+        <KeyboardScrollView
+          contentContainerStyle={styles.modal}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>語音潤稿</Text>
+          <Text style={styles.body}>
+            {starting
+              ? '正在取得麥克風與語音辨識權限…'
+              : listening
+                ? '正在聆聽，說說想拼什麼、優惠或取餐需求。'
+                : busy
+                  ? '正在將口述內容整理成文案…'
+                  : '可編輯辨識文字後再潤稿，或重新說一次。'}
+          </Text>
+          <Text style={styles.hint}>
+            每次最多 60 秒。語音由裝置或系統辨識服務轉成文字，結束後文字會交給 AI 潤稿。
+          </Text>
+          <TextInput
+            accessibilityLabel="語音辨識文字"
+            multiline
+            maxLength={4000}
+            value={transcript}
+            editable={!locked}
+            onChangeText={setTranscript}
+            placeholder="辨識文字會顯示在這裡"
+            style={styles.editor}
+          />
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {error}
+            </Text>
+          ) : null}
+          {listening ? (
+            <PrimaryButton
+              onPress={() => {
+                capture.current?.stop();
+                setListening(false);
+                setBusy(true);
+              }}
+            >
+              結束說話並潤稿
+            </PrimaryButton>
+          ) : null}
+          {!locked ? (
+            <>
+              <PrimaryButton
+                disabled={!transcript.trim() || disabled}
+                onPress={() => {
+                  void generate('voice', { ...current.current }, transcript);
+                }}
+              >
+                用這段文字潤稿
+              </PrimaryButton>
+              <PrimaryButton
+                secondary
+                disabled={disabled}
+                onPress={() => {
+                  void beginVoice();
+                }}
+              >
+                重新說一次
+              </PrimaryButton>
+            </>
+          ) : null}
+          <PrimaryButton secondary onPress={closeVoice}>
+            取消並返回
+          </PrimaryButton>
+        </KeyboardScrollView>
+      </Modal>
       <Modal
         visible={!!validPreview}
         animationType="slide"
@@ -138,9 +342,11 @@ function WritingSession({
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.title}>確認貼文草稿</Text>
-          <Text style={styles.hint}>原文</Text>
-          <Text style={styles.body}>{preview?.original}</Text>
-          <Text style={styles.hint}>草稿 · 可編輯</Text>
+          <Text style={styles.hint}>
+            {preview?.mode === 'image' ? '照片辨識資訊，請核對優惠與限制條件' : '語音辨識內容'}
+          </Text>
+          <Text style={styles.body}>{preview?.sourceText}</Text>
+          <Text style={styles.hint}>文案草稿 · 可編輯</Text>
           <TextInput
             accessibilityLabel="AI 貼文草稿"
             multiline
@@ -149,11 +355,14 @@ function WritingSession({
             onChangeText={(text) => setPreview((p) => (p ? { ...p, text } : p))}
             style={styles.editor}
           />
+          <Text style={styles.hint}>
+            {draftLength(preview?.text ?? '')} 字，至少 50 字；價格、優惠與分工請確認後再採用。
+          </Text>
           <PrimaryButton
-            disabled={disabled || !validPreview || !preview?.text.trim()}
+            disabled={disabled || !validPreview || draftLength(preview?.text ?? '') < 50}
             onPress={() => {
               if (!validPreview || !preview) return;
-              setOriginal({ before: content, after: preview.text, actor });
+              setOriginal({ before: content, after: preview.text });
               onApply(preview.text);
               setPreview(undefined);
             }}
@@ -169,26 +378,28 @@ function WritingSession({
   );
 }
 const styles = StyleSheet.create({
-  wrap: { gap: 6, marginBottom: 14 },
-  strip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  wrap: {
     gap: 8,
-    backgroundColor: colors.surface,
+    marginBottom: 18,
     padding: 14,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
   },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   title: { fontSize: 17, fontWeight: '700', color: colors.ink },
-  hint: { fontSize: 12, color: colors.muted, marginTop: 3 },
+  hint: { fontSize: 13, color: colors.muted, lineHeight: 20 },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: colors.yellow,
-    borderRadius: 22,
-    minHeight: 34,
+    borderRadius: radius.md,
+    minHeight: 44,
     paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  disabled: { opacity: 0.4 },
   buttonText: { color: colors.ink, fontSize: 14, fontWeight: '600' },
   error: { color: colors.danger, fontSize: 13 },
   restore: { color: colors.brown, fontSize: 13, padding: 8 },

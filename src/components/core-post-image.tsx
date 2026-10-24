@@ -14,9 +14,11 @@ import { colors, radius, spacing } from '@/theme/tokens';
 export function CorePostImage({
   imageId,
   compact = false,
+  frameHeight,
 }: {
   imageId: string;
   compact?: boolean;
+  frameHeight?: number;
 }) {
   const actor = useAuthStore((state) => state.user?.id);
   const focused = useCoreScreenFocused();
@@ -33,7 +35,7 @@ export function CorePostImage({
     gcTime: 0,
   });
   return (
-    <View style={[styles.imageWrap, compact && { minHeight: 120 }]}>
+    <View style={[styles.imageWrap, frameHeight ? { height: frameHeight, marginVertical: 0, minHeight: 0 } : compact && { minHeight: 120 }]}>
       {query.isPending ? (
         <ActivityIndicator accessibilityLabel="正在載入拼單圖片" />
       ) : query.data && !failed ? (
@@ -43,7 +45,7 @@ export function CorePostImage({
           cachePolicy="memory"
           contentFit="contain"
           onError={() => setFailed(true)}
-          style={[styles.image, compact && { height: 120 }]}
+          style={frameHeight ? { width: '100%', height: frameHeight } : { width: '100%', aspectRatio: query.data.width / query.data.height, ...(compact ? { maxHeight: 180 } : {}) }}
         />
       ) : (
         <View style={styles.note}>

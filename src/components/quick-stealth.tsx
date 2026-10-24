@@ -3,10 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { AppText as Text } from '@/components/app-text';
 import { KeyboardScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
-import { coreError, newRequestKey } from '@/lib/core-api';
+import { coreError } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
 import {
@@ -15,6 +15,7 @@ import {
   type StealthQuickResult,
   type StealthSemanticResult,
 } from '@/lib/stealth-api';
+import { QuickStealthComposer } from '@/components/quick-stealth-composer';
 import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
@@ -60,44 +61,15 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
     refetchInterval: focused ? 10_000 : false,
   });
   const clock = useCoreClock();
-  const [text, setText] = useState('');
-  const [phase, setPhase] = useState('');
+  const [composerBusy, setComposerBusy] = useState(false);
   const [saved, setSaved] = useState<StealthQuickResult>();
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
   const [details, setDetails] = useState(false);
   const [decided, setDecided] = useState<string[]>([]);
-  const request = useRef<{ text: string; key: string } | null>(null);
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
   };
-  const start = useMutation({
-    retry: false,
-    gcTime: 0,
-    mutationFn: async () => {
-      const sentence = text.trim();
-      if (request.current?.text !== sentence)
-        request.current = { text: sentence, key: newRequestKey() };
-      setNotice('');
-      setAnalysis(undefined);
-      setPhase('分身正在理解你的想法…');
-      const result = await stealthApi.quickStart(
-        sentence,
-        !agent.data?.enabled,
-        request.current.key,
-      );
-      if (!sameActor()) return;
-      setSaved(result);
-      await refresh();
-      if (!sameActor()) return;
-      setNotice('已交給分身，會持續留意平台上的合適需求。');
-      if (sameActor()) {
-        setPhase('');
-        request.current = null;
-        setText('');
-      }
-    },
-  });
   const retry = useMutation({
     retry: false,
     gcTime: 0,
@@ -114,7 +86,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
     },
   });
   const revoke = useMutation({ mutationFn: stealthApi.revoke, onSettled: refresh });
-  const busy = start.isPending || retry.isPending;
+  const busy = composerBusy || retry.isPending;
   const now = clock.now();
   const active = (signals.data?.items ?? []).filter(
     (s) => s.status === 'active' && Date.parse(s.expires_at) > now,
@@ -135,79 +107,49 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
     <Screen>
       <DetailHeader title="偷揪" />
       <KeyboardScrollView contentContainerStyle={styles.page}>
-        <View style={styles.hero}>
-          <View style={styles.headingRow}>
-            <View style={styles.agentIcon}>
-              <MaterialCommunityIcons name="robot-outline" size={25} color={colors.brown} />
-            </View>
-            <View>
-              <Text style={styles.title}>讓分身幫你揪</Text>
-              <Text style={styles.hint}>說一次，替你持續留意</Text>
-            </View>
-          </View>
-
-          <TextInput
-            accessibilityLabel="一句話告訴分身"
-            placeholder="我今天想喝50嵐"
-            multiline
-            maxLength={160}
-            value={text}
-            onChangeText={setText}
-            editable={!busy}
-            style={styles.input}
-          />
-          <Text style={styles.hint}>正門 · 接下來兩小時，可在描述中更改</Text>
-          {!agent.data?.enabled ? (
-            <Text style={styles.hint}>啟用後會儲存需求，替你找夥伴。</Text>
-          ) : null}
-          <PrimaryButton
-            disabled={
-              busy ||
-              !focused ||
-              agent.isPending ||
-              !!agent.error ||
-              !capability.data?.ready ||
-              !text.trim()
-            }
-            onPress={() => start.mutate()}
-          >
-            {busy ? phase || '分身正在找人…' : agent.data?.enabled ? '幫我揪' : '啟用分身並幫我揪'}
-          </PrimaryButton>
-          {!capability.isPending && !capability.data?.ready ? (
-            <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
-          ) : null}
-          {agent.error ? (
-            <>
-              <Text accessibilityRole="alert" style={styles.error}>
-                {coreError(agent.error)}
-              </Text>
-              <PrimaryButton
-                secondary
-                onPress={() => {
-                  void agent.refetch();
-                }}
-              >
-                重試連線
-              </PrimaryButton>
-            </>
-          ) : null}
-          {start.error ? (
+        <QuickStealthComposer
+          actor={actor}
+          enabled={!!agent.data?.enabled}
+          focused={focused}
+          disabled={
+            !focused ||
+            agent.isPending ||
+            !!agent.error ||
+            !capability.data?.ready ||
+            retry.isPending
+          }
+          onBusyChange={setComposerBusy}
+          onSaved={async (result) => {
+            if (!sameActor()) return;
+            setSaved(result);
+            setAnalysis(undefined);
+            setNotice('已交給分身，會持續留意平台上的合適需求。');
+            await refresh();
+          }}
+        />
+        {!capability.isPending && !capability.data?.ready ? (
+          <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
+        ) : null}
+        {agent.error ? (
+          <>
             <Text accessibilityRole="alert" style={styles.error}>
-              {coreError(start.error)} 輸入已保留，可重試。
+              {coreError(agent.error)}
             </Text>
-          ) : null}
-          {saved ? (
-            <Text accessibilityLiveRegion="polite" style={styles.body}>
-              已記住：{saved.created.signal.title}
-              {saved.interpretation === 'keyword_fallback' ? '（依關鍵字整理）' : ''}
-            </Text>
-          ) : null}
-          {notice ? (
-            <Text accessibilityRole="alert" style={styles.hint}>
-              {notice}
-            </Text>
-          ) : null}
-        </View>
+            <PrimaryButton
+              secondary
+              onPress={() => {
+                void agent.refetch();
+              }}
+            >
+              重試連線
+            </PrimaryButton>
+          </>
+        ) : null}
+        {notice ? (
+          <Text accessibilityRole="alert" style={styles.hint}>
+            {notice}
+          </Text>
+        ) : null}
         <Text style={styles.title}>
           {visible.length
             ? '分身找到這些機會'

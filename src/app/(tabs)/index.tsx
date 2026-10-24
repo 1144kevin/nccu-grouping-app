@@ -34,7 +34,7 @@ import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { useCorePosts } from '@/lib/core-hooks';
 import { CorePostActions } from '@/components/core-post-actions';
-import { CorePostImage } from '@/components/core-post-image';
+import { CorePostGallery, PhotoCarousel } from '@/components/post-photo-carousel';
 import { CoreRecommendationReasons } from '@/components/core-recommendation-reasons';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
@@ -237,21 +237,21 @@ function PostItem({ post, corePost }: { post: FeedPost; corePost?: CorePost }) {
           onPress={() => setOptionsVisible(true)}
         />
       </View>
-      <Pressable onPress={() => router.push(`/post/${post.id}`)}>
+      <View>
         <Text style={styles.content}>{post.content}</Text>
-        {corePost?.image_id ? (
-          <CorePostImage imageId={corePost.image_id} />
+        {(corePost?.images?.length || corePost?.image_id) ? (
+          <CorePostGallery post={corePost!} />
         ) : (
-          post.imageUrl && (
+          post.photos?.length ? <PhotoCarousel photos={post.photos} /> : post.imageUrl && (
             <Image
               source={post.imageUrl}
-              contentFit="cover"
+              contentFit="contain"
               transition={180}
               style={styles.postImage}
             />
           )
         )}
-      </Pressable>
+      </View>
       <View style={styles.tags}>
         {post.tags.map((tag) => (
           <Pressable

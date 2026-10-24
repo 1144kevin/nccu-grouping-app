@@ -6,6 +6,7 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
 import { StealthFormation } from '@/components/core-stealth-formation';
+import { StealthReplySuggestions } from '@/components/stealth-reply-suggestions';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useCoreClock } from '@/lib/core-clock';
@@ -40,6 +41,10 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   const match = matches.data?.items.find((m) => m.id === id);
   const [text, setText] = useState('');
   const [formal, setFormal] = useState(false);
+  const replyContext = JSON.stringify({
+    messages: query.data?.items.slice(-20).map((m) => m.id),
+    match: match && [match.id, match.status, match.category, match.location_id, match.my_signal_title, match.terms_revision, match.my_roles, match.unknowns, match.known_cost_twd, match.budget_max_twd],
+  });
   const frozen = useRef<{ text: string; key: string } | null>(null);
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -148,6 +153,10 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             {formal ? '回到聊天' : '談好了，確認正式拼單'}
           </PrimaryButton>
         ) : null}
+        {!formal && actor && match && query.data?.opened && query.data.can_send && !query.error ? <StealthReplySuggestions
+          key={replyContext} id={id} actor={actor} contextKey={replyContext}
+          enabled={focused} disabled={send.isPending} onSelect={setText}
+        /> : null}
         {!formal ? (
           <ChatComposer
             kind="stealth"

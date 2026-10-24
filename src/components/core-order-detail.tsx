@@ -14,7 +14,7 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/primitives';
-import { CorePostImage } from '@/components/core-post-image';
+import { CorePostGallery } from '@/components/post-photo-carousel';
 import { PostInfo } from '@/components/post-location';
 import { RequestCard } from '@/components/core-order-screens';
 import { postEmoji } from '@/components/core-profile';
@@ -187,7 +187,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
         ) : null}
         <SectionTitle>完整貼文</SectionTitle>
         <Text style={styles.body}>{post.content}</Text>
-        {post.image_id ? <CorePostImage imageId={post.image_id} /> : null}
+        <CorePostGallery post={post} />
         <View style={styles.tags}>
           {post.tags.map((tag) => (
             <Text key={tag} style={styles.tag}>

@@ -21,7 +21,7 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <CoreAuthGate>
           <RootNavigator />
-          {!CORE_API_ENABLED || user ? <AppDrawer /> : null}
+          {!CORE_API_ENABLED || (user && !user.profile_setup_required) ? <AppDrawer /> : null}
           </CoreAuthGate>
         </QueryClientProvider>
       </SafeAreaProvider>
@@ -32,7 +32,8 @@ export default function RootLayout() {
 function RootNavigator() {
   const { user, ready } = useAuthStore();
   if (CORE_API_ENABLED && !ready) return <Screen><ActivityIndicator accessibilityLabel="正在確認登入" /></Screen>;
-  const allowed = !CORE_API_ENABLED || !!user;
+  const authenticated = !CORE_API_ENABLED || !!user;
+  const allowed = authenticated && (!CORE_API_ENABLED || !user?.profile_setup_required);
   return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
     <Stack.Protected guard={allowed}>
       <Stack.Screen name="(tabs)" />
@@ -44,7 +45,6 @@ function RootNavigator() {
       <Stack.Screen name="search" />
       <Stack.Screen name="settings" />
       <Stack.Screen name="app-password" />
-      <Stack.Screen name="edit-profile" />
       <Stack.Screen name="edit-post/[id]" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="help" />
@@ -52,6 +52,9 @@ function RootNavigator() {
       <Stack.Screen name="preferences" />
       <Stack.Screen name="stealth" />
       <Stack.Screen name="report" />
+    </Stack.Protected>
+    <Stack.Protected guard={authenticated}>
+      <Stack.Screen name="edit-profile" options={{ gestureEnabled: !user?.profile_setup_required }} />
     </Stack.Protected>
     <Stack.Protected guard={CORE_API_ENABLED && !user}>
       <Stack.Screen name="sign-in" />

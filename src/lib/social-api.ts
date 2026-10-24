@@ -92,12 +92,17 @@ export const socialApi = {
   handoff: async (postId: string) =>
     (await api.post<OrderSummary>(`/orders/${encodeURIComponent(postId)}/handoff`)).data,
   experience: async () => (await api.get<Experience>('/account/experience')).data,
-  writePost: async (mode: 'generate' | 'polish', content: string, context: string) =>
+  writePost: async (
+    mode: 'image' | 'voice',
+    content: string,
+    context: string,
+    image_base64?: string,
+  ) =>
     (
-      await api.post<{ text: string }>(
+      await api.post<{ text: string; source_text?: string }>(
         '/ai/post-writing',
-        { mode, content, context },
-        { timeout: 120_000 },
+        { mode, content, context, ...(image_base64 ? { image_base64 } : {}) },
+        { timeout: mode === 'image' ? 210_000 : 120_000 },
       )
     ).data,
 };

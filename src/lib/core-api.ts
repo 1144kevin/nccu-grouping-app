@@ -6,6 +6,7 @@ export const CORE_API_ENABLED = process.env.EXPO_PUBLIC_CORE_API_ENABLED === 'tr
 export const CORE_SUPABASE_MODE = process.env.EXPO_PUBLIC_CORE_DATA_MODE === 'supabase';
 
 export type CoreUser = {
+  profile_setup_required?: boolean;
   deletion_pending?: boolean;
   id: string;
   email: string;
@@ -36,6 +37,7 @@ export type CoreProfileInput = {
 };
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
+  images?: { id: string; width: number; height: number }[];
   semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {
     version: 'rules_v2';
@@ -272,6 +274,16 @@ const messages: Record<string, string> = {
   post_writing_invalid_output: '這次草稿未通過檢查，原文已保留，請重新生成。',
   local_post_writing_not_configured: '本地 AI 尚未啟動，原文已保留。',
   post_writing_rate_limit: '生成次數較多，請稍等再試。',
+  post_image_unreadable: '照片中的資訊看不清楚，請換一張清晰完整的照片。',
+  post_image_invalid_output: '圖片辨識未完成，照片已保留，請重試。',
+  local_model_vision_unavailable: '目前本機模型不支援圖片辨識，請啟用具備視覺能力的模型後重試。',
+  post_speech_unavailable: '此版本尚未支援語音辨識。iPhone 請安裝包含語音功能的新版 App；網頁請使用支援語音辨識的瀏覽器。',
+  post_speech_permission_denied: '請在系統或瀏覽器設定允許麥克風與語音辨識，再重試。',
+  post_speech_failed: '語音辨識未完成，已辨識的文字仍保留，可編輯後潤稿或重試。',
+  post_speech_busy: '麥克風正在使用中，請結束其他錄音後重試。',
+  post_speech_interrupted: '語音辨識已暫停，已辨識的文字仍保留。',
+  post_speech_start_timeout: '等待語音權限逾時，請確認權限後重試。',
+  quick_interview_unavailable: '聊天整理目前無法使用，請稍後重試；仍可用一句話直接幫你揪。',
   invalid_social_input: '操作未完成，請重新整理後再試。',
   invalid_social_cursor: '清單已更新，請重新整理。',
   invalid_block_input: '請選擇有效使用者；不能封鎖自己。',
@@ -293,6 +305,7 @@ const messages: Record<string, string> = {
     '圖片清理暫時失敗，帳號尚未完成刪除；重新登入同一帳號可繼續清理。',
   image_storage_not_configured: '圖片儲存尚未啟用，請先使用文字拼單或檢查本機設定。',
   image_too_large: '圖片過大，請選擇4MB以內的圖片；上傳後會壓縮成JPEG。',
+  too_many_post_images: '每篇貼文最多 5 張照片，請重新選擇。',
   image_dimensions_too_large: '圖片解析度過高，請先選擇較小或裁切後的圖片（最多1600萬像素）。',
   image_format_not_supported: '請選擇一般JPEG或PNG靜態圖片，暫不支援動畫或其他格式。',
   invalid_image_input: '無法讀取這張圖片，請重新選擇JPEG或PNG圖片。',

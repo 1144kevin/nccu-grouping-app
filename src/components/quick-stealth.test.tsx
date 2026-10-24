@@ -2,17 +2,21 @@ import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { AppState } from 'react-native';
 import { QuickStealthScreen, QuickMatch } from './quick-stealth';
 import { StealthCoordinationChat } from './stealth-coordination-chat';
 import { queryClient } from '@/lib/query-client';
 import { stealthApi, type StealthMatch } from '@/lib/stealth-api';
 
 jest.mock('react-native-safe-area-context', () => ({
-  ...jest.requireActual<typeof import('react-native-safe-area-context')>('react-native-safe-area-context'),
+  ...jest.requireActual<typeof import('react-native-safe-area-context')>(
+    'react-native-safe-area-context',
+  ),
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }));
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 jest.mock('@/lib/api', () => ({ api: {} }));
+jest.mock('@/lib/post-speech', () => ({ startPostSpeech: jest.fn() }));
 let mockKey = 0;
 jest.mock('@/lib/core-api', () => ({
   coreError: () => '連線失敗',
@@ -41,6 +45,7 @@ jest.mock('@/lib/stealth-api', () => ({
     signals: jest.fn(),
     matches: jest.fn(),
     quickStart: jest.fn(),
+    quickInterview: jest.fn(),
     discover: jest.fn(),
     semantic: jest.fn(),
     decide: jest.fn(),
@@ -79,6 +84,7 @@ const match = {
   known_cost_twd: null,
 } as unknown as StealthMatch;
 beforeEach(() => {
+  jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
   jest.mocked(stealthApi.quickStatus).mockResolvedValue({ ready: true });
   jest.mocked(stealthApi.agent).mockResolvedValue(null);
   jest.mocked(stealthApi.signals).mockResolvedValue({ items: [] });
@@ -96,6 +102,7 @@ afterEach(async () => {
     queryClient.clear();
   });
   jest.resetAllMocks();
+  jest.restoreAllMocks();
 });
 const wrap = (children: React.ReactNode) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -225,33 +232,40 @@ it('keeps only undecided live opportunities on the quick screen', async () => {
     score: 70,
     location_id: 'main_gate',
   };
-  jest
-    .mocked(stealthApi.matches)
-    .mockResolvedValue({
-      items: [
-        active,
-        { ...active, id: 'accepted', my_decision: 'accepted' },
-        { ...active, id: 'formed', status: 'formed' },
-        { ...active, id: 'expired', expires_at: '2026-10-21T12:00:00Z' },
-      ],
-    } as never);
+  jest.mocked(stealthApi.matches).mockResolvedValue({
+    items: [
+      active,
+      { ...active, id: 'accepted', my_decision: 'accepted' },
+      { ...active, id: 'formed', status: 'formed' },
+      { ...active, id: 'expired', expires_at: '2026-10-21T12:00:00Z' },
+    ],
+  } as never);
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
   await waitFor(() => expect(screen.getAllByRole('button', { name: '接受機會' })).toHaveLength(1));
   expect(screen.queryByText('你已同意聊聊，等待夥伴回覆。')).toBeNull();
 });
 
 it('allows text and photo picking in an opened chat even when its invitation has expired', async () => {
-  jest.mocked(stealthApi.matches).mockResolvedValue({items: [{...match, status: 'unavailable', coordination_opened: true}]} as never);
-  jest.mocked(stealthApi.room).mockResolvedValue({opened: true, can_send: true, items: []});
+  jest
+    .mocked(stealthApi.matches)
+    .mockResolvedValue({
+      items: [{ ...match, status: 'unavailable', coordination_opened: true }],
+    } as never);
+  jest.mocked(stealthApi.room).mockResolvedValue({ opened: true, can_send: true, items: [] });
   let resolve!: (v: never) => void;
-  jest.mocked(stealthApi.roomSend).mockImplementationOnce(() => new Promise(r => { resolve = r; }));
+  jest.mocked(stealthApi.roomSend).mockImplementationOnce(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
   const screen = await render(wrap(<StealthCoordinationChat id="pair" />));
   await waitFor(() => expect(screen.getByLabelText('偷揪聊天室訊息')).toHaveProp('editable', true));
-  expect(screen.getByRole('button', {name: '傳送照片'})).toBeEnabled();
+  expect(screen.getByRole('button', { name: '傳送照片' })).toBeEnabled();
   await fireEvent.changeText(screen.getByLabelText('偷揪聊天室訊息'), '我可以先去拿便當');
-  await fireEvent.press(screen.getByRole('button', {name: '傳送'}));
+  await fireEvent.press(screen.getByRole('button', { name: '傳送' }));
   await waitFor(() => expect(screen.getByText('我可以先去拿便當')).toBeTruthy());
-  await act(async () => resolve({id: 'stealth-confirmed'} as never));
+  await act(async () => resolve({ id: 'stealth-confirmed' } as never));
   await waitFor(() => expect(screen.getByLabelText('偷揪聊天室訊息')).toHaveProp('value', ''));
   expect(screen.getAllByText('我可以先去拿便當')).toHaveLength(1);
 });
