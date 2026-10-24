@@ -5,6 +5,7 @@ import { mediaApi } from '@/lib/media-api';
 import { coreApi } from '@/lib/core-api';
 import { router } from 'expo-router';
 import { AppState } from 'react-native';
+import { queryClient } from '@/lib/query-client';
 
 let mockActor = 'synthetic-actor';
 let mockAssets = [{ uri: 'synthetic://image', base64: 'YQ==', width: 480, height: 320 }];
@@ -90,6 +91,7 @@ beforeEach(() => {
     .mockResolvedValue({ id: 'image-id', state: 'ready', width: 480, height: 320 });
 });
 afterEach(() => {
+  queryClient.clear();
   jest.resetAllMocks();
   jest.restoreAllMocks();
 });
@@ -120,7 +122,7 @@ it('retains image and publication key after a failed publication without uploadi
   jest
     .mocked(mediaApi.publish)
     .mockRejectedValueOnce(new Error('synthetic temporary failure'))
-    .mockResolvedValueOnce({ id: 'post-id' } as never);
+    .mockResolvedValueOnce({ id: 'post-id', author_id: 'synthetic-actor' } as never);
   const screen = await filledForm();
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '發布' }));
@@ -138,6 +140,9 @@ it('retains image and publication key after a failed publication without uploadi
     jest.mocked(mediaApi.publish).mock.calls[1],
   );
   expect(coreApi.create).not.toHaveBeenCalled();
+  expect(
+    queryClient.getQueryData(['core', 'synthetic-actor', 'newly-published-post']),
+  ).toMatchObject({ id: 'post-id' });
 });
 
 it('does not publish an old account image if identity changes during upload', async () => {
@@ -219,4 +224,23 @@ it('caps selection at five and allows removing an individual photo before publis
   );
   expect(screen.getByText('新增圖片\n(4/5)')).toBeTruthy();
   expect(mediaApi.remove).not.toHaveBeenCalled();
+});
+
+it('temporarily promotes a successful text-only publication as well as an image publication', async () => {
+  jest
+    .mocked(coreApi.create)
+    .mockResolvedValueOnce({ id: 'text-post', author_id: 'synthetic-actor' } as never);
+  const screen = await filledForm();
+  await fireEvent.press(screen.getByRole('button', { name: '移除第 1 張圖片' }));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: '發布' }).props.accessibilityState?.disabled).toBe(
+      false,
+    ),
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '發布' }));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
+  expect(mediaApi.publish).not.toHaveBeenCalled();
+  expect(
+    queryClient.getQueryData(['core', 'synthetic-actor', 'newly-published-post']),
+  ).toMatchObject({ id: 'text-post' });
 });

@@ -1,11 +1,19 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useRef } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { AppHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { FeedPostCard } from '@/components/feed-post-card';
 import { useAppStore } from '@/store/app-store';
-import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreError, toFeedPost } from '@/lib/core-api';
+import {
+  CORE_API_ENABLED,
+  CORE_SUPABASE_MODE,
+  coreError,
+  toFeedPost,
+  type CorePost,
+} from '@/lib/core-api';
+import { useFeedPresentation } from '@/lib/feed-presentation';
 import { useCoreRecommendations } from '@/lib/engagement-api';
 import { useCorePosts } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
@@ -20,17 +28,28 @@ function CoreHomeScreen() {
   const latest = useCorePosts();
   const recommendations = useCoreRecommendations(CORE_SUPABASE_MODE);
   const query = CORE_SUPABASE_MODE ? recommendations : latest;
+  const feed = useFeedPresentation(query.posts);
+  const list = useRef<FlatList<CorePost>>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (feed.publishedId) list.current?.scrollToOffset({ offset: 0, animated: false });
+    }, [feed.publishedId]),
+  );
   return (
     <Screen>
       <AppHeader searchScope="posts" />
       <FlatList
-        data={query.posts}
+        testID="home-feed"
+        ref={list}
+        data={feed.posts}
         keyExtractor={(post) => post.id}
         renderItem={({ item }) => <FeedPostCard post={toFeedPost(item)} corePost={item} />}
         ItemSeparatorComponent={() => <View style={styles.divider} />}
         refreshControl={
           <PullRefreshControl
+            testID="home-feed-refresh"
             onRefresh={() => {
+              feed.restoreRanking();
               return query.refetch();
             }}
             tintColor={colors.yellow}
@@ -85,7 +104,7 @@ function CoreHomeScreen() {
             </PrimaryButton>
           ) : null
         }
-        contentContainerStyle={query.posts.length ? styles.feed : styles.emptyFeed}
+        contentContainerStyle={feed.posts.length ? styles.feed : styles.emptyFeed}
       />
     </Screen>
   );

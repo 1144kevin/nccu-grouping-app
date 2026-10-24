@@ -42,6 +42,7 @@ import {
 import { mediaApi, validPickedImage } from '@/lib/media-api';
 import { useCoreClock } from '@/lib/core-clock';
 import { invalidateCore } from '@/lib/core-hooks';
+import { showPublishedPost } from '@/lib/feed-presentation';
 import { PostWritingAssistant } from '@/components/post-writing-assistant';
 import { TagChip } from '@/components/tag-chip';
 import { SettingField } from '@/components/setting-field';
@@ -251,6 +252,7 @@ function CreateForm({
             throw new Error('deadline_must_be_within_14_days');
           if (publication.current?.payload !== payload)
             publication.current = { payload, key: newRequestKey() };
+          let created;
           if (photos.length && CORE_SUPABASE_MODE) {
             const ids: string[] = [];
             for (const photo of photos) {
@@ -266,10 +268,12 @@ function CreateForm({
             }
             if (useAuthStore.getState().user?.id !== actor)
               throw new Error('invalid_or_expired_session');
-            await mediaApi.publish(input, ids, publication.current.key);
-          } else await coreApi.create(input, publication.current.key);
+            created = await mediaApi.publish(input, ids, publication.current.key);
+          } else created = await coreApi.create(input, publication.current.key);
           if (useAuthStore.getState().user?.id !== actor) return;
+          if (actor) showPublishedPost(actor, created);
           await invalidateCore();
+          if (useAuthStore.getState().user?.id !== actor) return;
         } else {
           publishPost({
             content: values.content.trim(),
