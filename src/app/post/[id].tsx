@@ -2,18 +2,17 @@ import { PhotoCarousel } from '@/components/post-photo-carousel';
 import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Avatar, DetailHeader, EmptyState, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
 import { PostInfo } from '@/components/post-location';
 import { CORE_API_ENABLED } from '@/lib/core-api';
-import { CorePostDetail } from '@/components/core-order-screens';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return CORE_API_ENABLED ? <CorePostDetail id={id} /> : <DemoPostDetailScreen />;
+  return CORE_API_ENABLED ? <Redirect href={`/order/${id}`} /> : <DemoPostDetailScreen />;
 }
 
 function DemoPostDetailScreen() {

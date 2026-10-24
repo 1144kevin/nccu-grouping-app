@@ -28,11 +28,13 @@ export function FeedPostCard({
   corePost,
   respectHidden = true,
   onManage,
+  showManagement = true,
 }: {
   post: FeedPost;
   corePost?: CorePost;
   respectHidden?: boolean;
   onManage?: () => void;
+  showManagement?: boolean;
 }) {
   const [optionsVisible, setOptionsVisible] = useState(false);
   const interested = useAppStore((state) => state.interestedPostIds.includes(post.id));
@@ -165,7 +167,9 @@ export function FeedPostCard({
       ) : null}
       <View style={styles.actions}>
         {corePost ? (
-          <CorePostActions post={corePost} onManage={onManage} />
+          corePost.my_status === 'host' && !showManagement ? null : (
+            <CorePostActions post={corePost} onManage={onManage} />
+          )
         ) : (
           <PrimaryButton
             disabled={post.isMine}
@@ -247,21 +251,25 @@ export function FeedPostCard({
                     : '截止前 30 分鐘提醒'}
               </Text>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]}
-              onPress={() => {
-                setOptionsVisible(false);
-                if (corePost)
-                  router.push({
-                    pathname: '/report',
-                    params: { kind: 'post', targetId: corePost.id },
-                  });
-                else Alert.alert('展示模式', '檢舉不會傳送到後端。');
-              }}
-            >
-              <Text style={[styles.optionText, styles.reportText]}>檢舉貼文</Text>
-            </Pressable>
+            {!(corePost
+              ? corePost.my_status === 'host' || corePost.author_id === actor
+              : post.isMine) ? (
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.optionRow, pressed && styles.undoPressed]}
+                onPress={() => {
+                  setOptionsVisible(false);
+                  if (corePost)
+                    router.push({
+                      pathname: '/report',
+                      params: { kind: 'post', targetId: corePost.id },
+                    });
+                  else Alert.alert('展示模式', '檢舉不會傳送到後端。');
+                }}
+              >
+                <Text style={[styles.optionText, styles.reportText]}>檢舉貼文</Text>
+              </Pressable>
+            ) : null}
             <PrimaryButton secondary onPress={() => setOptionsVisible(false)}>
               取消
             </PrimaryButton>

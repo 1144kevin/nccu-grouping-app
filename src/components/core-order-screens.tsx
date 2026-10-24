@@ -5,37 +5,21 @@ import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { FlatList, Pressable, Share, ScrollView, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   AppHeader,
   Avatar,
-  DetailHeader,
   EmptyState,
-  IconButton,
   Pill,
   PrimaryButton,
   Screen,
-  SectionTitle,
 } from '@/components/primitives';
-import { MessageHostButton } from '@/components/message-host-button';
-import { PostInfo } from '@/components/post-location';
-import { CorePostActions } from '@/components/core-post-actions';
-import { CorePostGallery } from '@/components/post-photo-carousel';
-import {
-  CORE_SUPABASE_MODE,
-  coreApi,
-  coreError,
-  toFeedPost,
-  type CoreJoin,
-  type CorePost,
-} from '@/lib/core-api';
+import { coreApi, coreError, type CoreJoin, type CorePost } from '@/lib/core-api';
 import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/lib/core-hooks';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { shortDate } from '@/components/list-ui';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
-import { ReportButton } from '@/components/core-reports';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const statusLabels = { open: '進行中', full: '已額滿', expired: '已截止', cancelled: '已取消' };
 const decisionLabels = {
@@ -44,106 +28,6 @@ const decisionLabels = {
   rejected: '已拒絕',
   cancelled: '已退出／取消申請',
 };
-
-export function CorePostDetail({ id }: { id: string }) {
-  const insets = useSafeAreaInsets();
-  const { focus } = useLocalSearchParams<{ focus?: string }>();
-  const query = useCorePost(id);
-  if (!query.data)
-    return (
-      <Screen>
-        <DetailHeader title="拼單詳情" />
-        <LoadState
-          pending={query.isPending}
-          error={query.error}
-          retry={() => {
-            return query.refetch();
-          }}
-        />
-      </Screen>
-    );
-  const post = query.data;
-  return (
-    <Screen>
-      <DetailHeader title="拼單詳情" />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <PullRefreshControl
-            onRefresh={() => {
-              return query.refetch();
-            }}
-          />
-        }
-      >
-        <View style={styles.row}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`查看 ${post.author_name} 的公開資料`}
-            onPress={() => router.push(`/user/${post.author_id}`)}
-            style={styles.author}
-          >
-            <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={46} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <View style={styles.row}>
-                <Text style={styles.title}>{post.author_name}</Text>
-                <ReputationBadge level={post.author_level} />
-              </View>
-              <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
-            </View>
-          </Pressable>
-          <Pill>{statusLabels[post.status]}</Pill>
-        </View>
-        {post.my_status === 'host' && focus === 'requests' ? <HostManagement post={post} /> : null}
-        <Text style={styles.body}>{post.content}</Text>
-        <CorePostGallery post={post} />
-        <View style={styles.tags}>
-          {post.tags.map((tag) => (
-            <Pressable
-              key={tag}
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })
-              }
-            >
-              <Text style={styles.link}>#{tag}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <PostInfo post={toFeedPost(post)} />
-        <MessageHostButton post={post} />
-        {CORE_SUPABASE_MODE && ['host', 'accepted'].includes(post.my_status) ? (
-          <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>
-            進入拼單聊天室
-          </PrimaryButton>
-        ) : null}
-        {query.error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {coreError(query.error)}
-          </Text>
-        ) : null}
-        {post.my_status === 'host' ? (
-          focus !== 'requests' ? (
-            <HostManagement post={post} />
-          ) : null
-        ) : null}
-        {CORE_SUPABASE_MODE ? <ReportButton kind="post" targetId={post.id} /> : null}
-      </ScrollView>
-      {post.my_status !== 'host' ? (
-        <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
-          <IconButton
-            icon="share-variant-outline"
-            label="分享拼單"
-            onPress={() => {
-              void Share.share({ message: `政缺一咖拼單：${post.content}` });
-            }}
-          />
-          <CorePostActions post={post} />
-        </View>
-      ) : null}
-    </Screen>
-  );
-}
 
 export function CoreOrdersScreen() {
   const clock = useCoreClock();
@@ -408,90 +292,6 @@ function LoadState({
         ) : undefined
       }
     />
-  );
-}
-
-function HostManagement({ post }: { post: CorePost }) {
-  const query = useCoreRequests(post.id);
-  const [confirmCancel, setConfirmCancel] = useState(false);
-  const mutation = useMutation({
-    mutationFn: () => coreApi.cancel(post.id),
-    onSettled: invalidateCore,
-  });
-  const closed = post.status === 'expired' || post.status === 'cancelled';
-  return (
-    <View style={{ gap: spacing.md }}>
-      {post.can_edit ? (
-        <PrimaryButton secondary onPress={() => router.push(`/edit-post/${post.id}`)}>
-          編輯拼單
-        </PrimaryButton>
-      ) : null}
-      <SectionTitle
-        action={
-          query.data?.some((r) => r.status === 'pending') ? (
-            <Pill tone="yellow">
-              {query.data.filter((r) => r.status === 'pending').length} 筆待審核
-            </Pill>
-          ) : undefined
-        }
-      >
-        團員與申請
-      </SectionTitle>
-      <View style={styles.member}>
-        <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={42} />
-        <View style={styles.row}>
-          <Text style={styles.title}>{post.author_name}</Text>
-          <ReputationBadge level={post.author_level} />
-        </View>
-        <Pill tone="yellow">主揪</Pill>
-      </View>
-      {query.isPending ? <PageLoading /> : null}
-      {query.error ? (
-        <View>
-          <Text accessibilityRole="alert" style={styles.error}>
-            {coreError(query.error)}
-          </Text>
-          <PrimaryButton
-            secondary
-            onPress={() => {
-              return query.refetch();
-            }}
-          >
-            重試申請清單
-          </PrimaryButton>
-        </View>
-      ) : null}
-      {query.data &&
-        [...query.data]
-          .sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending'))
-          .map((request) => <RequestCard key={request.id} request={request} closed={closed} />)}
-      {query.data?.length === 0 ? <Text style={styles.hint}>尚未有人申請。</Text> : null}
-      {!closed && !confirmCancel ? (
-        <PrimaryButton secondary onPress={() => setConfirmCancel(true)}>
-          取消這筆拼單
-        </PrimaryButton>
-      ) : null}
-      {confirmCancel && !closed ? (
-        <View style={styles.card}>
-          <Text style={styles.note}>確定取消整筆拼單？取消後不能再加入或接受申請。</Text>
-          <PrimaryButton disabled={mutation.isPending} onPress={() => mutation.mutate()}>
-            確認取消拼單
-          </PrimaryButton>
-          <PrimaryButton
-            secondary
-            disabled={mutation.isPending}
-            onPress={() => setConfirmCancel(false)}
-          >
-            繼續保留
-          </PrimaryButton>
-        </View>
-      ) : null}
-      {mutation.error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {coreError(mutation.error)}
-        </Text>
-      ) : null}
-    </View>
   );
 }
 

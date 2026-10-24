@@ -16,6 +16,7 @@ import {
   SectionTitle,
 } from '@/components/primitives';
 import { FeedPostCard } from '@/components/feed-post-card';
+import { HostPostControls } from '@/components/host-post-controls';
 import { RequestCard } from '@/components/core-order-screens';
 import { postEmoji } from '@/components/core-profile';
 import {
@@ -164,7 +165,19 @@ export function CoreOrderDetail({ id }: { id: string }) {
         {pending.map((request) => (
           <RequestCard key={request.id} request={request} closed={closed} />
         ))}
-        {!pending.length ? <Text style={styles.empty}>這筆紀錄沒有待處理的申請</Text> : null}
+        {post.my_status === 'host' && requests.isPending ? <PageLoading /> : null}
+        {post.my_status === 'host' && requests.error ? (
+          <View style={{ gap: 8 }}>
+            <Text accessibilityRole="alert" style={styles.error}>
+              {coreError(requests.error)}
+            </Text>
+            <PrimaryButton secondary onPress={() => requests.refetch()}>
+              重試申請清單
+            </PrimaryButton>
+          </View>
+        ) : !pending.length && !requests.isPending ? (
+          <Text style={styles.empty}>這筆紀錄沒有待處理的申請</Text>
+        ) : null}
         {summary.data?.can_confirm ? (
           <View style={{ gap: 8 }}>
             <Text style={styles.detail}>
@@ -191,19 +204,15 @@ export function CoreOrderDetail({ id }: { id: string }) {
             post={toFeedPost(post)}
             corePost={post}
             respectHidden={false}
-            onManage={() => router.push(`/post/${post.id}`)}
+            showManagement={false}
           />
         </View>
         {['host', 'accepted'].includes(post.my_status) ? (
           <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>
-            進入群組聊天室
+            進入拼單聊天室
           </PrimaryButton>
         ) : null}
-        {post.my_status === 'host' ? (
-          <PrimaryButton secondary onPress={() => router.push(`/post/${post.id}`)}>
-            管理貼文
-          </PrimaryButton>
-        ) : null}
+        {post.my_status === 'host' ? <HostPostControls key={post.id} post={post} /> : null}
       </ScrollView>
     </Screen>
   );
