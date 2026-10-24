@@ -106,7 +106,7 @@ it('integrates host controls, hides self reporting and keeps only one order chat
   await fireEvent.press(screen.getByRole('button', { name: '貼文選項' }));
   expect(screen.queryByText('檢舉貼文')).toBeNull();
   await fireEvent.press(screen.getByLabelText('關閉貼文選項', { includeHiddenElements: true }));
-  await fireEvent.press(screen.getByRole('button', { name: '取消' }));
+  await fireEvent.press(screen.getByRole('button', { name: '取消拼單' }));
   expect(coreApi.cancel).not.toHaveBeenCalled();
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '確認取消拼單' }));
@@ -118,7 +118,7 @@ it('keeps report available to visitors without showing host controls', async () 
   mockStatus = 'none';
   const screen = await mount();
   expect(screen.queryByRole('button', { name: '編輯拼單' })).toBeNull();
-  expect(screen.queryByRole('button', { name: '取消' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '取消拼單' })).toBeNull();
   expect(screen.queryByRole('button', { name: '進入拼單聊天室' })).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: '貼文選項' }));
   expect(screen.getByText('檢舉貼文')).toBeTruthy();
@@ -128,5 +128,5 @@ it('honors edit permission and disables cancellation once closed', async () => {
   mockPostStatus = 'cancelled';
   const screen = await mount();
   expect(screen.queryByRole('button', { name: '編輯拼單' })).toBeNull();
-  expect(screen.queryByRole('button', { name: '取消' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '取消拼單' })).toBeNull();
 });

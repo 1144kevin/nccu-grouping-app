@@ -48,9 +48,6 @@ export function CorePostActions({ post, onManage }: { post: CorePost; onManage?:
       >
         {mutation.isPending ? '處理中…' : label}
       </PrimaryButton>
-      {post.my_status === 'pending' && !closed ? (
-        <Text style={{ color: colors.muted, fontSize: 12 }}>待主揪接受，尚未占用名額</Text>
-      ) : null}
       {mutation.error ? (
         <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13 }}>
           {coreError(mutation.error)}

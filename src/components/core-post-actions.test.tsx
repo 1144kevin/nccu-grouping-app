@@ -78,7 +78,7 @@ it('submits an application instead of pretending a pending user already occupies
       <CorePostActions post={{ ...post, my_status: 'pending' }} />
     </QueryClientProvider>,
   );
-  expect(screen.getByText('待主揪接受，尚未占用名額')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '取消申請' })).toBeTruthy();
 });
 
 it('lets an accepted participant leave a full group', async () => {

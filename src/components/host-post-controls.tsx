@@ -25,7 +25,7 @@ export function HostPostControls({ post }: { post: CorePost }) {
       ) : null}
       {!closed && !confirm ? (
         <PrimaryButton secondary onPress={() => setConfirm(true)}>
-          取消
+          取消拼單
         </PrimaryButton>
       ) : null}
       {!closed && confirm ? (
