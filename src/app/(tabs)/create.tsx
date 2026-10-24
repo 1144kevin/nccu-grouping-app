@@ -11,7 +11,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { Controller, useForm, useWatch } from 'react-hook-form';
-import { Alert, Image, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { KeyboardScrollView as ScrollView, KeyboardViewport } from '@/components/keyboard-layout';
 import { z } from 'zod';
 import { IconButton, PrimaryButton, SectionTitle, Screen } from '@/components/primitives';
@@ -35,6 +35,7 @@ import { mediaApi, validPickedImage } from '@/lib/media-api';
 import { useCoreClock } from '@/lib/core-clock';
 import { invalidateCore } from '@/lib/core-hooks';
 import { PostWritingAssistant } from '@/components/post-writing-assistant';
+import { PhotoCarousel } from '@/components/post-photo-carousel';
 import { TagChip } from '@/components/tag-chip';
 import { SettingField } from '@/components/setting-field';
 import { parsePrice, priceInputSchema } from '@/lib/price';
@@ -61,7 +62,8 @@ type FormValues = z.infer<typeof schema>;
 const suggestedTags = ['晚餐', '便當', '飲料', '宵夜', '剩食分享'];
 
 export default function CreateScreen() {
-  return CORE_API_ENABLED ? <ClockReadyCreate /> : <CreateForm />;
+  const actor = useAuthStore((state) => state.user?.id);
+  return CORE_API_ENABLED ? <ClockReadyCreate key={actor} /> : <CreateForm />;
 }
 
 function ClockReadyCreate() {
@@ -97,11 +99,11 @@ function CreateForm({
   const publication = useRef<{ payload: string; key: string } | null>(null);
   const publishing = useRef(false);
   const [tags, setTags] = useState(['拼單']);
-  const [imageUri, setImageUri] = useState<string>();
-  const [imageData, setImageData] = useState<{ base64: string; key: string } | null>(null);
-  const uploadedImage = useRef<{ key: string; id: string } | null>(null);
+  const [photos, setPhotos] = useState<{ id: string; uri: string; width: number; height: number; base64?: string }[]>([]);
+  const uploadedImages = useRef(new Map<string, string>());
   const [imageError, setImageError] = useState('');
   const [imageBusy, setImageBusy] = useState(false);
+  const imageOperation = useRef(false);
   const [writingBusy, setWritingBusy] = useState(false);
   const [voiceUri, setVoiceUri] = useState<string>();
   const [deadline, setDeadline] = useState(() => createInitialDeadline(now()));
@@ -148,7 +150,9 @@ function CreateForm({
   }
 
   async function pickImage() {
-    if (imageBusy || publishing.current) return;
+    if (imageOperation.current || publishing.current || photos.length >= 5) return;
+    imageOperation.current = true;
+    const actor = useAuthStore.getState().user?.id;
     setImageError('');
     setImageBusy(true);
     try {
@@ -159,38 +163,43 @@ function CreateForm({
         mediaTypes: ['images'],
         quality: 0.85,
         allowsEditing: false,
+        allowsMultipleSelection: true,
+        orderedSelection: true,
+        selectionLimit: 5 - photos.length,
         base64: CORE_API_ENABLED && CORE_SUPABASE_MODE,
       });
+      if (useAuthStore.getState().user?.id !== actor) return;
       if (!result.canceled) {
-        const asset = result.assets[0];
-        const base64 =
-          CORE_API_ENABLED && CORE_SUPABASE_MODE
-            ? validPickedImage(asset.base64, asset.width, asset.height)
-            : null;
-        if (uploadedImage.current) await mediaApi.remove(uploadedImage.current.id);
-        uploadedImage.current = null;
-        setImageUri(asset.uri);
-        setImageData(base64 ? { base64, key: newRequestKey() } : null);
+        if (photos.length + result.assets.length > 5) throw new Error('too_many_post_images');
+        const selected = result.assets.map((asset) => ({
+          id: newRequestKey(), uri: asset.uri, width: asset.width, height: asset.height,
+          base64: CORE_API_ENABLED && CORE_SUPABASE_MODE
+            ? validPickedImage(asset.base64, asset.width, asset.height) : undefined,
+        }));
+        setPhotos((current) => [...current, ...selected]);
       }
     } catch (error) {
       setImageError(coreError(error));
     } finally {
+      imageOperation.current = false;
       setImageBusy(false);
     }
   }
 
-  async function removeImage() {
-    if (imageBusy || publishing.current) return;
+  async function removeImage(key: string) {
+    if (imageOperation.current || publishing.current) return;
+    imageOperation.current = true;
     setImageBusy(true);
     setImageError('');
     try {
-      if (uploadedImage.current) await mediaApi.remove(uploadedImage.current.id);
-      uploadedImage.current = null;
-      setImageUri(undefined);
-      setImageData(null);
+      const uploaded = uploadedImages.current.get(key);
+      if (uploaded) await mediaApi.remove(uploaded);
+      uploadedImages.current.delete(key);
+      setPhotos((current) => current.filter((photo) => photo.id !== key));
     } catch (error) {
       setImageError(coreError(error));
     } finally {
+      imageOperation.current = false;
       setImageBusy(false);
     }
   }
@@ -210,7 +219,7 @@ function CreateForm({
 
   function close() {
     if (imageBusy || publishing.current) return;
-    if (!isDirty && !imageUri && !voiceUri) return router.replace('/');
+    if (!isDirty && !photos.length && !voiceUri) return router.replace('/');
     Alert.alert('捨棄這篇貼文？', '尚未發布的內容不會被保留。', [
       { text: '繼續編輯', style: 'cancel' },
       { text: '捨棄', style: 'destructive', onPress: () => router.replace('/') },
@@ -234,19 +243,25 @@ function CreateForm({
             capacity: Number(values.capacity),
             price_per_person: values.price.trim() || null,
           };
-          const payload = JSON.stringify({ ...input, image_key: imageData?.key ?? null });
+          const payload = JSON.stringify({ ...input, image_keys: photos.map((photo) => photo.id) });
           if (deadline.getTime() <= now() && publication.current?.payload !== payload)
             throw new Error('deadline_must_be_within_14_days');
           if (publication.current?.payload !== payload)
             publication.current = { payload, key: newRequestKey() };
-          if (imageData && CORE_SUPABASE_MODE) {
-            if (uploadedImage.current?.key !== imageData.key) {
-              const asset = await mediaApi.upload(imageData.base64, imageData.key);
-              uploadedImage.current = { key: imageData.key, id: asset.id };
+          if (photos.length && CORE_SUPABASE_MODE) {
+            const ids: string[] = [];
+            for (const photo of photos) {
+              if (useAuthStore.getState().user?.id !== actor) throw new Error('invalid_or_expired_session');
+              let uploaded = uploadedImages.current.get(photo.id);
+              if (!uploaded) {
+                const asset = await mediaApi.upload(photo.base64!, photo.id);
+                uploaded = asset.id;
+                uploadedImages.current.set(photo.id, uploaded);
+              }
+              ids.push(uploaded);
             }
-            if (useAuthStore.getState().user?.id !== actor)
-              throw new Error('invalid_or_expired_session');
-            await mediaApi.publish(input, uploadedImage.current.id, publication.current.key);
+            if (useAuthStore.getState().user?.id !== actor) throw new Error('invalid_or_expired_session');
+            await mediaApi.publish(input, ids, publication.current.key);
           } else await coreApi.create(input, publication.current.key);
           if (useAuthStore.getState().user?.id !== actor) return;
           await invalidateCore();
@@ -258,16 +273,16 @@ function CreateForm({
             tags,
             deadline: formatDeadline(deadline),
             capacity: Number(values.capacity),
-            imageUrl: imageUri,
+            imageUrl: photos[0]?.uri,
+            photos: photos.map(({ id, uri, width, height }) => ({ id, uri, width, height })),
             voiceUri,
           });
         }
         publication.current = null;
         reset();
         setLocationKey((key) => key + 1);
-        setImageUri(undefined);
-        setImageData(null);
-        uploadedImage.current = null;
+        setPhotos([]);
+        uploadedImages.current.clear();
         setVoiceUri(undefined);
         setTags(['拼單']);
         router.replace('/');
@@ -317,7 +332,8 @@ function CreateForm({
           onPress={submit}
           style={[
             styles.publish,
-            (!formReady || !tags.length || isSubmitting || imageBusy || writingBusy) && styles.publishDisabled,
+            (!formReady || !tags.length || isSubmitting || imageBusy || writingBusy) &&
+              styles.publishDisabled,
           ]}
         >
           <Text style={styles.publishText}>{isSubmitting ? '發布中…' : '發布'}</Text>
@@ -339,31 +355,18 @@ function CreateForm({
             <Text style={styles.fieldHint}>目前可發布文字拼單。</Text>
           ) : (
             <>
+              {photos.length ? <>
+                <PhotoCarousel photos={photos} renderOverlay={(photo, index) => <Pressable
+                  accessibilityRole="button" accessibilityLabel={`移除第 ${index + 1} 張圖片`}
+                  disabled={isSubmitting || imageBusy} onPress={() => { void removeImage(photo.id); }}
+                  style={styles.removeMedia}><MaterialCommunityIcons name="close" size={18} color="#FFFFFF" /></Pressable>} />
+                <Text style={styles.fieldHint}>已選 {photos.length}/5 張，保留原始比例，可向左滑動。圖片辨識使用第一張照片。</Text>
+              </> : null}
               <View style={styles.mediaRow}>
-                {imageUri && (
-                  <View>
-                    <Image
-                      accessibilityLabel="待發佈的圖片預覽"
-                      source={{ uri: imageUri }}
-                      style={styles.thumbnail}
-                    />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="移除待發佈圖片"
-                      disabled={isSubmitting || imageBusy}
-                      onPress={() => {
-                        void removeImage();
-                      }}
-                      style={styles.removeMedia}
-                    >
-                      <MaterialCommunityIcons name="close" size={15} color="#FFFFFF" />
-                    </Pressable>
-                  </View>
-                )}
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={imageUri ? '更換圖片' : '新增圖片'}
-                  disabled={isSubmitting || imageBusy}
+                  accessibilityLabel="新增圖片"
+                  disabled={isSubmitting || imageBusy || photos.length >= 5}
                   onPress={() => {
                     void pickImage();
                   }}
@@ -371,7 +374,7 @@ function CreateForm({
                 >
                   <MaterialCommunityIcons name="image-plus-outline" size={21} color={colors.ink} />
                   <Text style={styles.mediaLabel}>
-                    {imageBusy ? '處理中…' : imageUri ? '更換圖片' : '新增圖片'}
+                    {imageBusy ? '處理中…' : `新增圖片（${photos.length}/5）`}
                   </Text>
                 </Pressable>
                 {!CORE_API_ENABLED ? (
@@ -431,7 +434,7 @@ function CreateForm({
           {CORE_API_ENABLED ? (
             <PostWritingAssistant
               content={content}
-              imageBase64={imageData?.base64}
+              imageBase64={photos[0]?.base64}
               context={JSON.stringify({
                 tags,
                 deadline,
@@ -659,14 +662,13 @@ const styles = StyleSheet.create({
   },
   content: { padding: spacing.lg, paddingBottom: 120 },
   mediaRow: { height: 84, flexDirection: 'row', gap: 10 },
-  thumbnail: { width: 84, height: 84, borderRadius: radius.md },
   removeMedia: {
     position: 'absolute',
-    top: 3,
-    right: 3,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: 8,
+    right: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#00000099',

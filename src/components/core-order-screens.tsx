@@ -28,7 +28,7 @@ import {
 import { MessageHostButton } from '@/components/message-host-button';
 import { PostInfo } from '@/components/post-location';
 import { CorePostActions } from '@/components/core-post-actions';
-import { CorePostImage } from '@/components/core-post-image';
+import { CorePostGallery } from '@/components/post-photo-carousel';
 import {
   CORE_SUPABASE_MODE,
   coreApi,
@@ -103,7 +103,7 @@ export function CorePostDetail({ id }: { id: string }) {
         </View>
         {post.my_status === 'host' && focus === 'requests' ? <HostManagement post={post} /> : null}
         <Text style={styles.body}>{post.content}</Text>
-        {post.image_id ? <CorePostImage imageId={post.image_id} /> : null}
+        <CorePostGallery post={post} />
         <View style={styles.tags}>
           {post.tags.map((tag) => (
             <Pressable

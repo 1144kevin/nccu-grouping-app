@@ -1,3 +1,4 @@
+import { PhotoCarousel } from '@/components/post-photo-carousel';
 import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -32,7 +33,7 @@ function DemoPostDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Pressable onPress={() => router.push(`/user/${encodeURIComponent(post.name)}`)} style={styles.author}><Avatar name={post.name} badge={post.badge} size={46} /><View style={styles.authorText}><Text style={styles.name}>{post.name}</Text><Text style={styles.level}>{post.badge} Lv.{post.level} · {post.time}</Text></View><MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} /></Pressable>
         <Text style={styles.body}>{post.content}</Text>
-        {post.imageUrl ? <Image source={post.imageUrl} contentFit="cover" style={styles.image} /> : null}
+        {post.photos?.length ? <PhotoCarousel photos={post.photos} /> : post.imageUrl ? <Image source={post.imageUrl} contentFit="contain" style={styles.image} /> : null}
         <View style={styles.tags}>{post.tags.map((tag) => <Pressable key={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })}><Text style={styles.tag}>#{tag}</Text></Pressable>)}</View>
         <PostInfo post={post} reminder={reminder} />
         <View style={styles.divider} />

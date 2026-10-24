@@ -37,6 +37,7 @@ export type CoreProfileInput = {
 };
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
+  images?: { id: string; width: number; height: number }[];
   semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {
     version: 'rules_v2';
@@ -304,6 +305,7 @@ const messages: Record<string, string> = {
     '圖片清理暫時失敗，帳號尚未完成刪除；重新登入同一帳號可繼續清理。',
   image_storage_not_configured: '圖片儲存尚未啟用，請先使用文字拼單或檢查本機設定。',
   image_too_large: '圖片過大，請選擇4MB以內的圖片；上傳後會壓縮成JPEG。',
+  too_many_post_images: '每篇貼文最多 5 張照片，請重新選擇。',
   image_dimensions_too_large: '圖片解析度過高，請先選擇較小或裁切後的圖片（最多1600萬像素）。',
   image_format_not_supported: '請選擇一般JPEG或PNG靜態圖片，暫不支援動畫或其他格式。',
   invalid_image_input: '無法讀取這張圖片，請重新選擇JPEG或PNG圖片。',

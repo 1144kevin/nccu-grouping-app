@@ -232,6 +232,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       joined: 1,
       capacity,
       imageUrl: input.imageUrl,
+      photos: input.photos,
       isMine: true,
     };
     set((state) => ({

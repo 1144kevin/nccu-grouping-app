@@ -19,11 +19,11 @@ export const mediaApi = {
         { headers: { 'Idempotency-Key': key }, timeout: 60_000 },
       )
     ).data,
-  publish: async (value: CorePostInput, image_id: string, key: string) =>
+  publish: async (value: CorePostInput, image_id: string | string[], key: string) =>
     (
       await api.post<CorePost>(
         '/uploads/publish',
-        { value, image_id },
+        { value, ...(Array.isArray(image_id) ? { image_ids: image_id } : { image_id }) },
         { headers: { 'Idempotency-Key': key } },
       )
     ).data,
