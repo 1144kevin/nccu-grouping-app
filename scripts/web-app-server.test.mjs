@@ -52,9 +52,9 @@ after(async () => {
   await Promise.all([new Promise((r) => gateway.close(r)), new Promise((r) => api.close(r))]);
   rmSync(root, { recursive: true, force: true });
 });
-function call(path, { method = 'GET', headers = {}, body } = {}) {
+function call(path, { method = 'GET', headers = {}, body, targetPort = port } = {}) {
   return new Promise((resolve, reject) => {
-    const req = request({ host: '127.0.0.1', port, path, method, headers }, (res) => {
+    const req = request({ host: '127.0.0.1', port: targetPort, path, method, headers }, (res) => {
       const chunks = [];
       res.on('data', (c) => chunks.push(c));
       res.on('end', () =>
@@ -70,6 +70,41 @@ function call(path, { method = 'GET', headers = {}, body } = {}) {
     req.end();
   });
 }
+
+test('a configured custom domain accepts only its exact HTTPS host and origin', async () => {
+  const custom = createWebAppServer({
+    root,
+    backendPort: api.address().port,
+    publicOrigin: 'https://nccugrouping.com',
+  });
+  await new Promise((resolve) => custom.listen(0, '127.0.0.1', resolve));
+  try {
+    const targetPort = custom.address().port;
+    const headers = {
+      ...publicHeaders,
+      host: 'nccugrouping.com',
+      origin: 'https://nccugrouping.com',
+    };
+    assert.equal((await call('/', { headers, targetPort })).status, 200);
+    assert.equal(
+      (await call('/', { headers: { ...headers, host: 'app.nccugrouping.com' }, targetPort }))
+        .status,
+      403,
+    );
+    assert.equal(
+      (await call('/', { headers: { ...headers, origin: 'https://elsewhere.com' }, targetPort }))
+        .status,
+      403,
+    );
+    assert.equal(
+      (await call('/', { headers: { ...headers, 'x-forwarded-proto': 'http' }, targetPort }))
+        .status,
+      403,
+    );
+  } finally {
+    await new Promise((resolve) => custom.close(resolve));
+  }
+});
 test('serves the app on deep links and refresh, and serves manifest metadata', async () => {
   const page = await call('/direct-chat/example', { headers: publicHeaders });
   assert.equal(page.status, 200);

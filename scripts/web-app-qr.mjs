@@ -3,6 +3,7 @@ import { Buffer } from 'node:buffer';
 import { resolve } from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { toQR } from 'toqr';
+import { webAppOrigin } from './web-app-origin.mjs';
 
 // PNG encoding uses only Node's standard library; the QR matrix is supplied by
 // the same encoder already used by Expo CLI. No remote QR service receives URLs.
@@ -23,18 +24,7 @@ function chunk(type, data) {
   return Buffer.concat([size, body, crc]);
 }
 export function writeWebAppQr(url, directory) {
-  const parsed = new URL(url);
-  if (
-    parsed.protocol !== 'https:' ||
-    !/^[a-z0-9-]+\.trycloudflare\.com$/.test(parsed.hostname) ||
-    parsed.pathname !== '/' ||
-    parsed.username ||
-    parsed.password ||
-    parsed.port ||
-    parsed.search ||
-    parsed.hash
-  )
-    throw new Error('Expected the generated HTTPS Web App URL.');
+  const parsed = new URL(webAppOrigin(url));
   const matrix = toQR(parsed.origin);
   const modules = Math.sqrt(matrix.length);
   const scale = 10,

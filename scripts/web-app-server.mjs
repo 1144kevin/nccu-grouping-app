@@ -3,6 +3,7 @@ import { createServer, request as httpRequest } from 'node:http';
 import { Buffer } from 'node:buffer';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { loadSharePreview, sharePreviewHTML } from './post-share-preview.mjs';
+import { webAppOrigin } from './web-app-origin.mjs';
 
 const MAX_BODY = 6 * 1024 * 1024;
 const mime = {
@@ -47,18 +48,7 @@ export function createWebAppServer({
         }
       })();
     if (!value) return null;
-    const url = new URL(value);
-    if (
-      url.protocol !== 'https:' ||
-      url.username ||
-      url.password ||
-      url.pathname !== '/' ||
-      url.search ||
-      url.hash ||
-      !/^[a-z0-9-]+\.trycloudflare\.com$/.test(url.hostname)
-    )
-      throw new Error('Only an exact generated HTTPS share origin is supported.');
-    return url.origin;
+    return webAppOrigin(value);
   }
   function allowed(key, limit) {
     const now = Date.now();
