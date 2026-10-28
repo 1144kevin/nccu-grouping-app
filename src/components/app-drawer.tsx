@@ -1,4 +1,5 @@
 import { BrandLogo } from '@/components/brand-logo';
+import { InlineLoading } from '@/components/inline-loading';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar } from '@/components/primitives';
 import { selectUnreadNotificationCount, useAppStore } from '@/store/app-store';
@@ -102,7 +103,8 @@ export function AppDrawer() {
                 </Text>
               ) : null}
               <DrawerItem
-                label={busy ? '登出中…' : '登出帳號'}
+                label={busy ? '登出中' : '登出帳號'}
+                loading={busy}
                 icon="logout"
                 disabled={busy}
                 onPress={() => {
@@ -125,11 +127,13 @@ function DrawerItem({
   badge,
   onPress,
   disabled,
+  loading = false,
 }: {
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   badge?: number;
   disabled?: boolean;
+  loading?: boolean;
   onPress: () => void;
 }) {
   return (
@@ -137,10 +141,17 @@ function DrawerItem({
       accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
+      accessibilityState={{ busy: loading }}
       style={({ pressed }) => [styles.item, pressed && styles.pressed]}
     >
-      <MaterialCommunityIcons name={icon} size={20} color={colors.ink} />
-      <Text style={styles.itemText}>{label}</Text>
+      {loading ? (
+        <InlineLoading label={label} textStyle={styles.itemText} />
+      ) : (
+        <>
+          <MaterialCommunityIcons name={icon} size={20} color={colors.ink} />
+          <Text style={styles.itemText}>{label}</Text>
+        </>
+      )}
       {badge ? (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>{badge}</Text>

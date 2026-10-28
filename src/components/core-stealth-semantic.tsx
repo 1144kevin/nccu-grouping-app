@@ -101,7 +101,7 @@ function StealthSemanticSession({
             discovery.mutate();
           }}
         >
-          {discovery.isPending ? '正在建立需求向量並搜尋…' : 'AI 搜尋新配對機會'}
+          {discovery.isPending ? '正在建立需求向量並搜尋' : 'AI 搜尋新配對機會'}
         </PrimaryButton>
         <Text style={styles.hint}>
           用你已儲存的有效需求搜尋新候選。對方也須建立需求向量；封鎖、預算與時間等限制照常檢查，不會自動成團。
@@ -129,7 +129,7 @@ function StealthSemanticSession({
             request.mutate({ actor, generation: generation.current });
           }}
         >
-          {request.isPending ? '分身正在排序與判讀…' : 'AI 語義排序與判讀'}
+          {request.isPending ? '分身正在排序與判讀' : 'AI 語義排序與判讀'}
         </PrimaryButton>
         {!eligible ? (
           <Text style={styles.hint}>先建立需求並找到有效配對，再請分身分析。</Text>

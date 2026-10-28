@@ -197,8 +197,12 @@ export function PreferencesForm({
           </PrimaryButton>
         </>
       )}
-      <PrimaryButton disabled={save.isPending} onPress={() => save.mutate()}>
-        {save.isPending ? '儲存中…' : '儲存帳號偏好'}
+      <PrimaryButton
+        disabled={save.isPending}
+        onPress={() => save.mutate()}
+        loading={save.isPending}
+      >
+        {save.isPending ? '儲存中' : '儲存帳號偏好'}
       </PrimaryButton>
       {save.error ? (
         <Text accessibilityRole="alert" style={styles.error}>

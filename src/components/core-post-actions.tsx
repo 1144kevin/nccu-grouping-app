@@ -45,8 +45,9 @@ export function CorePostActions({ post, onManage }: { post: CorePost; onManage?:
               : router.push(`/order/${post.id}`)
             : mutation.mutate()
         }
+        loading={mutation.isPending}
       >
-        {mutation.isPending ? '處理中…' : label}
+        {mutation.isPending ? '處理中' : label}
       </PrimaryButton>
       {mutation.error ? (
         <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13 }}>

@@ -49,7 +49,11 @@ export function CoreEditPostScreen({ id }: { id: string }) {
     return (
       <Screen>
         <DetailHeader title="編輯拼單" />
-        <Text>{clock.isPending ? '正在取得截止時間基準…' : coreError(clock.error)}</Text>
+        {clock.isPending ? (
+          <PageLoading accessibilityLabel="正在取得截止時間基準" />
+        ) : (
+          <Text>{coreError(clock.error)}</Text>
+        )}
         <PrimaryButton
           secondary
           onPress={() => {
@@ -237,8 +241,12 @@ function PostForm({
             {coreError(mutation.error ?? reload.error)}
           </Text>
         ) : null}
-        <PrimaryButton disabled={busy || !allowed || !valid} onPress={() => mutation.mutate()}>
-          {busy ? '處理中…' : '儲存拼單變更'}
+        <PrimaryButton
+          disabled={busy || !allowed || !valid}
+          onPress={() => mutation.mutate()}
+          loading={busy}
+        >
+          {busy ? '處理中' : '儲存拼單變更'}
         </PrimaryButton>
         <PrimaryButton secondary disabled={busy} onPress={() => reload.mutate()}>
           重新載入已儲存內容

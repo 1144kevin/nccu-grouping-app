@@ -178,7 +178,7 @@ function SemanticFeedSession({
                   void run();
                 }}
               >
-                {busy ? 'AI 正在比較貼文…' : '用 AI 找相關拼單'}
+                {busy ? 'AI 正在比較貼文' : '用 AI 找相關拼單'}
               </PrimaryButton>
             </>
           ) : null}
@@ -214,12 +214,13 @@ function SemanticFeedSession({
       }
       ListEmptyComponent={
         <EmptyState
+          loading={busy || validation.isFetching}
           icon="text-box-search-outline"
           title={
             busy
-              ? '正在尋找相關拼單…'
+              ? '正在尋找相關拼單'
               : validation.isFetching
-                ? '更新結果中…'
+                ? '更新結果中'
                 : result
                   ? '目前沒有可加入的相關拼單'
                   : '今天想找什麼？'

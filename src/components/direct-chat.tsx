@@ -1,4 +1,5 @@
 import { PageLoading } from '@/components/page-loading';
+import { InlineLoading } from '@/components/inline-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useEffect, useRef, useState } from 'react';
@@ -169,9 +170,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                   )}
                 </View>
                 {item.delivery ? (
-                  <Text style={styles.time}>
-                    {item.delivery === 'sending' ? '傳送中…' : '尚未送出，請重試'}
-                  </Text>
+                  item.delivery === 'sending' ? (
+                    <InlineLoading label="傳送中" textStyle={styles.time} />
+                  ) : (
+                    <Text style={styles.time}>尚未送出，請重試</Text>
+                  )
                 ) : null}
                 <Text style={styles.time}>
                   {new Date(item.created_at).toLocaleTimeString('zh-TW', {
@@ -213,8 +216,12 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               onChangeText={setText}
               style={styles.input}
             />
-            <PrimaryButton disabled={!text.trim() || send.isPending} onPress={() => send.mutate()}>
-              {send.isPending ? '傳送中…' : '傳送'}
+            <PrimaryButton
+              disabled={!text.trim() || send.isPending}
+              onPress={() => send.mutate()}
+              loading={send.isPending}
+            >
+              {send.isPending ? '傳送中' : '傳送'}
             </PrimaryButton>
           </ChatComposer>
         ) : null}

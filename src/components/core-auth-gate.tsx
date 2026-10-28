@@ -137,8 +137,9 @@ function LoginForm() {
             onPress={() => {
               void googleLogin();
             }}
+            loading={googleBusy}
           >
-            {googleBusy ? '正在前往 Google…' : '使用 Google 帳號登入'}
+            {googleBusy ? '正在前往 Google' : '使用 Google 帳號登入'}
           </PrimaryButton>
           <Text style={styles.hint}>首次使用會為你建立帳號。</Text>
           {googleError ? (
@@ -193,9 +194,10 @@ function LoginForm() {
         onPress={() => {
           void submit();
         }}
+        loading={busy}
       >
         {busy
-          ? '處理中…'
+          ? '處理中'
           : mode === 'login'
             ? '登入'
             : CORE_SUPABASE_MODE

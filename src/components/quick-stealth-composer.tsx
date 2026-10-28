@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { InlineLoading } from '@/components/inline-loading';
 import { AppState, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -345,7 +346,7 @@ export function QuickStealthComposer({
       {phase === 'listening' ? (
         <>
           <Text accessibilityLiveRegion="polite" style={styles.body}>
-            正在聆聽，每次最多 60 秒…
+            正在聆聽，每次最多 60 秒
           </Text>
           <PrimaryButton
             onPress={() => {
@@ -371,17 +372,20 @@ export function QuickStealthComposer({
         </PrimaryButton>
       )}
       {busy ? (
-        <Text accessibilityLiveRegion="polite" style={styles.hint}>
-          {phase === 'starting'
-            ? '正在取得語音權限…'
-            : phase === 'interview'
-              ? '分身正在整理補充…'
-              : phase === 'saving'
-                ? '分身正在理解並找人…'
-                : phase === 'finishing'
-                  ? '正在整理語音文字…'
-                  : ''}
-        </Text>
+        <InlineLoading
+          textStyle={styles.hint}
+          label={
+            phase === 'starting'
+              ? '正在取得語音權限'
+              : phase === 'interview'
+                ? '分身正在整理補充'
+                : phase === 'saving'
+                  ? '分身正在理解並找人'
+                  : phase === 'finishing'
+                    ? '正在整理語音文字'
+                    : '正在聆聽'
+          }
+        />
       ) : null}
       {phase === 'starting' || phase === 'finishing' ? (
         <PrimaryButton secondary onPress={cancel}>

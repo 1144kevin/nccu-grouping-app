@@ -343,7 +343,7 @@ export function AdvancedStealthScreen({ onQuick }: { onQuick?: () => void } = {}
               disabled={run.isPending || !agentReady || !focused}
               onPress={() => run.mutate()}
             >
-              {run.isPending ? '分身尋找中…' : '讓分身找機會'}
+              {run.isPending ? '分身尋找中' : '讓分身找機會'}
             </PrimaryButton>
             <ErrorText error={run.error ?? matches.error} />
             {run.data ? (
@@ -558,8 +558,12 @@ export function AgentForm({
       <Text style={styles.hint}>
         開啟分身不代表加入拼單；配對後仍需全員確認費用與分工才會成團。暫停或變更探索範圍會使尚未成團的舊配對失效。
       </Text>
-      <PrimaryButton disabled={!valid || save.isPending} onPress={() => save.mutate()}>
-        {save.isPending ? '儲存中…' : '儲存我的分身'}
+      <PrimaryButton
+        disabled={!valid || save.isPending}
+        onPress={() => save.mutate()}
+        loading={save.isPending}
+      >
+        {save.isPending ? '儲存中' : '儲存我的分身'}
       </PrimaryButton>
       <ErrorText error={save.error} />
       {save.data ? (
@@ -807,7 +811,7 @@ export function SignalEditor({
           disabled={!form.title.trim() || busy}
           onPress={() => save.mutate()}
         >
-          {save.isPending ? '儲存並尋找中…' : '確認需求並交給分身'}
+          {save.isPending ? '儲存並尋找中' : '確認需求並交給分身'}
         </PrimaryButton>
       )}
       <ErrorText error={save.error} />

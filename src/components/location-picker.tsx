@@ -269,8 +269,9 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
           onPress={() => {
             void search();
           }}
+          loading={searching}
         >
-          {searching ? '搜尋中…' : '搜尋地點'}
+          {searching ? '搜尋中' : '搜尋地點'}
         </PrimaryButton>
         <PrimaryButton
           style={styles.toolButton}
@@ -279,8 +280,9 @@ function PickerSession({ value, onChange, disabled = false, actor }: Props & { a
           onPress={() => {
             void locate();
           }}
+          loading={loading}
         >
-          {loading ? '定位中…' : '使用目前位置'}
+          {loading ? '定位中' : '使用目前位置'}
         </PrimaryButton>
         <PrimaryButton
           style={styles.toolButton}

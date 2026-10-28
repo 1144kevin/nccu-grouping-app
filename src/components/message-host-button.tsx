@@ -34,8 +34,13 @@ export function MessageHostButton({
           }}
         />
       ) : (
-        <PrimaryButton secondary disabled={start.isPending} onPress={() => start.mutate()}>
-          {start.isPending ? '開啟中…' : '私訊主揪'}
+        <PrimaryButton
+          secondary
+          disabled={start.isPending}
+          onPress={() => start.mutate()}
+          loading={start.isPending}
+        >
+          {start.isPending ? '開啟中' : '私訊主揪'}
         </PrimaryButton>
       )}
       {start.error ? (

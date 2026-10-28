@@ -149,11 +149,17 @@ function Inbox() {
             {query.hasNextPage ? (
               <Pressable
                 accessibilityRole="button"
+                disabled={query.isFetchingNextPage}
+                accessibilityState={{ busy: query.isFetchingNextPage }}
                 onPress={() => {
                   void query.fetchNextPage();
                 }}
               >
-                <Text style={styles.end}>{query.isFetchingNextPage ? '載入中…' : '載入更多'}</Text>
+                {query.isFetchingNextPage ? (
+                  <PageLoading accessibilityLabel="正在載入更多聊天室" />
+                ) : (
+                  <Text style={styles.end}>載入更多</Text>
+                )}
               </Pressable>
             ) : items.length ? (
               <Text style={styles.end}>已經到底了喔！</Text>

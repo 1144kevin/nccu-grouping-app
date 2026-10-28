@@ -11,7 +11,14 @@ export function PageLoading(props: ActivityIndicatorProps) {
         justifyContent: 'center',
       }}
     >
-      <ActivityIndicator {...props} color={colors.muted} />
+      <ActivityIndicator
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityState={{ busy: true }}
+        accessibilityLabel="載入中"
+        {...props}
+        color={colors.muted}
+      />
     </View>
   );
 }

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { InlineLoading } from '@/components/inline-loading';
 import { AppState, Keyboard, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
@@ -154,12 +155,15 @@ export function AppleStealthIntake({
         對話在這支 iPhone 上由 Apple AI
         整理，不送到後端或存入資料庫。這版先提供摘要與補問，可能不準確；金額、時間與角色請在下方手動核對填寫。
       </Text>
-      <Text style={styles.hint}>
-        {availability === 'checking' ? '正在檢查 Apple AI…' : appleIntakeMessage(availability)}
-      </Text>
+      {availability === 'checking' ? (
+        <InlineLoading label="正在檢查 Apple AI" textStyle={styles.hint} />
+      ) : (
+        <Text style={styles.hint}>{appleIntakeMessage(availability)}</Text>
+      )}
       {availability !== 'available' ? (
         <PrimaryButton
           secondary
+          loading={availability === 'checking'}
           disabled={disabled || busy || availability === 'checking'}
           onPress={() => {
             setAvailability('checking');
@@ -294,7 +298,7 @@ export function AppleStealthIntake({
         }}
       >
         {busy
-          ? 'Apple 分身整理中…'
+          ? 'Apple 分身整理中'
           : editingLast
             ? '更新上一輪並整理'
             : turns.length

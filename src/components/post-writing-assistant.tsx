@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { InlineLoading } from '@/components/inline-loading';
 import { useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -314,7 +315,7 @@ function WritingSession({
         <Text accessibilityLiveRegion="polite">
           {progress?.status === 'queued'
             ? `AI 排隊中，目前第 ${progress.queue_position} 位。多人使用時會依序處理。`
-            : '正在辨識資訊並整理文案…多人使用時可能需要稍候。'}
+            : '正在辨識資訊並整理文案。多人使用時可能需要稍候。'}
         </Text>
       ) : null}
       {error && !voiceOpen ? (
@@ -340,13 +341,14 @@ function WritingSession({
           keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.title}>語音潤稿</Text>
+          {starting ? <InlineLoading label="正在取得語音權限" textStyle={styles.hint} /> : null}
           <Text style={styles.body}>
             {starting
-              ? '正在取得麥克風與語音辨識權限…'
+              ? '正在取得麥克風與語音辨識權限'
               : listening
                 ? '正在聆聽，說說想拼什麼、優惠或取餐需求。'
                 : busy
-                  ? '正在將口述內容整理成文案…'
+                  ? '正在將口述內容整理成文案'
                   : '可編輯辨識文字後再潤稿，或重新說一次。'}
           </Text>
           <Text style={styles.hint}>
@@ -381,8 +383,8 @@ function WritingSession({
           {busy ? (
             <PrimaryButton loading>
               {progress?.status === 'queued'
-                ? `AI 排隊中，第 ${progress.queue_position} 位…`
-                : '正在整理口述文案…'}
+                ? `AI 排隊中，第 ${progress.queue_position} 位`
+                : '正在整理口述文案'}
             </PrimaryButton>
           ) : null}
           {!locked ? (

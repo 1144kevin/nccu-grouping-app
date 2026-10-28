@@ -1,5 +1,6 @@
 import { AppText as Text } from '@/components/app-text';
 import { BrandLogo } from '@/components/brand-logo';
+import { PageLoading } from '@/components/page-loading';
 import { useNavigationStore } from '@/store/navigation-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -182,7 +183,9 @@ export function PrimaryButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={
+        accessibilityLabel ?? (typeof children === 'string' ? children : undefined)
+      }
       accessibilityState={{ busy: loading, disabled: disabled || loading }}
       disabled={disabled || loading}
       onPress={onPress}
@@ -199,9 +202,12 @@ export function PrimaryButton({
       >
         {loading ? (
           <ActivityIndicator
+            accessible
             size="small"
-            color={textColor ?? colors.ink}
-            accessibilityLabel="AI 正在產出"
+            color={textColor ?? colors.muted}
+            accessibilityLabel="正在處理"
+            accessibilityRole="progressbar"
+            accessibilityState={{ busy: true }}
           />
         ) : null}
         <Text style={[styles.primaryButtonText, textColor ? { color: textColor } : undefined]}>
@@ -225,11 +231,14 @@ export function EmptyState({
   icon,
   title,
   action,
+  loading = false,
 }: {
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
   title: string;
   action?: ReactNode;
+  loading?: boolean;
 }) {
+  if (loading) return <PageLoading accessibilityLabel={title} />;
   return (
     <View style={styles.empty}>
       <MaterialCommunityIcons name={icon} size={38} color={colors.subtle} />

@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { InlineLoading } from '@/components/inline-loading';
 import { useState } from 'react';
 import type { ComponentProps, PropsWithChildren } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -144,9 +145,11 @@ export function PostInfo({
               onPress={() => void requestLocation()}
               style={styles.locate}
             >
-              <Text style={styles.locateText}>
-                {loading ? '定位中…' : coordinates ? '更新距離' : '查看距離'}
-              </Text>
+              {loading ? (
+                <InlineLoading label="定位中" textStyle={styles.locateText} />
+              ) : (
+                <Text style={styles.locateText}>{coordinates ? '更新距離' : '查看距離'}</Text>
+              )}
             </Pressable>
             {location.source === 'openstreetmap' ? (
               <Text

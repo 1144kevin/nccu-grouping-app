@@ -1,4 +1,5 @@
 import { PageLoading } from '@/components/page-loading';
+import { InlineLoading } from '@/components/inline-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useEffect, useRef, useState } from 'react';
@@ -207,9 +208,11 @@ function GroupChat({ id }: { id: string }) {
                     )}
                   </View>
                   {item.delivery ? (
-                    <Text style={styles.muted}>
-                      {item.delivery === 'sending' ? '傳送中…' : '尚未送出，請重試'}
-                    </Text>
+                    item.delivery === 'sending' ? (
+                      <InlineLoading label="傳送中" textStyle={styles.muted} />
+                    ) : (
+                      <Text style={styles.muted}>尚未送出，請重試</Text>
+                    )
                   ) : null}
                   <Text style={styles.muted}>
                     {new Date(item.created_at).toLocaleString('zh-TW')}
@@ -261,8 +264,12 @@ function GroupChat({ id }: { id: string }) {
                   editable={!mutation.isPending}
                   style={styles.input}
                 />
-                <PrimaryButton disabled={!text.trim() || mutation.isPending} onPress={send}>
-                  {mutation.isPending ? '傳送中…' : '傳送'}
+                <PrimaryButton
+                  disabled={!text.trim() || mutation.isPending}
+                  onPress={send}
+                  loading={mutation.isPending}
+                >
+                  {mutation.isPending ? '傳送中' : '傳送'}
                 </PrimaryButton>
               </ChatComposer>
             ) : (

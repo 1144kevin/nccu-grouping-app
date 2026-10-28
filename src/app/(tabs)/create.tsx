@@ -1,4 +1,6 @@
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { InlineLoading } from '@/components/inline-loading';
+import { PageLoading } from '@/components/page-loading';
 import { useRef, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,7 +82,11 @@ function ClockReadyCreate() {
     return (
       <Screen>
         <View style={{ padding: spacing.lg, gap: spacing.md }}>
-          <Text>{clock.isPending ? '正在取得截止時間基準…' : coreError(clock.error)}</Text>
+          {clock.isPending ? (
+            <PageLoading accessibilityLabel="正在取得截止時間基準" />
+          ) : (
+            <Text>{coreError(clock.error)}</Text>
+          )}
           <PrimaryButton
             secondary
             disabled={clock.isFetching}
@@ -347,7 +353,11 @@ function CreateForm({
               styles.publishDisabled,
           ]}
         >
-          <Text style={styles.publishText}>{isSubmitting ? '發布中…' : '發布'}</Text>
+          {isSubmitting ? (
+            <InlineLoading label="發布中" textStyle={styles.publishText} />
+          ) : (
+            <Text style={styles.publishText}>發布</Text>
+          )}
         </Pressable>
       </View>
       <View style={{ flex: 1 }}>
@@ -404,10 +414,18 @@ function CreateForm({
                   }}
                   style={styles.mediaButton}
                 >
-                  <MaterialCommunityIcons name="image-plus-outline" size={21} color={colors.ink} />
-                  <Text style={styles.mediaLabel}>
-                    {imageBusy ? '處理中…' : `新增圖片\n(${photos.length}/5)`}
-                  </Text>
+                  {imageBusy ? (
+                    <InlineLoading label="處理中" textStyle={styles.mediaLabel} />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons
+                        name="image-plus-outline"
+                        size={21}
+                        color={colors.ink}
+                      />
+                      <Text style={styles.mediaLabel}>{`新增圖片\n(${photos.length}/5)`}</Text>
+                    </>
+                  )}
                 </Pressable>
                 {!CORE_API_ENABLED ? (
                   <Pressable

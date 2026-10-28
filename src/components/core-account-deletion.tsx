@@ -109,7 +109,11 @@ function AccountDeletionForm({ focused }: { focused: boolean }) {
       ) : null}
       {preview || deleting ? (
         <>
-          <Text>{deleting ? '請手動輸入大寫 DELETE，確認繼續清理。' : '請手動輸入大寫 DELETE，再按最後確認。預覽確認碼10分鐘內有效。'}</Text>
+          <Text>
+            {deleting
+              ? '請手動輸入大寫 DELETE，確認繼續清理。'
+              : '請手動輸入大寫 DELETE，再按最後確認。預覽確認碼10分鐘內有效。'}
+          </Text>
           <TextInput
             accessibilityLabel="輸入 DELETE 確認刪除帳號"
             value={text}
@@ -122,9 +126,10 @@ function AccountDeletionForm({ focused }: { focused: boolean }) {
           <PrimaryButton
             disabled={text !== 'DELETE' || !status.data?.recent_auth || remove.isPending}
             onPress={() => remove.mutate()}
+            loading={remove.isPending}
           >
             {remove.isPending
-              ? '正在清除，請勿關閉…'
+              ? '正在清除，請勿關閉'
               : deleting
                 ? '繼續刪除我的帳號'
                 : '永久刪除我的 App 帳號'}

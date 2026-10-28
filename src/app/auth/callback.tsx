@@ -58,7 +58,7 @@ export default function GoogleCallbackScreen() {
         ) : (
           <>
             <PageLoading accessibilityLabel="正在確認 Google 登入" />
-            <Text>正在確認身分，請稍候…</Text>
+            <Text>正在確認身分，請稍候</Text>
           </>
         )}
       </View>

@@ -62,8 +62,9 @@ function LocalPostSearch({ initialQuery = '' }: { initialQuery?: string }) {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <EmptyState
+            loading={result.isPending}
             icon="magnify-close"
-            title={result.isPending ? '搜尋中…' : result.error ? '搜尋失敗' : '沒有符合的拼單'}
+            title={result.isPending ? '搜尋中' : result.error ? '搜尋失敗' : '沒有符合的拼單'}
             action={
               result.error ? (
                 <PrimaryButton

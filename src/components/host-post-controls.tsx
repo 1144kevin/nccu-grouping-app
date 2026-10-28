@@ -25,8 +25,12 @@ export function HostPostControls({ post }: { post: CorePost }) {
       {!closed && confirm ? (
         <View style={{ gap: 12 }}>
           <Text>確定取消整筆拼單？取消後不能再加入或接受申請。</Text>
-          <PrimaryButton disabled={cancel.isPending} onPress={() => cancel.mutate()}>
-            {cancel.isPending ? '取消中…' : '確認取消拼單'}
+          <PrimaryButton
+            disabled={cancel.isPending}
+            onPress={() => cancel.mutate()}
+            loading={cancel.isPending}
+          >
+            {cancel.isPending ? '取消中' : '確認取消拼單'}
           </PrimaryButton>
           <PrimaryButton secondary disabled={cancel.isPending} onPress={() => setConfirm(false)}>
             繼續保留

@@ -76,10 +76,11 @@ function CoreHomeScreen() {
           }
           ListEmptyComponent={
             <EmptyState
+              loading={query.isPending}
               icon="text-box-search-outline"
               title={
                 query.isPending
-                  ? '載入拼單中…'
+                  ? '載入拼單中'
                   : query.error
                     ? '無法取得拼單，請下拉重試'
                     : '目前沒有拼單，建立第一筆吧'

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { InlineLoading } from '@/components/inline-loading';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlatList, StyleSheet, View } from 'react-native';
@@ -43,7 +44,18 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   const [formal, setFormal] = useState(false);
   const replyContext = JSON.stringify({
     messages: query.data?.items.slice(-20).map((m) => m.id),
-    match: match && [match.id, match.status, match.category, match.location_id, match.my_signal_title, match.terms_revision, match.my_roles, match.unknowns, match.known_cost_twd, match.budget_max_twd],
+    match: match && [
+      match.id,
+      match.status,
+      match.category,
+      match.location_id,
+      match.my_signal_title,
+      match.terms_revision,
+      match.my_roles,
+      match.unknowns,
+      match.known_cost_twd,
+      match.budget_max_twd,
+    ],
   });
   const frozen = useRef<{ text: string; key: string } | null>(null);
   const refresh = async () => {
@@ -140,9 +152,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                   <Text style={styles.body}>{item.content}</Text>
                 )}
                 {item.delivery ? (
-                  <Text style={styles.hint}>
-                    {item.delivery === 'sending' ? '傳送中…' : '尚未送出，請重試'}
-                  </Text>
+                  item.delivery === 'sending' ? (
+                    <InlineLoading label="傳送中" textStyle={styles.hint} />
+                  ) : (
+                    <Text style={styles.hint}>尚未送出，請重試</Text>
+                  )
                 ) : null}
               </View>
             )}
@@ -153,10 +167,17 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             {formal ? '回到聊天' : '談好了，確認正式拼單'}
           </PrimaryButton>
         ) : null}
-        {!formal && actor && match && query.data?.opened && query.data.can_send && !query.error ? <StealthReplySuggestions
-          key={replyContext} id={id} actor={actor} contextKey={replyContext}
-          enabled={focused} disabled={send.isPending} onSelect={setText}
-        /> : null}
+        {!formal && actor && match && query.data?.opened && query.data.can_send && !query.error ? (
+          <StealthReplySuggestions
+            key={replyContext}
+            id={id}
+            actor={actor}
+            contextKey={replyContext}
+            enabled={focused}
+            disabled={send.isPending}
+            onSelect={setText}
+          />
+        ) : null}
         {!formal ? (
           <ChatComposer
             kind="stealth"
@@ -185,8 +206,9 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             <PrimaryButton
               disabled={!focused || !query.data?.can_send || send.isPending || !text.trim()}
               onPress={() => send.mutate()}
+              loading={send.isPending}
             >
-              {send.isPending ? '送出中…' : '傳送'}
+              {send.isPending ? '送出中' : '傳送'}
             </PrimaryButton>
           </ChatComposer>
         ) : null}

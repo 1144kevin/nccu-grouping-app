@@ -113,8 +113,9 @@ export function ReportComposer({
           <PrimaryButton
             disabled={detail.trim().length < 10 || send.isPending}
             onPress={() => send.mutate()}
+            loading={send.isPending}
           >
-            {send.isPending ? '儲存中…' : '確認送出回報'}
+            {send.isPending ? '儲存中' : '確認送出回報'}
           </PrimaryButton>
           {send.error ? (
             <Text accessibilityRole="alert" style={styles.error}>

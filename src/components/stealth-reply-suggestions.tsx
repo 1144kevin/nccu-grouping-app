@@ -55,14 +55,14 @@ export function StealthReplySuggestions({
           style={styles.refresh}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {query.isFetching ? (
+            {!settled || query.isFetching ? (
               <ActivityIndicator
                 size="small"
-                color={colors.brown}
+                color={colors.muted}
                 accessibilityLabel="AI 正在產出回覆建議"
               />
             ) : null}
-            <Text style={styles.link}>{query.isFetching ? '產生中…' : '換一批'}</Text>
+            <Text style={styles.link}>{query.isFetching ? '產生中' : '換一批'}</Text>
           </View>
         </Pressable>
       </View>
@@ -91,7 +91,7 @@ export function StealthReplySuggestions({
         <Text accessibilityRole={query.error ? 'alert' : undefined} style={styles.hint}>
           {query.error
             ? '建議暫時無法更新，請換一批重試；仍可自行輸入訊息。'
-            : '正在整理最新對話的回覆建議…'}
+            : '正在整理最新對話的回覆建議'}
         </Text>
       )}
       {query.data && !query.data.is_llm ? (

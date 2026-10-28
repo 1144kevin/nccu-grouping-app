@@ -173,8 +173,12 @@ function ComposerSession({
                 {coreError(send.error)} 照片已保留，可重試。
               </Text>
             ) : null}
-            <PrimaryButton disabled={disabled || send.isPending} onPress={() => send.mutate()}>
-              {send.isPending ? '傳送中…' : '傳送照片'}
+            <PrimaryButton
+              disabled={disabled || send.isPending}
+              onPress={() => send.mutate()}
+              loading={send.isPending}
+            >
+              {send.isPending ? '傳送中' : '傳送照片'}
             </PrimaryButton>
             <PrimaryButton
               secondary
@@ -228,8 +232,9 @@ export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: s
           onPress={() => {
             void photo.refetch();
           }}
+          loading={photo.isFetching}
         >
-          {photo.isFetching ? '照片載入中…' : '重試照片'}
+          {photo.isFetching ? '照片載入中' : '重試照片'}
         </PrimaryButton>
       )}
       <Modal visible={expanded} transparent onRequestClose={() => setExpanded(false)}>

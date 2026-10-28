@@ -181,7 +181,7 @@ function LegacyStealthIntake({
         onPress={() => query.mutate([...turns, text.trim()])}
       >
         {query.isPending
-          ? '本機分身理解中，初次可能較久…'
+          ? '本機分身理解中，初次可能較久'
           : turns.length
             ? '補充並重新整理'
             : '讓本機分身理解'}

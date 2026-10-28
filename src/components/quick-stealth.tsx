@@ -198,7 +198,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             disabled={busy || !capability.data?.ready}
             onPress={() => retry.mutate()}
           >
-            {retry.isPending ? '分身再看看…' : '請分身再看看'}
+            {retry.isPending ? '分身再看看' : '請分身再看看'}
           </PrimaryButton>
         ) : null}
         {retry.error ? (
