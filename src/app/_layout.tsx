@@ -12,11 +12,13 @@ import { CORE_API_ENABLED } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { Screen } from '@/components/primitives';
 import { PostLoginReturn } from '@/components/post-login-return';
+import { WebInputNavigation } from '@/components/web-input-navigation';
 
 export default function RootLayout() {
   const user = useAuthStore((state) => state.user);
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <WebInputNavigation />
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="dark" />

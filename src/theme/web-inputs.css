@@ -1,0 +1,17 @@
+/* Touch focus keeps the input's existing border; keyboard focus stays visible
+   in neutral gray. Do not disable text selection or browser zoom. */
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+input:focus,
+textarea:focus {
+  outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  html[data-input-navigation='keyboard'] input:focus,
+  html[data-input-navigation='keyboard'] textarea:focus {
+    outline: 2px solid #666;
+    outline-offset: 2px;
+  }
+}
