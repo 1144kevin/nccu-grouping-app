@@ -4,6 +4,7 @@ type Recognition = {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
+  onstart: (() => void) | null;
   onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
   onerror: ((event: { error: string }) => void) | null;
   onend: (() => void) | null;
@@ -31,6 +32,7 @@ export async function startPostSpeech(
   let limit: ReturnType<typeof setTimeout> | undefined;
   let finishing: ReturnType<typeof setTimeout> | undefined;
   let stopping = false;
+  let startup: ReturnType<typeof setTimeout> | undefined;
   const cancel = () => {
     cleanup();
     recognition.abort();
@@ -38,12 +40,15 @@ export async function startPostSpeech(
   const cleanup = () => {
     active = false;
     clearTimeout(limit);
+    clearTimeout(startup);
     clearTimeout(finishing);
     recognition.onresult = recognition.onerror = recognition.onend = null;
+    recognition.onstart = null;
     signal?.removeEventListener('abort', cancel);
   };
   recognition.onresult = (event) => {
     if (!active) return;
+    clearTimeout(startup);
     text = Array.from(event.results, (result) => result[0]?.transcript ?? '')
       .join('')
       .slice(0, 4000);
@@ -54,11 +59,18 @@ export async function startPostSpeech(
     if (!active) return;
     cleanup();
     recognition.abort();
-    callbacks.onError(
-      ['not-allowed', 'service-not-allowed'].includes(event.error)
-        ? 'post_speech_permission_denied'
-        : 'post_speech_failed',
-    );
+    const errors: Record<string, string> = {
+      'not-allowed': 'post_speech_permission_denied',
+      'service-not-allowed': 'post_speech_permission_denied',
+      'audio-capture': 'post_speech_microphone_unavailable',
+      'no-speech': 'post_speech_no_speech',
+      network: 'post_speech_network',
+      'language-not-supported': 'post_speech_language_unavailable',
+    };
+    callbacks.onError(errors[event.error] ?? 'post_speech_failed');
+  };
+  recognition.onstart = () => {
+    clearTimeout(startup);
   };
   recognition.onend = () => {
     if (!active) return;
@@ -78,6 +90,12 @@ export async function startPostSpeech(
     }, 5000);
   };
   try {
+    startup = setTimeout(() => {
+      if (!active) return;
+      cleanup();
+      recognition.abort();
+      callbacks.onError('post_speech_start_timeout');
+    }, 15_000);
     recognition.start();
     signal?.addEventListener('abort', cancel, { once: true });
     limit = setTimeout(() => {
@@ -85,6 +103,8 @@ export async function startPostSpeech(
     }, 60_000);
   } catch (error) {
     cleanup();
+    if (error instanceof Error && ['NotAllowedError', 'SecurityError'].includes(error.name))
+      throw new Error('post_speech_permission_denied');
     throw error;
   }
   return {

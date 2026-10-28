@@ -284,12 +284,17 @@ const messages: Record<string, string> = {
   post_image_invalid_output: '圖片辨識未完成，照片已保留，請重試。',
   local_model_vision_unavailable: '目前本機模型不支援圖片辨識，請啟用具備視覺能力的模型後重試。',
   post_speech_unavailable:
-    '此版本尚未支援語音辨識。iPhone 請安裝包含語音功能的新版 App；網頁請使用支援語音辨識的瀏覽器。',
+    '目前環境不支援語音辨識。網頁請用 Safari 或 Chrome 開啟；也可以點鍵盤上的麥克風輸入文字。',
   post_speech_permission_denied: '請在系統或瀏覽器設定允許麥克風與語音辨識，再重試。',
   post_speech_failed: '語音辨識未完成，已辨識的文字仍保留，可編輯後潤稿或重試。',
   post_speech_busy: '麥克風正在使用中，請結束其他錄音後重試。',
   post_speech_interrupted: '語音辨識已暫停，已辨識的文字仍保留。',
   post_speech_start_timeout: '等待語音權限逾時，請確認權限後重試。',
+  post_speech_microphone_unavailable: '無法使用麥克風，請確認裝置可錄音，並結束其他錄音後重試。',
+  post_speech_no_speech: '沒有聽到語音，請靠近麥克風重試，或用鍵盤輸入。',
+  post_speech_network:
+    '瀏覽器的語音辨識服務連線失敗，文字已保留。可以重試，或使用鍵盤的麥克風輸入。',
+  post_speech_language_unavailable: '瀏覽器不支援目前的語音語言，請使用鍵盤輸入或鍵盤的麥克風。',
   quick_interview_unavailable: '聊天整理暫時無法使用，內容已保留。可以稍後重試，或使用分身設定。',
   invalid_social_input: '操作未完成，請重新整理後再試。',
   invalid_social_cursor: '清單已更新，請重新整理。',

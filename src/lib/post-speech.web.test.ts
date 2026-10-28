@@ -8,6 +8,7 @@ class FakeRecognition {
   onresult: ((event: { results: { transcript: string }[][] }) => void) | null = null;
   onerror: ((event: { error: string }) => void) | null = null;
   onend: (() => void) | null = null;
+  onstart: (() => void) | null = null;
   start = jest.fn();
   stop = jest.fn();
   abort = jest.fn();
@@ -73,4 +74,24 @@ it('does not start a cancelled session or pretend an unsupported browser can rec
   await expect(startPostSpeech(callbacks(), abort.signal)).rejects.toThrow('post_speech_cancelled');
   delete host.SpeechRecognition;
   await expect(startPostSpeech(callbacks())).rejects.toThrow('post_speech_unavailable');
+});
+
+it('does not leave a browser that never starts listening stuck for a full minute', async () => {
+  const events = callbacks();
+  await startPostSpeech(events);
+  jest.advanceTimersByTime(15_000);
+  expect(events.onError).toHaveBeenCalledWith('post_speech_start_timeout');
+  expect(instance.abort).toHaveBeenCalled();
+  expect(events.onEnd).not.toHaveBeenCalled();
+  jest.runAllTimers();
+  expect(events.onError).toHaveBeenCalledTimes(1);
+});
+it('distinguishes speech service failures from microphone permission errors', async () => {
+  const events = callbacks();
+  await startPostSpeech(events);
+  instance.onstart?.();
+  instance.onerror?.({ error: 'network' });
+  expect(events.onError).toHaveBeenCalledWith('post_speech_network');
+  jest.runAllTimers();
+  expect(events.onError).toHaveBeenCalledTimes(1);
 });
