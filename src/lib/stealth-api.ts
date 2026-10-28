@@ -216,7 +216,7 @@ export const stealthApi = {
       await api.post<StealthQuickResult>(
         `${root}/quick-start`,
         { text, activate_agent, ...(confirmed_signal ? { confirmed_signal } : {}) },
-        { headers: { 'Idempotency-Key': key }, timeout: 120_000 },
+        { headers: { 'Idempotency-Key': key }, timeout: 330_000 },
       )
     ).data,
   quickInterview: async (turns: string[], previous?: StealthIntake['facts']) =>
@@ -224,16 +224,24 @@ export const stealthApi = {
       await api.post<StealthQuickInterview>(
         `${root}/quick-interview`,
         { turns, ...(previous ? { previous } : {}) },
-        { timeout: 100_000 },
+        { timeout: 330_000 },
       )
     ).data,
   room: async (id: string) =>
     (await api.get<StealthRoom>(`${root}/matches/${encodeURIComponent(id)}/room`)).data,
-  replySuggestions: async (id: string, batch: number, signal?: AbortSignal, previous: string[] = []) =>
-    (await api.post<{ suggestions: string[]; context_key: string; is_llm: boolean }>(
-      `${root}/matches/${encodeURIComponent(id)}/reply-suggestions`, { batch, previous },
-      { timeout: 100_000, signal },
-    )).data,
+  replySuggestions: async (
+    id: string,
+    batch: number,
+    signal?: AbortSignal,
+    previous: string[] = [],
+  ) =>
+    (
+      await api.post<{ suggestions: string[]; context_key: string; is_llm: boolean }>(
+        `${root}/matches/${encodeURIComponent(id)}/reply-suggestions`,
+        { batch, previous },
+        { timeout: 330_000, signal },
+      )
+    ).data,
   roomSend: async (id: string, content: string, key: string) =>
     (
       await api.post<StealthRoomMessage>(
@@ -269,7 +277,7 @@ export const stealthApi = {
       await api.post<{ created: number; indexed: number }>(
         `${root}/matches/discover`,
         {},
-        { timeout: 120_000 },
+        { timeout: 330_000 },
       )
     ).data,
   run: async () =>
@@ -298,13 +306,14 @@ export const stealthApi = {
         agree: true,
       })
     ).data,
-  draft: async (text: string) => (await api.post<StealthDraft>(`${root}/draft`, { text })).data,
+  draft: async (text: string) =>
+    (await api.post<StealthDraft>(`${root}/draft`, { text }, { timeout: 330_000 })).data,
   intake: async (turns: string[], previous?: StealthIntake['facts']) =>
     (
       await api.post<StealthIntake>(
         `${root}/intake`,
         { turns, ...(previous ? { previous } : {}) },
-        { timeout: 100_000 },
+        { timeout: 330_000 },
       )
     ).data,
 };

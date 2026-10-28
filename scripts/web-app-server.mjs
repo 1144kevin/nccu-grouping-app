@@ -33,7 +33,8 @@ export function createWebAppServer({
   backendPort = 8000,
   publicOrigin,
   proxyProvider = 'cloudflare',
-  requestLimit = 240,
+  // Five people behind one Wi-Fi/NAT share an IP, including chat and job polls.
+  requestLimit = 1200,
   authLimit = 15,
 }) {
   if (!['cloudflare', 'tailscale'].includes(proxyProvider))
@@ -141,7 +142,14 @@ export function createWebAppServer({
         return fail(404, 'not_found');
       if (pathname.startsWith('/api/')) {
         const serverClock = pathname === '/api/v1/development/clock' && req.method === 'GET';
-        const postWriting = pathname === '/api/v1/ai/post-writing' && req.method === 'POST';
+        const postWriting =
+          ['/api/v1/ai/post-writing', '/api/v1/ai/post-writing/jobs'].includes(pathname) &&
+          req.method === 'POST';
+        const modelRequest =
+          req.method === 'POST' &&
+          /^\/api\/v1\/stealth-cloud\/(?:quick-start|quick-interview|draft|intake|matches\/(?:semantic|discover|[0-9a-f-]{36}\/reply-suggestions))$/.test(
+            pathname,
+          );
         if (
           !pathname.startsWith('/api/v1/') ||
           pathname.includes('//') ||
@@ -150,7 +158,11 @@ export function createWebAppServer({
           return fail(404, 'not_found');
         if (!['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method))
           return fail(405, 'method_not_allowed');
-        if (pathname.startsWith('/api/v1/auth/') && !allowed(`auth:${peer}`, authLimit)) {
+        if (
+          pathname.startsWith('/api/v1/auth/') &&
+          req.method !== 'GET' &&
+          !allowed(`auth:${peer}`, authLimit)
+        ) {
           res.setHeader('Retry-After', '60');
           return fail(429, 'too_many_auth_attempts');
         }
@@ -183,7 +195,7 @@ export function createWebAppServer({
             reply.pipe(res);
           },
         );
-        upstream.setTimeout(postWriting ? 420_000 : 90_000, () =>
+        upstream.setTimeout(postWriting ? 420_000 : modelRequest ? 330_000 : 90_000, () =>
           upstream.destroy(new Error('timeout')),
         );
         upstream.on('error', () => {

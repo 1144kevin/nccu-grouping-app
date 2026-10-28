@@ -148,8 +148,12 @@ test('Tailscale validates its overwritten proxy headers and isolates public and 
     assert.equal((await call('/', { headers, targetPort })).status, 429);
     // Forging Cloudflare's header cannot evade the Tailscale visitor quota.
     assert.equal(
-      (await call('/', { headers: { ...headers, 'cf-connecting-ip': '203.0.113.100' }, targetPort }))
-        .status,
+      (
+        await call('/', {
+          headers: { ...headers, 'cf-connecting-ip': '203.0.113.100' },
+          targetPort,
+        })
+      ).status,
       429,
     );
     // A second real visitor does not share the first visitor's quota.
@@ -328,7 +332,7 @@ test('bounds uploads and only forwards JSON API requests', async () => {
   );
 });
 test('limits repeated auth attempts at the public entry', async () => {
-  for (let i = 0; i < 15; i++)
+  for (let i = 0; i < 20; i++)
     assert.equal(
       (
         await call('/api/v1/auth/me', {
@@ -337,9 +341,44 @@ test('limits repeated auth attempts at the public entry', async () => {
       ).status,
       200,
     );
-  const limited = await call('/api/v1/auth/me', {
+  for (let i = 0; i < 15; i++)
+    assert.equal(
+      (
+        await call('/api/v1/auth/google/start', {
+          method: 'POST',
+          headers: { ...publicHeaders, 'cf-connecting-ip': '198.51.100.40' },
+        })
+      ).status,
+      200,
+    );
+  const limited = await call('/api/v1/auth/google/start', {
+    method: 'POST',
     headers: { ...publicHeaders, 'cf-connecting-ip': '198.51.100.40' },
   });
   assert.equal(limited.status, 429);
   assert.equal(limited.headers['retry-after'], '60');
+});
+
+test('five users behind the same Wi-Fi can poll their app without exhausting a single-user budget', async () => {
+  const statuses = await Promise.all(
+    Array.from({ length: 5 }, async (_, actor) => {
+      const results = [];
+      for (let request = 0; request < 60; request++) {
+        results.push(
+          (
+            await call('/api/v1/posts', {
+              headers: {
+                ...publicHeaders,
+                'cf-connecting-ip': '198.51.100.70',
+                authorization: `Bearer synthetic-account-${actor}`,
+              },
+            })
+          ).status,
+        );
+      }
+      return results;
+    }),
+  );
+  assert.equal(statuses.flat().length, 300);
+  assert.ok(statuses.flat().every((status) => status === 200));
 });

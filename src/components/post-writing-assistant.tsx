@@ -6,6 +6,7 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { KeyboardScrollView } from '@/components/keyboard-layout';
 import { PrimaryButton } from '@/components/primitives';
 import { socialApi } from '@/lib/social-api';
+import type { WritingProgress } from '@/lib/post-writing-job';
 import { coreError } from '@/lib/core-api';
 import { startPostSpeech } from '@/lib/post-speech';
 import type { SpeechCapture } from '@/lib/post-speech.types';
@@ -59,8 +60,10 @@ function WritingSession({
   const generation = useRef(0);
   const capture = useRef<SpeechCapture | null>(null);
   const pendingSpeech = useRef<AbortController | null>(null);
+  const pendingDraft = useRef<AbortController | null>(null);
   const running = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<WritingProgress>();
   const [activeMode, setActiveMode] = useState<'image' | 'voice'>('image');
   const [listening, setListening] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -76,6 +79,8 @@ function WritingSession({
   const cancelWork = useCallback(() => {
     generation.current += 1;
     pendingSpeech.current?.abort();
+    pendingDraft.current?.abort();
+    pendingDraft.current = null;
     pendingSpeech.current = null;
     capture.current?.cancel();
     capture.current = null;
@@ -102,6 +107,7 @@ function WritingSession({
       mounted.current = false;
       generation.current += 1;
       pendingSpeech.current?.abort();
+      pendingDraft.current?.abort();
       capture.current?.cancel();
       listener.remove();
       onBusyChange?.(false);
@@ -131,6 +137,9 @@ function WritingSession({
     setActiveMode(mode);
     setError('');
     setPreview(undefined);
+    setProgress(undefined);
+    const controller = new AbortController();
+    pendingDraft.current = controller;
     try {
       const result = await socialApi.writePost(
         mode,
@@ -141,6 +150,13 @@ function WritingSession({
             ? source.imageBase64s
             : source.imageBase64
           : undefined,
+        {
+          signal: controller.signal,
+          canAccess: () => useAuthStore.getState().user?.id === actor,
+          onProgress: (value) => {
+            if (alive(id)) setProgress(value);
+          },
+        },
       );
       if (!alive(id)) return;
       if (!sourceMatches(source)) {
@@ -161,6 +177,7 @@ function WritingSession({
       if (alive(id)) setError(coreError(e));
     } finally {
       if (alive(id)) {
+        pendingDraft.current = null;
         running.current = false;
         setBusy(false);
       }
@@ -294,7 +311,11 @@ function WritingSession({
         </Text>
       ) : null}
       {busy && !voiceOpen ? (
-        <Text accessibilityLiveRegion="polite">正在辨識資訊並整理文案…</Text>
+        <Text accessibilityLiveRegion="polite">
+          {progress?.status === 'queued'
+            ? `AI 排隊中，目前第 ${progress.queue_position} 位。多人使用時會依序處理。`
+            : '正在辨識資訊並整理文案…多人使用時可能需要稍候。'}
+        </Text>
       ) : null}
       {error && !voiceOpen ? (
         <Text accessibilityRole="alert" style={styles.error}>
@@ -357,7 +378,13 @@ function WritingSession({
               結束說話並潤稿
             </PrimaryButton>
           ) : null}
-          {busy ? <PrimaryButton loading>正在整理口述文案…</PrimaryButton> : null}
+          {busy ? (
+            <PrimaryButton loading>
+              {progress?.status === 'queued'
+                ? `AI 排隊中，第 ${progress.queue_position} 位…`
+                : '正在整理口述文案…'}
+            </PrimaryButton>
+          ) : null}
           {!locked ? (
             <>
               <PrimaryButton

@@ -274,6 +274,12 @@ const messages: Record<string, string> = {
   post_writing_invalid_output: '這次草稿未通過檢查，原文已保留，請重新生成。',
   local_post_writing_not_configured: '本地 AI 尚未啟動，原文已保留。',
   post_writing_rate_limit: '生成次數較多，請稍等再試。',
+  post_writing_already_pending: '你已有一份文案正在處理，請稍候完成。',
+  post_writing_queue_full: '目前排隊人數較多，原文與照片已保留，請稍後再試。',
+  post_writing_job_not_found:
+    '這份 AI 工作已過期或伺服器已重新啟動，原文與照片已保留，請重新生成。',
+  post_writing_wait_timeout: '本次等候時間較長，原文與照片已保留，請稍後重試。',
+  post_writing_failed: 'AI 本次未完成，原文與照片已保留，請重新生成。',
   post_image_unreadable: '照片中的資訊看不清楚，請換一張清晰完整的照片。',
   post_image_invalid_output: '圖片辨識未完成，照片已保留，請重試。',
   local_model_vision_unavailable: '目前本機模型不支援圖片辨識，請啟用具備視覺能力的模型後重試。',

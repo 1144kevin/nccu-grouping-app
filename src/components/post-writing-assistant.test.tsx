@@ -44,6 +44,20 @@ it('offers exactly the two new actions and enables image recognition only with a
   expect(screen.queryByRole('button', { name: 'AI 生成貼文' })).toBeNull();
   expect(socialApi.writePost).not.toHaveBeenCalled();
 });
+
+it('shows the current queue position and aborts the pending job when the screen closes', async () => {
+  jest.mocked(socialApi.writePost).mockImplementation(async (_mode, _text, _context, _image, options) => {
+    options?.onProgress?.({ status: 'queued', queue_position: 4 });
+    return new Promise(() => undefined);
+  });
+  const screen = await render(<PostWritingAssistant {...props} imageBase64="photo" />);
+  await fireEvent.press(screen.getByRole('button', { name: '圖片辨識生成文案' }));
+  await waitFor(() => expect(screen.getByText(/AI 排隊中，目前第 4 位/)).toBeTruthy());
+  const signal = jest.mocked(socialApi.writePost).mock.calls[0][4]?.signal;
+  expect(signal?.aborted).toBe(false);
+  await screen.unmount();
+  expect(signal?.aborted).toBe(true);
+});
 it('recognizes a photo without requiring typed content and waits for explicit adoption', async () => {
   jest
     .mocked(socialApi.writePost)
@@ -54,7 +68,7 @@ it('recognizes a photo without requiring typed content and waits for explicit ad
   );
   await fireEvent.press(screen.getByRole('button', { name: '圖片辨識生成文案' }));
   await waitFor(() => expect(screen.getByLabelText('AI 貼文草稿').props.value).toBe(DRAFT));
-  expect(socialApi.writePost).toHaveBeenCalledWith('image', '', '', 'photo');
+  expect(socialApi.writePost).toHaveBeenCalledWith('image', '', '', 'photo', expect.any(Object));
   expect(screen.getByText('披薩買一送一，限外帶')).toBeTruthy();
   expect(onApply).not.toHaveBeenCalled();
   await fireEvent.changeText(screen.getByLabelText('AI 貼文草稿'), '太短');
@@ -104,7 +118,13 @@ it('automatically polishes the speech transcript after recording ends', async ()
   expect(stop).toHaveBeenCalledTimes(1);
   await act(async () => events.onEnd('想揪朋友一起買披薩'));
   await waitFor(() => expect(screen.getByLabelText('AI 貼文草稿').props.value).toBe(DRAFT));
-  expect(socialApi.writePost).toHaveBeenCalledWith('voice', '想揪朋友一起買披薩', '', undefined);
+  expect(socialApi.writePost).toHaveBeenCalledWith(
+    'voice',
+    '想揪朋友一起買披薩',
+    '',
+    undefined,
+    expect.any(Object),
+  );
 });
 it('cancels speech and ignores subsequent recognition callbacks', async () => {
   let events!: SpeechCallbacks;
@@ -168,10 +188,13 @@ it('uses the entire selected album with no typed content and shows the triggerin
     <PostWritingAssistant {...props} imageBase64s={['first-photo', 'second-photo']} />,
   );
   await fireEvent.press(screen.getByRole('button', { name: '圖片辨識生成文案' }));
-  expect(socialApi.writePost).toHaveBeenCalledWith('image', '', '', [
-    'first-photo',
-    'second-photo',
-  ]);
+  expect(socialApi.writePost).toHaveBeenCalledWith(
+    'image',
+    '',
+    '',
+    ['first-photo', 'second-photo'],
+    expect.any(Object),
+  );
   expect(screen.getByLabelText('AI 正在辨識照片')).toBeTruthy();
   expect(
     screen.getByRole('button', { name: '圖片辨識生成文案' }).props.accessibilityState.busy,

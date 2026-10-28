@@ -3,6 +3,7 @@ import { api } from '@/lib/api';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE, type CorePost } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
+import { runPostWritingJob, type WritingOptions } from '@/lib/post-writing-job';
 
 export type ThreadKind = 'group' | 'direct' | 'stealth';
 export type InboxFilter = 'all' | 'primary' | 'group' | 'direct';
@@ -97,27 +98,21 @@ export const socialApi = {
     content: string,
     context: string,
     image_base64?: string | string[],
+    options?: WritingOptions,
   ) =>
-    (
-      await api.post<{
-        text: string;
-        source_text?: string;
-        draft_method?: 'model' | 'recognized_facts';
-      }>(
-        '/ai/post-writing',
-        {
-          mode,
-          content,
-          context,
-          ...(Array.isArray(image_base64)
-            ? { images_base64: image_base64 }
-            : image_base64
-              ? { image_base64 }
-              : {}),
-        },
-        { timeout: mode === 'image' ? 420_000 : 150_000 },
-      )
-    ).data,
+    runPostWritingJob(
+      {
+        mode,
+        content,
+        context,
+        ...(Array.isArray(image_base64)
+          ? { images_base64: image_base64 }
+          : image_base64
+            ? { image_base64 }
+            : {}),
+      },
+      options,
+    ),
 };
 export function useInboxThreads(kind: InboxFilter = 'all', deleted = false) {
   const actor = useAuthStore((s) => s.user?.id);
