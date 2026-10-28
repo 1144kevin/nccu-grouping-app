@@ -325,8 +325,7 @@ const messages: Record<string, string> = {
     '圖片上傳或驗證尚未完成，請重試；也可到帳號設定清除未發佈副本後重新選取。',
   image_upload_conflict: '圖片副本與本次內容不符，請到帳號設定清除未發佈副本後重新選取。',
   image_key_conflict: '這次圖片或發布內容與先前重試不同，請重新確認。',
-  image_storage_limit:
-    '已達開發版圖片額度（每人20張、專案100張）；請清除未發佈副本或先使用文字拼單。',
+  image_storage_limit: '圖片儲存空間暫時不足，請稍後重試。',
   image_not_found: '圖片不存在或你無權查看。',
   image_already_published: '這張圖片已綁定已發佈拼單，不能當未發佈副本刪除或重複發布。',
   image_verification_required: '圖片尚未通過後端驗證，無法發布。',
