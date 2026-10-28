@@ -23,8 +23,12 @@ function chunk(type, data) {
   crc.writeUInt32BE(crc32(body));
   return Buffer.concat([size, body, crc]);
 }
-export function writeWebAppQr(url, directory) {
+export function writeWebAppQr(url, directory, { proxyProvider = 'cloudflare' } = {}) {
+  if (!['cloudflare', 'tailscale'].includes(proxyProvider))
+    throw new Error('Select an explicitly supported web proxy provider.');
   const parsed = new URL(webAppOrigin(url));
+  if (proxyProvider === 'tailscale' && !parsed.hostname.endsWith('.ts.net'))
+    throw new Error('Tailscale Funnel requires its exact assigned ts.net hostname.');
   const matrix = toQR(parsed.origin);
   const modules = Math.sqrt(matrix.length);
   const scale = 10,
@@ -53,7 +57,7 @@ export function writeWebAppQr(url, directory) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(
     resolve(directory, 'connection.json'),
-    JSON.stringify({ url: parsed.origin, created_at: new Date().toISOString() }, null, 2),
+    JSON.stringify({ url: parsed.origin, proxyProvider, created_at: new Date().toISOString() }, null, 2),
   );
   writeFileSync(resolve(directory, 'qr-code.png'), png);
   return { url: parsed.origin, qr: resolve(directory, 'qr-code.png') };

@@ -1,6 +1,7 @@
 import { createReadStream, existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createServer, request as httpRequest } from 'node:http';
 import { Buffer } from 'node:buffer';
+import { isIP } from 'node:net';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { loadSharePreview, sharePreviewHTML } from './post-share-preview.mjs';
 import { webAppOrigin } from './web-app-origin.mjs';
@@ -31,9 +32,12 @@ export function createWebAppServer({
   connectionFile,
   backendPort = 8000,
   publicOrigin,
+  proxyProvider = 'cloudflare',
   requestLimit = 240,
   authLimit = 15,
 }) {
+  if (!['cloudflare', 'tailscale'].includes(proxyProvider))
+    throw new Error('Select an explicitly supported web proxy provider.');
   root = realpathSync(root);
   if (!existsSync(resolve(root, 'index.html'))) throw new Error('Build the Web App first.');
   const requests = new Map();
@@ -69,7 +73,7 @@ export function createWebAppServer({
       res.end(JSON.stringify({ detail }));
     };
     try {
-      // Both the browser gateway and cloudflared bind to loopback. Nothing opens
+      // The browser gateway and tunnel target bind to loopback. Nothing opens
       // the private API or the model port directly to the network.
       if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress))
         return fail(403, 'loopback_gateway_only');
@@ -104,7 +108,22 @@ export function createWebAppServer({
         return fail(403, 'cross_site_request');
       if (!local && req.headers['x-forwarded-proto'] !== 'https')
         return fail(403, 'https_required');
-      const peer = !local ? String(req.headers['cf-connecting-ip'] ?? 'unknown') : 'local';
+      // Tailscale 1.104.4 overwrites X-Forwarded-For and marks public Funnel
+      // requests. Select this ingress explicitly; never trust a client-supplied
+      // Cloudflare IP header when Tailscale is the active proxy.
+      let peer = 'local';
+      if (!local) {
+        if (proxyProvider === 'tailscale') {
+          const forwarded = req.headers['x-forwarded-for'];
+          if (
+            req.headers['tailscale-funnel-request'] !== '?1' ||
+            typeof forwarded !== 'string' ||
+            !isIP(forwarded)
+          )
+            return fail(403, 'invalid_funnel_proxy');
+          peer = forwarded;
+        } else peer = String(req.headers['cf-connecting-ip'] ?? 'unknown');
+      }
       if (!allowed(peer, requestLimit)) {
         res.setHeader('Retry-After', '60');
         return fail(429, 'too_many_requests');

@@ -113,6 +113,54 @@ test('serves the app on deep links and refresh, and serves manifest metadata', a
   assert.match(manifest.headers['content-type'], /application\/manifest\+json/);
   assert.equal((await call('/_expo/missing.js')).status, 404);
 });
+
+test('Tailscale Funnel checks its proxy marker and isolates quotas using its overwritten IP header', async () => {
+  const funnel = createWebAppServer({
+    root,
+    backendPort: api.address().port,
+    publicOrigin: 'https://campus.fixture.ts.net',
+    proxyProvider: 'tailscale',
+    requestLimit: 2,
+  });
+  await new Promise((resolve) => funnel.listen(0, '127.0.0.1', resolve));
+  try {
+    const targetPort = funnel.address().port;
+    const headers = {
+      host: 'campus.fixture.ts.net',
+      origin: 'https://campus.fixture.ts.net',
+      'x-forwarded-proto': 'https',
+      'x-forwarded-for': '198.51.100.1',
+      'tailscale-funnel-request': '?1',
+      'cf-connecting-ip': '203.0.113.99',
+    };
+    const invalid = [
+      { ...headers, 'tailscale-funnel-request': '' },
+      { ...headers, 'x-forwarded-for': '198.51.100.1, 203.0.113.2' },
+      { ...headers, host: 'other.fixture.ts.net' },
+      { ...headers, 'x-forwarded-proto': 'http' },
+      { ...headers, origin: 'https://elsewhere.com' },
+    ];
+    for (const value of invalid)
+      assert.equal((await call('/', { headers: value, targetPort })).status, 403);
+    for (let index = 0; index < 2; index++)
+      assert.equal((await call('/', { headers, targetPort })).status, 200);
+    assert.equal((await call('/', { headers, targetPort })).status, 429);
+    // Forging Cloudflare's header cannot evade the Tailscale visitor quota.
+    assert.equal(
+      (await call('/', { headers: { ...headers, 'cf-connecting-ip': '203.0.113.100' }, targetPort }))
+        .status,
+      429,
+    );
+    // A second real visitor does not share the first visitor's quota.
+    assert.equal(
+      (await call('/', { headers: { ...headers, 'x-forwarded-for': '198.51.100.2' }, targetPort }))
+        .status,
+      200,
+    );
+  } finally {
+    await new Promise((resolve) => funnel.close(resolve));
+  }
+});
 test('same-origin API preserves auth, JSON, query and retry keys without forwarding public proxy headers', async () => {
   const result = await call('/api/v1/posts?limit=5', {
     method: 'POST',
