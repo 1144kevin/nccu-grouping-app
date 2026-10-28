@@ -5,6 +5,7 @@ import { isIP } from 'node:net';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { loadSharePreview, sharePreviewHTML } from './post-share-preview.mjs';
 import { webAppOrigin } from './web-app-origin.mjs';
+import { preferredEncodings } from './web-app-assets.mjs';
 
 const MAX_BODY = 6 * 1024 * 1024;
 const mime = {
@@ -36,12 +37,14 @@ export function createWebAppServer({
   // Five people behind one Wi-Fi/NAT share an IP, including chat and job polls.
   requestLimit = 1200,
   authLimit = 15,
+  maxBodyReaders = 8,
 }) {
   if (!['cloudflare', 'tailscale'].includes(proxyProvider))
     throw new Error('Select an explicitly supported web proxy provider.');
   root = realpathSync(root);
   if (!existsSync(resolve(root, 'index.html'))) throw new Error('Build the Web App first.');
   const requests = new Map();
+  let bodyReaders = 0;
   function origin() {
     const value =
       publicOrigin ??
@@ -172,10 +175,20 @@ export function createWebAppServer({
           return fail(413, 'request_body_too_large');
         const chunks = [];
         let size = 0;
-        for await (const chunk of req) {
-          size += chunk.length;
-          if (size > maxBody) return fail(413, 'request_body_too_large');
-          chunks.push(chunk);
+        const hasBody = length > 0 || !!req.headers['transfer-encoding'];
+        if (hasBody && bodyReaders >= maxBodyReaders) {
+          res.setHeader('Retry-After', '3');
+          return fail(429, 'upload_gateway_busy');
+        }
+        if (hasBody) bodyReaders += 1;
+        try {
+          for await (const chunk of req) {
+            size += chunk.length;
+            if (size > maxBody) return fail(413, 'request_body_too_large');
+            chunks.push(chunk);
+          }
+        } finally {
+          if (hasBody) bodyReaders -= 1;
         }
         if (size && req.headers['content-type']?.split(';')[0] !== 'application/json')
           return fail(415, 'json_body_required');
@@ -240,7 +253,28 @@ export function createWebAppServer({
       if (!file && !extname(pathname) && !pathname.startsWith('/_expo/'))
         file = resolve(root, 'index.html');
       if (!file || pathname.endsWith('.map')) return fail(404, 'not_found');
-      res.writeHead(200, { 'Content-Type': mime[extname(file)] ?? 'application/octet-stream' });
+      const contentType = mime[extname(file)] ?? 'application/octet-stream';
+      if (/\.(?:js|css|svg|json|ttf|webmanifest)$/.test(file)) {
+        res.setHeader('Vary', 'Accept-Encoding');
+        for (const encoding of preferredEncodings(req.headers['accept-encoding'])) {
+          const candidate = `${file}.${encoding === 'gzip' ? 'gz' : 'br'}`;
+          if (
+            existsSync(candidate) &&
+            within(root, realpathSync(candidate)) &&
+            statSync(candidate).isFile()
+          ) {
+            file = candidate;
+            res.setHeader('Content-Encoding', encoding);
+            break;
+          }
+        }
+      }
+      // Only exported, content-addressed public assets are immutable. HTML,
+      // signed images, account responses, and shared-post previews stay no-store.
+      if (/^\/(?:_expo\/static\/|assets\/).*[-.][a-f0-9]{16,}\.[a-z0-9]+$/.test(pathname))
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Content-Length', statSync(file).size);
+      res.writeHead(200, { 'Content-Type': contentType });
       if (req.method === 'HEAD') return res.end();
       const stream = createReadStream(file);
       stream.on('error', () => res.destroy());
@@ -250,7 +284,9 @@ export function createWebAppServer({
       else res.destroy();
     }
   });
-  server.requestTimeout = 30_000;
+  // Five phones can upload albums over a shared mobile uplink. Keep this
+  // bounded separately from the short header deadline and the reader slots.
+  server.requestTimeout = 120_000;
   server.headersTimeout = 10_000;
   server.on('upgrade', (_req, socket) => socket.destroy());
   return server;

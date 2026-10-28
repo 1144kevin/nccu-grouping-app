@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer, request } from 'node:http';
 import { createWebAppServer } from './web-app-server.mjs';
+import { compressWebAssets } from './web-app-assets.mjs';
+import { brotliDecompressSync, gunzipSync } from 'node:zlib';
 
 let root, api, gateway, port;
 const publicOrigin = 'https://campus-fixture.trycloudflare.com';
@@ -22,6 +24,12 @@ before(async () => {
   );
   writeFileSync(join(root, 'manifest.webmanifest'), '{"name":"政缺一咖"}');
   mkdirSync(join(root, '_expo'));
+  mkdirSync(join(root, '_expo/static/js/web'), { recursive: true });
+  writeFileSync(
+    join(root, `_expo/static/js/web/entry-${'a'.repeat(32)}.js`),
+    'const asset = true;\n'.repeat(200),
+  );
+  compressWebAssets(root);
   api = createServer(async (req, res) => {
     if (req.url === `/api/v1/public/posts/${'a'.repeat(64)}`) {
       res.writeHead(200, { 'content-type': 'application/json' });
@@ -62,6 +70,7 @@ function call(path, { method = 'GET', headers = {}, body, targetPort = port } = 
           status: res.statusCode,
           headers: res.headers,
           body: Buffer.concat(chunks).toString(),
+          bytes: Buffer.concat(chunks),
         }),
       );
     });
@@ -70,6 +79,26 @@ function call(path, { method = 'GET', headers = {}, body, targetPort = port } = 
     req.end();
   });
 }
+
+test('compresses hashed JS for first visits and caches it without caching private API or HTML', async () => {
+  const path = `/_expo/static/js/web/entry-${'a'.repeat(32)}.js`;
+  const expected = 'const asset = true;\n'.repeat(200);
+  const br = await call(path, { headers: { 'accept-encoding': 'br, gzip' } });
+  assert.equal(br.headers['content-encoding'], 'br');
+  assert.equal(brotliDecompressSync(br.bytes).toString(), expected);
+  assert.ok(br.bytes.length < Buffer.byteLength(expected));
+  assert.match(br.headers['cache-control'], /immutable/);
+  assert.match(br.headers['content-type'], /javascript/);
+  assert.equal(br.headers.vary, 'Accept-Encoding');
+  const gzip = await call(path, { headers: { 'accept-encoding': 'br;q=0, gzip' } });
+  assert.equal(gzip.headers['content-encoding'], 'gzip');
+  assert.equal(gunzipSync(gzip.bytes).toString(), expected);
+  const plain = await call(path);
+  assert.equal(plain.headers['content-encoding'], undefined);
+  assert.equal(plain.body, expected);
+  assert.equal((await call('/')).headers['cache-control'], 'no-store');
+  assert.equal((await call('/api/v1/posts')).headers['cache-control'], 'no-store');
+});
 
 test('a configured custom domain accepts only its exact HTTPS host and origin', async () => {
   const custom = createWebAppServer({
@@ -330,6 +359,59 @@ test('bounds uploads and only forwards JSON API requests', async () => {
     ).status,
     415,
   );
+});
+
+test('slow uploads have a bounded slot and release it when the body completes', async () => {
+  const limited = createWebAppServer({ root, backendPort: api.address().port, maxBodyReaders: 1 });
+  await new Promise((resolve) => limited.listen(0, '127.0.0.1', resolve));
+  const targetPort = limited.address().port;
+  const first = request({
+    host: '127.0.0.1',
+    port: targetPort,
+    path: '/api/v1/posts',
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'transfer-encoding': 'chunked',
+    },
+  });
+  const finished = new Promise((resolve, reject) => {
+    first.on('error', reject);
+    first.on('response', (res) => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+  });
+  try {
+    const received = new Promise((resolve) => limited.once('request', resolve));
+    first.write('{');
+    await received;
+    const second = await call('/api/v1/posts', {
+      targetPort,
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{}',
+    });
+    assert.equal(second.status, 429);
+    assert.equal(second.headers['retry-after'], '3');
+    first.end('}');
+    assert.equal(await finished, 200);
+    assert.equal(
+      (
+        await call('/api/v1/posts', {
+          targetPort,
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: '{}',
+        })
+      ).status,
+      200,
+    );
+    assert.equal(limited.requestTimeout, 120000);
+  } finally {
+    first.destroy();
+    await new Promise((resolve) => limited.close(resolve));
+  }
 });
 test('limits repeated auth attempts at the public entry', async () => {
   for (let i = 0; i < 20; i++)

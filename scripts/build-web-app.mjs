@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { cpSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { compressWebAssets } from './web-app-assets.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const staging = resolve(root, '.local/web-app/export');
@@ -63,6 +64,7 @@ child.on('exit', (code) => {
       '',
     );
     mkdirSync(target, { recursive: true });
+    compressWebAssets(staging);
     cpSync(staging, target, { recursive: true, filter: (file) => file !== index });
     writeFileSync(resolve(target, 'index.next.html'), html);
     renameSync(resolve(target, 'index.next.html'), resolve(target, 'index.html'));
