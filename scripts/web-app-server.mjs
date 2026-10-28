@@ -108,15 +108,16 @@ export function createWebAppServer({
         return fail(403, 'cross_site_request');
       if (!local && req.headers['x-forwarded-proto'] !== 'https')
         return fail(403, 'https_required');
-      // Tailscale 1.104.4 overwrites X-Forwarded-For and marks public Funnel
-      // requests. Select this ingress explicitly; never trust a client-supplied
-      // Cloudflare IP header when Tailscale is the active proxy.
+      // Tailscale 1.104.4 overwrites the forwarded host/proto/IP. The same
+      // hostname is also reachable privately from devices in the tailnet;
+      // those requests do not have the public-only Funnel marker.
+      // Never trust a client-supplied Cloudflare IP through this ingress.
       let peer = 'local';
       if (!local) {
         if (proxyProvider === 'tailscale') {
           const forwarded = req.headers['x-forwarded-for'];
           if (
-            req.headers['tailscale-funnel-request'] !== '?1' ||
+            req.headers['x-forwarded-host'] !== host ||
             typeof forwarded !== 'string' ||
             !isIP(forwarded)
           )

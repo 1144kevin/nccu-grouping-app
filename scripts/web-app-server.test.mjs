@@ -114,7 +114,7 @@ test('serves the app on deep links and refresh, and serves manifest metadata', a
   assert.equal((await call('/_expo/missing.js')).status, 404);
 });
 
-test('Tailscale Funnel checks its proxy marker and isolates quotas using its overwritten IP header', async () => {
+test('Tailscale validates its overwritten proxy headers and isolates public and tailnet visitor quotas', async () => {
   const funnel = createWebAppServer({
     root,
     backendPort: api.address().port,
@@ -129,12 +129,13 @@ test('Tailscale Funnel checks its proxy marker and isolates quotas using its ove
       host: 'campus.fixture.ts.net',
       origin: 'https://campus.fixture.ts.net',
       'x-forwarded-proto': 'https',
+      'x-forwarded-host': 'campus.fixture.ts.net',
       'x-forwarded-for': '198.51.100.1',
       'tailscale-funnel-request': '?1',
       'cf-connecting-ip': '203.0.113.99',
     };
     const invalid = [
-      { ...headers, 'tailscale-funnel-request': '' },
+      { ...headers, 'x-forwarded-host': '' },
       { ...headers, 'x-forwarded-for': '198.51.100.1, 203.0.113.2' },
       { ...headers, host: 'other.fixture.ts.net' },
       { ...headers, 'x-forwarded-proto': 'http' },
@@ -157,6 +158,9 @@ test('Tailscale Funnel checks its proxy marker and isolates quotas using its ove
         .status,
       200,
     );
+    const tailnetHeaders = { ...headers, 'x-forwarded-for': '100.64.0.2' };
+    delete tailnetHeaders['tailscale-funnel-request'];
+    assert.equal((await call('/', { headers: tailnetHeaders, targetPort })).status, 200);
   } finally {
     await new Promise((resolve) => funnel.close(resolve));
   }
