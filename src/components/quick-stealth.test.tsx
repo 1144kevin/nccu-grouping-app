@@ -46,6 +46,7 @@ jest.mock('@/lib/stealth-api', () => ({
     matches: jest.fn(),
     quickStart: jest.fn(),
     quickInterview: jest.fn(),
+    conversation: jest.fn(),
     discover: jest.fn(),
     semantic: jest.fn(),
     decide: jest.fn(),
@@ -108,64 +109,24 @@ const wrap = (children: React.ReactNode) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
-it('saves one sentence without blocking on matching or consenting to terms', async () => {
+it('opens with a greeting without inference or automatic matching', async () => {
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
-  expect(screen.getAllByLabelText('一句話告訴分身')).toHaveLength(1);
-  expect(screen.queryByRole('button', { name: 'AI 搜尋新配對機會' })).toBeNull();
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: '啟用分身並幫我揪' })).toBeTruthy(),
-  );
-  await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
-  await fireEvent.press(screen.getByRole('button', { name: '啟用分身並幫我揪' }));
-  await waitFor(() => expect(screen.getByText(/已交給分身/)).toBeTruthy());
-  expect(stealthApi.quickStart).toHaveBeenCalledWith('我今天想喝50嵐', true, expect.any(String));
-  expect(stealthApi.discover).not.toHaveBeenCalled();
+  expect(screen.getByText(/今天有什麼想跟我分享/)).toBeTruthy();
+  expect(screen.getByLabelText('跟偷揪分身聊天')).toBeTruthy();
+  expect(stealthApi.conversation).not.toHaveBeenCalled();
+  expect(stealthApi.quickStart).not.toHaveBeenCalled();
   expect(stealthApi.consent).not.toHaveBeenCalled();
-  expect(stealthApi.terms).not.toHaveBeenCalled();
 });
 
-it('keeps the original settings usable when the development database migration is pending', async () => {
+it('keeps advanced settings accessible when automatic matching is unavailable', async () => {
   jest.mocked(stealthApi.quickStatus).mockResolvedValue({ ready: false });
   const advanced = jest.fn();
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={advanced} />));
-  await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
   await waitFor(() => expect(screen.getByText(/目前無法自動找人/)).toBeTruthy());
-  expect(screen.getByRole('button', { name: '啟用分身並幫我揪' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '想喝飲料' })).toBeDisabled();
   await fireEvent.press(screen.getByRole('button', { name: '分身與需求進階設定' }));
   expect(advanced).toHaveBeenCalledTimes(1);
   expect(stealthApi.quickStart).not.toHaveBeenCalled();
-});
-
-it('preserves the sentence and request key after an uncertain network failure', async () => {
-  jest
-    .mocked(stealthApi.quickStart)
-    .mockRejectedValueOnce(new Error('offline'))
-    .mockResolvedValueOnce(result as never);
-  const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
-  await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: '啟用分身並幫我揪' })).toBeEnabled(),
-  );
-  await fireEvent.press(screen.getByRole('button', { name: '啟用分身並幫我揪' }));
-  await waitFor(() => expect(screen.getByText(/輸入已保留/)).toBeTruthy());
-  await fireEvent.press(screen.getByRole('button', { name: '啟用分身並幫我揪' }));
-  await waitFor(() => expect(stealthApi.quickStart).toHaveBeenCalledTimes(2));
-  expect(jest.mocked(stealthApi.quickStart).mock.calls[1]).toEqual(
-    jest.mocked(stealthApi.quickStart).mock.calls[0],
-  );
-});
-
-it('does not make the user wait for semantic inference after saving a request', async () => {
-  jest.mocked(stealthApi.discover).mockRejectedValueOnce(new Error('model busy'));
-  const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
-  await fireEvent.changeText(screen.getByLabelText('一句話告訴分身'), '我今天想喝50嵐');
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: '啟用分身並幫我揪' })).toBeEnabled(),
-  );
-  await fireEvent.press(screen.getByRole('button', { name: '啟用分身並幫我揪' }));
-  await waitFor(() => expect(screen.getByText(/已交給分身/)).toBeTruthy());
-  expect(screen.getByText(/已記住：我今天想喝50嵐/)).toBeTruthy();
-  expect(stealthApi.quickStart).toHaveBeenCalledTimes(1);
 });
 
 it('preliminary acceptance opens coordination only after everyone accepts and never consents to final terms', async () => {
@@ -173,7 +134,7 @@ it('preliminary acceptance opens coordination only after everyone accepts and ne
   const screen = await render(
     wrap(<QuickMatch match={match} explanation={[]} refresh={async () => undefined} />),
   );
-  await fireEvent.press(screen.getByRole('button', { name: '接受機會' }));
+  await fireEvent.press(screen.getByRole('button', { name: '有興趣，先聊聊' }));
   await waitFor(() =>
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/stealth-chat/[id]',
@@ -220,11 +181,11 @@ it('keeps opened withdrawn rooms accessible as read-only history', async () => {
     ),
   );
   expect(screen.getByRole('button', { name: '查看聊天室紀錄' })).toBeEnabled();
-  expect(screen.queryByRole('button', { name: '接受機會' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '有興趣，先聊聊' })).toBeNull();
   expect(screen.queryByRole('button', { name: '這次先不用' })).toBeNull();
 });
 
-it('keeps only undecided live opportunities on the quick screen', async () => {
+it('keeps accepted invitations visible while waiting and hides expired opportunities', async () => {
   const active = {
     ...match,
     starts_at: '2026-10-22T10:00:00Z',
@@ -241,16 +202,16 @@ it('keeps only undecided live opportunities on the quick screen', async () => {
     ],
   } as never);
   const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
-  await waitFor(() => expect(screen.getAllByRole('button', { name: '接受機會' })).toHaveLength(1));
-  expect(screen.queryByText('你已同意聊聊，等待夥伴回覆。')).toBeNull();
+  await waitFor(() =>
+    expect(screen.getAllByRole('button', { name: '有興趣，先聊聊' })).toHaveLength(1),
+  );
+  expect(screen.getByText(/你已表示有興趣/)).toBeTruthy();
 });
 
 it('allows text and photo picking in an opened chat even when its invitation has expired', async () => {
-  jest
-    .mocked(stealthApi.matches)
-    .mockResolvedValue({
-      items: [{ ...match, status: 'unavailable', coordination_opened: true }],
-    } as never);
+  jest.mocked(stealthApi.matches).mockResolvedValue({
+    items: [{ ...match, status: 'unavailable', coordination_opened: true }],
+  } as never);
   jest.mocked(stealthApi.room).mockResolvedValue({ opened: true, can_send: true, items: [] });
   let resolve!: (v: never) => void;
   jest.mocked(stealthApi.roomSend).mockImplementationOnce(
@@ -268,4 +229,45 @@ it('allows text and photo picking in an opened chat even when its invitation has
   await act(async () => resolve({ id: 'stealth-confirmed' } as never));
   await waitFor(() => expect(screen.getByLabelText('偷揪聊天室訊息')).toHaveProp('value', ''));
   expect(screen.getAllByText('我可以先去拿便當')).toHaveLength(1);
+});
+
+it('keeps a newly accepted card through a stale refresh and updates it when partners accept', async () => {
+  const live = {
+    ...match,
+    starts_at: '2026-10-22T10:00:00Z',
+    expires_at: '2026-10-22T12:00:00Z',
+    score: 70,
+    location_id: 'main_gate',
+  } as StealthMatch;
+  jest.mocked(stealthApi.matches).mockResolvedValue({ items: [live] });
+  jest.mocked(stealthApi.decide).mockResolvedValue({ ...live, my_decision: 'accepted' });
+  const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
+  await waitFor(() => expect(screen.getByRole('button', { name: '有興趣，先聊聊' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '有興趣，先聊聊' }));
+  await waitFor(() => expect(screen.getByText(/你已表示有興趣/)).toBeTruthy());
+  expect(router.push).not.toHaveBeenCalled();
+  jest
+    .mocked(stealthApi.matches)
+    .mockResolvedValue({ items: [{ ...live, my_decision: 'accepted', status: 'ready' }] });
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['core', 'self', 'stealth'] });
+  });
+  await waitFor(() => expect(screen.getByRole('button', { name: '開始聊天' })).toBeTruthy());
+});
+
+it('removes a withdrawn card even if the next refresh still has the old accepted decision', async () => {
+  const live = {
+    ...match,
+    my_decision: 'accepted',
+    starts_at: '2026-10-22T10:00:00Z',
+    expires_at: '2026-10-22T12:00:00Z',
+    score: 70,
+    location_id: 'main_gate',
+  } as StealthMatch;
+  jest.mocked(stealthApi.matches).mockResolvedValue({ items: [live] });
+  jest.mocked(stealthApi.decide).mockResolvedValue({ ...live, my_decision: 'declined' });
+  const screen = await render(wrap(<QuickStealthScreen onAdvanced={jest.fn()} />));
+  await waitFor(() => expect(screen.getByRole('button', { name: '撤回聊聊邀請' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '撤回聊聊邀請' }));
+  await waitFor(() => expect(screen.queryByText(/你已表示有興趣/)).toBeNull());
 });

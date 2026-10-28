@@ -5,16 +5,18 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { KeyboardScrollView } from '@/components/keyboard-layout';
-import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
+import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
+import { BrandLogo } from '@/components/brand-logo';
+import { InlineLoading } from '@/components/inline-loading';
+import {
+  StealthRequestSummary,
+  stealthCategories,
+  stealthLocations,
+} from '@/components/stealth-request-summary';
 import { coreError } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
-import {
-  stealthApi,
-  type StealthMatch,
-  type StealthQuickResult,
-  type StealthSemanticResult,
-} from '@/lib/stealth-api';
+import { stealthApi, type StealthMatch, type StealthSemanticResult } from '@/lib/stealth-api';
 import { QuickStealthComposer } from '@/components/quick-stealth-composer';
 import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
@@ -62,11 +64,11 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
   });
   const clock = useCoreClock();
   const [composerBusy, setComposerBusy] = useState(false);
-  const [saved, setSaved] = useState<StealthQuickResult>();
+  const [chatStarted, setChatStarted] = useState(false);
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
   const [details, setDetails] = useState(false);
-  const [decided, setDecided] = useState<string[]>([]);
+  const [localMatches, setLocalMatches] = useState<Record<string, StealthMatch>>({});
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
   };
@@ -96,17 +98,74 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
     focused ? analysis : undefined,
     now,
   );
-  const visible = ordered.filter(
-    (m) =>
-      m.status === 'pending' &&
-      m.my_decision === 'pending' &&
-      Date.parse(m.expires_at) > now &&
-      !decided.includes(m.id),
-  );
+  const visible = ordered
+    .map((match) =>
+      localMatches[match.id]?.my_decision === 'declined' &&
+      ['pending', 'ready'].includes(match.status)
+        ? localMatches[match.id]
+        : match.my_decision === 'pending'
+          ? (localMatches[match.id] ?? match)
+          : match,
+    )
+    .filter(
+      (m) =>
+        ['pending', 'ready'].includes(m.status) &&
+        m.my_decision !== 'declined' &&
+        Date.parse(m.expires_at) > now,
+    );
+  const step = visible.some((m) => m.status === 'ready')
+    ? 2
+    : active.length || visible.length
+      ? 1
+      : 0;
   return (
     <Screen>
-      <DetailHeader title="偷揪" />
+      <DetailHeader
+        title="偷揪"
+        right={<IconButton icon="tune-variant" label="分身與需求進階設定" onPress={onAdvanced} />}
+      />
       <KeyboardScrollView contentContainerStyle={styles.page}>
+        {!chatStarted && !active.length ? (
+          <View style={styles.hero}>
+            <View style={styles.heroTop}>
+              <View style={styles.brandTile}>
+                <BrandLogo size={35} />
+              </View>
+              <View>
+                <Text style={styles.eyebrow}>你的揪團搭子</Text>
+                <Text style={styles.heroTitle}>想揪什麼？</Text>
+              </View>
+            </View>
+            <Text style={styles.heroBody}>
+              跟我聊聊，把想吃的、手上的優惠和順路小事，變成一場揪團。
+            </Text>
+            <View style={styles.steps}>
+              {['聊需求', '找夥伴', '聊細節'].map((label, index) => (
+                <View key={label} style={styles.step}>
+                  <View style={[styles.stepNumber, index <= step && styles.stepActive]}>
+                    <Text style={styles.stepText}>{index + 1}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.stepLabel,
+                      index === step && { color: colors.ink, fontWeight: '800' },
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  {index < 2 ? <View style={styles.stepLine} /> : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.compactSteps}>
+            <Text style={styles.eyebrow}>
+              {step === 2 ? '③ 聊細節' : step === 1 ? '② 找夥伴' : '① 聊需求'}
+            </Text>
+            <Text style={styles.hint}>聊需求 → 找夥伴 → 聊細節</Text>
+          </View>
+        )}
         <QuickStealthComposer
           actor={actor}
           enabled={!!agent.data?.enabled}
@@ -119,14 +178,23 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             retry.isPending
           }
           onBusyChange={setComposerBusy}
+          onStarted={() => setChatStarted(true)}
           onSaved={async (result) => {
             if (!sameActor()) return;
-            setSaved(result);
             setAnalysis(undefined);
-            setNotice('已交給分身，會持續留意平台上的合適需求。');
+            setNotice(
+              result.created.matching === 'quiet'
+                ? '需求已儲存，目前是分身的安靜時段。'
+                : result.created.matching === 'unavailable'
+                  ? '需求已儲存，配對暫時未完成，稍後可再找找。'
+                  : '需求已交給分身，配對結果會出現在下方。',
+            );
             await refresh();
           }}
         />
+        {agent.isPending || capability.isPending ? (
+          <InlineLoading label="正在準備你的分身" />
+        ) : null}
         {!capability.isPending && !capability.data?.ready ? (
           <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
         ) : null}
@@ -150,19 +218,33 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             {notice}
           </Text>
         ) : null}
-        <Text style={styles.title}>
-          {visible.length
-            ? '分身找到這些機會'
-            : busy
-              ? '分身協調中'
-              : active.length
-                ? '還在替你留意合適的人'
-                : '說完一句，就等分身帶消息回來'}
-        </Text>
+        {active.length || visible.length ? (
+          <View style={styles.sectionHeading}>
+            <Text style={styles.title}>我的配對進度</Text>
+            <Text style={styles.hint}>{active.length} 個有效需求</Text>
+          </View>
+        ) : null}
         {active.length ? (
-          <View style={styles.watchStatus}>
-            <MaterialCommunityIcons name="radar" size={18} color={colors.brown} />
-            <Text style={styles.hint}>分身正在留意 · {active.length} 個需求</Text>
+          <View style={styles.statusCard}>
+            <View style={styles.statusIcon}>
+              <MaterialCommunityIcons
+                name={visible.length ? 'account-multiple-check-outline' : 'radar'}
+                size={24}
+                color={colors.brown}
+              />
+            </View>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.statusTitle}>
+                {visible.length
+                  ? '有合適的夥伴，看看要不要聊聊'
+                  : agent.data?.enabled
+                    ? '正在留意合適的夥伴'
+                    : '需求已保留，分身目前暫停'}
+              </Text>
+              <Text style={styles.hint}>
+                可以先逛首頁，回來查看結果。所有夥伴都願意聊聊後，才會開啟聊天室。
+              </Text>
+            </View>
           </View>
         ) : null}
         <Pressable
@@ -171,12 +253,9 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
           style={styles.chatLink}
         >
           <MaterialCommunityIcons name="message-outline" size={18} color={colors.brown} />
-          <Text style={styles.hint}>已接受的機會，前往訊息查看</Text>
+          <Text style={styles.hint}>我的偷揪聊天</Text>
           <MaterialCommunityIcons name="chevron-right" size={18} color={colors.brown} />
         </Pressable>
-        {!visible.length && active.length ? (
-          <Text style={styles.body}>還沒遇到合適夥伴，稍後再來看看。</Text>
-        ) : null}
         {matches.error ? (
           <Text accessibilityRole="alert" style={styles.error}>
             {coreError(matches.error)}
@@ -188,10 +267,10 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             match={match}
             explanation={valid.get(match.id)?.explanations ?? []}
             refresh={refresh}
-            onDecided={(id) => setDecided((ids) => [...ids, id])}
+            onUpdated={(result) => setLocalMatches((old) => ({ ...old, [result.id]: result }))}
           />
         ))}
-        {details && active.length ? (
+        {active.length ? (
           <PrimaryButton
             secondary
             loading={retry.isPending}
@@ -206,71 +285,98 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             {coreError(retry.error)} 原本需求與結果仍保留。
           </Text>
         ) : null}
-        <PrimaryButton secondary onPress={() => setDetails(!details)}>
-          {details ? '收起我的需求' : '查看我的需求'}
-        </PrimaryButton>
-        {details ? (
-          <View style={styles.card}>
-            {saved?.sources.map((source) => (
-              <Text key={source} style={styles.hint}>
-                {source}
-              </Text>
-            ))}
-            {active.map((signal) => (
-              <View key={signal.id}>
-                <Text style={styles.body}>{signal.title}</Text>
+        {active.length ? (
+          <>
+            {(details ? active : active.slice(0, 1)).map((signal) => (
+              <View key={signal.id} style={styles.card}>
+                <Text style={styles.eyebrow}>這次幫你找</Text>
+                <StealthRequestSummary signal={signal} />
                 <PrimaryButton
                   secondary
+                  loading={revoke.isPending && revoke.variables === signal.id}
                   disabled={revoke.isPending}
                   onPress={() => revoke.mutate(signal.id)}
                 >
-                  不揪這個了
+                  停止這個需求
                 </PrimaryButton>
               </View>
             ))}
+            {active.length > 1 ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setDetails(!details)}
+                style={styles.chatLink}
+              >
+                <Text style={styles.hint}>
+                  {details ? '收起其他需求' : `查看其他 ${active.length - 1} 個需求`}
+                </Text>
+              </Pressable>
+            ) : null}
             {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
-          </View>
+          </>
         ) : null}
-        <PrimaryButton secondary onPress={onAdvanced}>
-          分身與需求進階設定
-        </PrimaryButton>
+        {!active.length && !visible.length ? (
+          <Text style={styles.footnote}>
+            目前支援正餐、飲料、披薩、麵包與點心。只會配對平台上已啟用分身的需求。
+          </Text>
+        ) : null}
       </KeyboardScrollView>
     </Screen>
   );
 }
 
 export function QuickMatch({
-  match,
+  match: snapshot,
   explanation,
   refresh,
   onDecided,
+  onUpdated,
 }: {
   match: StealthMatch;
   explanation: string[];
   refresh: () => Promise<void>;
   onDecided?: (id: string) => void;
+  onUpdated?: (match: StealthMatch) => void;
 }) {
   const actor = useAuthStore((s) => s.user?.id);
   const decide = useMutation({
-    mutationFn: (decision: 'accepted' | 'declined') => stealthApi.decide(match.id, decision),
+    mutationFn: (decision: 'accepted' | 'declined') => stealthApi.decide(snapshot.id, decision),
     onSuccess: async (result) => {
       if (useAuthStore.getState().user?.id !== actor) return;
-      onDecided?.(match.id);
+      onUpdated?.(result);
+      if (result.my_decision === 'declined') onDecided?.(snapshot.id);
       await refresh();
       if (result.status === 'ready')
         router.push({ pathname: '/stealth-chat/[id]', params: { id: result.id } });
     },
   });
+  const match = snapshot.my_decision === 'pending' ? (decide.data ?? snapshot) : snapshot;
+  const waiting = match.my_decision === 'accepted' && match.status === 'pending';
   return (
     <View style={styles.card}>
-      <Text style={styles.subtitle}>
-        {match.member_count} 人一起 ·{' '}
-        {
-          { drink: '喝飲料', meal: '吃正餐', pizza: '吃披薩', bakery: '買麵包', snack: '吃點心' }[
-            match.category
-          ]
-        }
-      </Text>
+      <View style={styles.matchHeading}>
+        <View style={styles.people}>
+          <View style={styles.person}>
+            <MaterialCommunityIcons name="account-outline" size={24} color={colors.brown} />
+          </View>
+          <View style={[styles.person, styles.partner]}>
+            <MaterialCommunityIcons name="account-heart-outline" size={24} color={colors.ink} />
+          </View>
+        </View>
+        <View style={{ flex: 1, gap: 3 }}>
+          <Text style={styles.subtitle}>
+            {match.member_count} 人一起 · {stealthCategories[match.category]}
+          </Text>
+          <Text style={styles.hint}>
+            {waiting
+              ? '等對方回覆'
+              : match.status === 'ready'
+                ? '夥伴都想聊聊'
+                : '找到一個合適機會'}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.eyebrow}>為什麼推薦你們</Text>
       <Text style={styles.body}>
         {(explanation.length ? explanation : match.reasons).slice(0, 2).join('。')}
       </Text>
@@ -281,10 +387,10 @@ export function QuickMatch({
             hour: '2-digit',
             minute: '2-digit',
           })}{' '}
-          · {{ main_gate: '正門', east_gate: '麥側', south_gate: '莊九' }[match.location_id]}
+          · {stealthLocations[match.location_id]}
         </Text>
         <Text style={styles.hint}>
-          {match.known_cost_twd == null ? '金額待討論' : `約 NT$ ${match.known_cost_twd}／人`}
+          {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}
         </Text>
       </View>
       {match.status === 'formed' && match.formed_post_id ? (
@@ -297,24 +403,29 @@ export function QuickMatch({
         <PrimaryButton
           onPress={() => router.push({ pathname: '/stealth-chat/[id]', params: { id: match.id } })}
         >
-          {match.status === 'unavailable' ? '查看聊天室紀錄' : '進聊天室聊細節'}
+          {match.status === 'unavailable' ? '查看聊天室紀錄' : '開始聊天'}
         </PrimaryButton>
       ) : match.my_decision === 'accepted' ? (
         <Text accessibilityLiveRegion="polite" style={styles.body}>
-          你已同意聊聊，等待夥伴回覆。
+          你已表示有興趣，正在等對方回覆。這還不代表已加入正式拼單。
         </Text>
       ) : (
-        <PrimaryButton disabled={decide.isPending} onPress={() => decide.mutate('accepted')}>
-          接受機會
+        <PrimaryButton
+          loading={decide.isPending && decide.variables === 'accepted'}
+          disabled={decide.isPending}
+          onPress={() => decide.mutate('accepted')}
+        >
+          有興趣，先聊聊
         </PrimaryButton>
       )}
       {match.status !== 'formed' && match.status !== 'unavailable' && !match.is_demo ? (
         <PrimaryButton
           secondary
+          loading={decide.isPending && decide.variables === 'declined'}
           disabled={decide.isPending}
           onPress={() => decide.mutate('declined')}
         >
-          {match.my_decision === 'accepted' ? '撤回' : '這次先不用'}
+          {match.my_decision === 'accepted' ? '撤回聊聊邀請' : '這次先不用'}
         </PrimaryButton>
       ) : null}
       {decide.error ? (
@@ -331,9 +442,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 620,
     alignSelf: 'center',
-    padding: spacing.md,
+    padding: 16,
     paddingBottom: 100,
-    gap: spacing.md,
+    gap: 18,
   },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   agentIcon: {
@@ -347,17 +458,17 @@ const styles = StyleSheet.create({
   watchStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   chatLink: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
   hero: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.md,
+    backgroundColor: '#FFF8D9',
+    borderRadius: 24,
+    padding: 18,
+    gap: 14,
   },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.sm,
+    borderRadius: 22,
+    padding: 18,
+    gap: 14,
   },
   title: { fontSize: 21, fontWeight: '800', lineHeight: 32, color: colors.ink },
   subtitle: { fontSize: 18, fontWeight: '700', color: colors.ink },
@@ -374,4 +485,81 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   error: { color: colors.danger, lineHeight: 22 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandTile: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: colors.yellow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  eyebrow: { fontSize: 12, lineHeight: 19, fontWeight: '700', color: colors.brown },
+  heroTitle: { fontSize: 27, lineHeight: 37, fontWeight: '900', color: colors.ink },
+  compactSteps: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+  },
+  heroBody: { fontSize: 14, lineHeight: 23, color: '#646056' },
+  steps: { flexDirection: 'row', alignItems: 'center', paddingTop: 6 },
+  step: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 },
+  stepNumber: {
+    width: 23,
+    height: 23,
+    borderRadius: 12,
+    backgroundColor: '#ECE6D2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepActive: { backgroundColor: colors.yellow },
+  stepText: { fontSize: 11, fontWeight: '800', color: colors.ink },
+  stepLabel: { fontSize: 12, color: colors.muted },
+  stepLine: { flex: 1, height: 1, backgroundColor: '#DFD6B6', marginRight: 6 },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  statusCard: {
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statusIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusTitle: { fontSize: 15, lineHeight: 24, fontWeight: '700', color: colors.ink },
+  matchHeading: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  people: { flexDirection: 'row', paddingRight: 6 },
+  person: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0EEE9',
+    borderWidth: 2,
+    borderColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partner: { backgroundColor: colors.yellowSoft, marginLeft: -12 },
+  footnote: {
+    fontSize: 12,
+    lineHeight: 21,
+    color: colors.muted,
+    textAlign: 'center',
+    paddingHorizontal: 12,
+  },
 });

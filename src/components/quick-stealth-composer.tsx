@@ -1,20 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
-import { InlineLoading } from '@/components/inline-loading';
-import { AppState, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
+import { BrandLogo } from '@/components/brand-logo';
+import { InlineLoading } from '@/components/inline-loading';
+import { StealthRequestSummary } from '@/components/stealth-request-summary';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import {
   stealthApi,
-  type StealthQuickInterview,
+  type ConversationField,
+  type StealthConversation,
   type StealthQuickResult,
-  type StealthSignalInput,
 } from '@/lib/stealth-api';
 import { startPostSpeech } from '@/lib/post-speech';
 import type { SpeechCapture } from '@/lib/post-speech.types';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors } from '@/theme/tokens';
 
 type Props = {
   actor?: string;
@@ -23,10 +25,16 @@ type Props = {
   focused: boolean;
   onSaved: (result: StealthQuickResult) => Promise<void>;
   onBusyChange: (busy: boolean) => void;
+  onStarted?: () => void;
 };
 type Phase = 'idle' | 'starting' | 'listening' | 'finishing' | 'interview' | 'saving';
-const locations = { main_gate: '政大正門', east_gate: '政大東側門', south_gate: '政大南門' };
-const roles = { order: '下單', pickup: '取餐', coupon: '提供優惠券', share: '分食' };
+type Message = { role: 'user' | 'assistant'; text: string };
+const greeting = '今天有什麼想跟我分享的嗎？想吃的東西、手上的優惠，或願意幫忙取餐，都可以跟我說。';
+const starters = [
+  { icon: 'cup-outline' as const, label: '想喝飲料', answer: '我想找人一起喝飲料' },
+  { icon: 'ticket-percent-outline' as const, label: '手上有優惠', answer: '我有優惠券想分享' },
+  { icon: 'moped-outline' as const, label: '可以順路拿', answer: '我願意順路幫忙取餐' },
+];
 
 export function QuickStealthComposer({
   actor,
@@ -35,44 +43,55 @@ export function QuickStealthComposer({
   focused,
   onSaved,
   onBusyChange,
+  onStarted,
 }: Props) {
   const [text, setText] = useState('');
   const [turns, setTurns] = useState<string[]>([]);
-  const [chat, setChat] = useState(false);
-  const [preview, setPreview] = useState<StealthQuickInterview>();
+  const [fields, setFields] = useState<(ConversationField | null)[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [preview, setPreview] = useState<StealthConversation>();
   const [phase, setPhase] = useState<Phase>('idle');
+  const [reviewing, setReviewing] = useState(false);
+  const [pendingAnswer, setPendingAnswer] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
   const [lastFocus, setLastFocus] = useState(focused);
   if (lastFocus !== focused) {
     setLastFocus(focused);
-    if (!focused) setPhase('idle');
+    if (!focused) {
+      setPhase('idle');
+      setPendingAnswer('');
+    }
   }
-  const [error, setError] = useState('');
-  const [saved, setSaved] = useState<StealthQuickResult>();
+  const transcript = useRef<ScrollView>(null);
   const mounted = useRef(true);
   const visible = useRef(focused);
   const epoch = useRef(0);
   const locked = useRef(false);
   const capture = useRef<SpeechCapture | null>(null);
   const speechAbort = useRef<AbortController | null>(null);
+  const inferenceAbort = useRef<AbortController | null>(null);
   const request = useRef<{ payload: string; key: string } | null>(null);
   const busy = phase !== 'idle';
   useEffect(() => {
     onBusyChange(busy);
   }, [busy, onBusyChange]);
-  function cancel() {
+  const cancel = useCallback(() => {
     epoch.current += 1;
     speechAbort.current?.abort();
+    inferenceAbort.current?.abort();
     capture.current?.cancel();
     capture.current = null;
-    speechAbort.current = null;
     locked.current = false;
+    setPendingAnswer('');
     setPhase('idle');
-  }
+  }, []);
   useEffect(() => {
     visible.current = focused;
     if (!focused) {
       epoch.current += 1;
       speechAbort.current?.abort();
+      inferenceAbort.current?.abort();
       capture.current?.cancel();
       capture.current = null;
       locked.current = false;
@@ -81,90 +100,95 @@ export function QuickStealthComposer({
   useEffect(() => {
     mounted.current = true;
     const subscription = AppState.addEventListener('change', (state) => {
-      // System permission sheets are inactive, not a reason to discard a recording.
-      if (state === 'background') {
-        epoch.current += 1;
-        speechAbort.current?.abort();
-        capture.current?.cancel();
-        capture.current = null;
-        locked.current = false;
-        setPhase('idle');
-      }
+      if (state === 'background') cancel();
     });
     return () => {
       mounted.current = false;
       epoch.current += 1;
       speechAbort.current?.abort();
+      inferenceAbort.current?.abort();
       capture.current?.cancel();
       subscription.remove();
       onBusyChange(false);
     };
-  }, [onBusyChange]);
+  }, [onBusyChange, cancel]);
   const alive = (id: number) =>
     mounted.current &&
     visible.current &&
     epoch.current === id &&
     useAuthStore.getState().user?.id === actor;
-  const inputValid =
-    !!text.trim() &&
-    text.length <= 1000 &&
-    turns.length < 8 &&
-    turns.join('').length + text.trim().length <= 4000;
+  const validAnswer = (answer: string) =>
+    !!answer.trim() &&
+    answer.length <= 1000 &&
+    turns.length < 16 &&
+    turns.join('').length + answer.trim().length <= 4000;
+  const inputValid = validAnswer(text);
 
-  async function analyze(next: string[], id = ++epoch.current) {
-    if (!actor || !alive(id)) return;
+  async function analyze(answer: string, display = answer, id = ++epoch.current) {
+    if (!actor || disabled || !alive(id) || !validAnswer(answer)) return;
+    onStarted?.();
     locked.current = true;
     setPhase('interview');
     setError('');
+    setReviewing(false);
+    setPendingAnswer(display);
+    const next = [...turns, answer.trim()];
+    const nextFields = [...fields, preview?.question?.field ?? null];
+    const controller = new AbortController();
+    inferenceAbort.current = controller;
     try {
-      const result = await stealthApi.quickInterview(
+      const result = await stealthApi.conversation(
         next,
-        turns.length ? preview?.facts : undefined,
+        preview?.facts,
+        nextFields,
+        controller.signal,
       );
       if (!alive(id)) return;
       setTurns(next);
+      setFields(nextFields);
       setPreview(result);
       setText('');
-      setChat(true);
+      setMessages((old) => [
+        ...old,
+        { role: 'user', text: display },
+        { role: 'assistant', text: result.message },
+      ]);
+      setReviewing(result.ready_for_review);
       request.current = null;
     } catch (e) {
-      if (alive(id)) setError(`${coreError(e)} 補充已保留，可重試。`);
+      if (alive(id)) {
+        setText(answer);
+        setError(`${coreError(e)} 這次補充已保留，按傳送即可重試。`);
+      }
     } finally {
       if (alive(id)) {
         locked.current = false;
+        setPendingAnswer('');
         setPhase('idle');
       }
     }
   }
-  async function save(signal?: StealthSignalInput) {
-    if (disabled || locked.current || !actor) return;
-    if (!signal && text.trim().length > 160) {
-      setChat(true);
-      await analyze([text.trim()]);
-      return;
-    }
-    const sentence = signal?.title ?? text.trim();
-    if (!sentence) return;
+  async function save() {
+    const signal = preview?.signal;
+    if (disabled || locked.current || !actor || !signal || text.trim() || !reviewing) return;
     const id = ++epoch.current;
-    const payload = JSON.stringify({ text: sentence, confirmed_signal: signal ?? null });
+    const payload = JSON.stringify(signal);
     if (request.current?.payload !== payload) request.current = { payload, key: newRequestKey() };
     locked.current = true;
     setPhase('saving');
     setError('');
     try {
-      const result = signal
-        ? await stealthApi.quickStart(sentence, !enabled, request.current.key, signal)
-        : await stealthApi.quickStart(sentence, !enabled, request.current.key);
+      const result = await stealthApi.quickStart(
+        signal.title,
+        !enabled,
+        request.current.key,
+        signal,
+      );
       if (!alive(id)) return;
-      setSaved(result);
-      setText('');
-      setTurns([]);
-      setPreview(undefined);
-      setChat(false);
-      request.current = null;
+      setSaved(true);
       await onSaved(result);
     } catch (e) {
-      if (alive(id)) setError(`${coreError(e)} 輸入已保留，可重試。`);
+      if (alive(id)) setError(`${coreError(e)} 已確認的條件仍保留，可以重試，不會重複建立。`);
     } finally {
       if (alive(id)) {
         locked.current = false;
@@ -173,7 +197,7 @@ export function QuickStealthComposer({
     }
   }
   async function speak() {
-    if (disabled || locked.current || !actor) return;
+    if (disabled || locked.current || !actor || turns.length >= 16) return;
     const id = ++epoch.current;
     const before = text.trim();
     let ended = false;
@@ -182,6 +206,7 @@ export function QuickStealthComposer({
     locked.current = true;
     setPhase('starting');
     setError('');
+    setReviewing(false);
     const combine = (spoken: string) => [before, spoken.trim()].filter(Boolean).join('，');
     try {
       const session = await startPostSpeech(
@@ -195,36 +220,26 @@ export function QuickStealthComposer({
             capture.current = null;
             const answer = combine(spoken);
             setText(answer);
-            if (!spoken.trim()) {
+            if (!spoken.trim() || !validAnswer(answer)) {
               locked.current = false;
               setPhase('idle');
-              setError('沒有辨識到語音，請重試或直接打字。');
+              setError(
+                !spoken.trim()
+                  ? '沒有辨識到語音，可以重試或直接打字。'
+                  : '語音文字已保留，每次最多 1000 字、整段對話最多 4000 字。',
+              );
               return;
             }
-            if (
-              answer.length > 1000 ||
-              turns.join('').length + answer.length > 4000 ||
-              turns.length >= 8
-            ) {
-              locked.current = false;
-              setPhase('idle');
-              setError('語音文字已保留，請縮短至每次 1000 字、合計 4000 字內。');
-              return;
-            }
-            if (chat) {
-              void analyze([...turns, answer], id);
-            } else {
-              locked.current = false;
-              setPhase('idle');
-            }
+            void analyze(answer, answer, id);
           },
           onError: (code) => {
-            if (!alive(id)) return;
-            ended = true;
-            capture.current = null;
-            locked.current = false;
-            setPhase('idle');
-            setError(coreError(new Error(code)));
+            if (alive(id)) {
+              ended = true;
+              capture.current = null;
+              locked.current = false;
+              setPhase('idle');
+              setError(coreError(new Error(code)));
+            }
           },
         },
         abort.signal,
@@ -247,256 +262,407 @@ export function QuickStealthComposer({
     cancel();
     setText('');
     setTurns([]);
+    setFields([]);
+    setMessages([]);
     setPreview(undefined);
-    setChat(false);
+    setReviewing(false);
+    setSaved(false);
     setError('');
     request.current = null;
   }
-  const signal = preview?.signal;
-  return (
-    <View style={styles.card}>
-      <View style={styles.heading}>
-        <MaterialCommunityIcons name="robot-outline" size={28} color={colors.brown} />
-        <Text style={styles.title}>一句話幫你揪</Text>
+  const count = preview
+    ? [
+        preview.facts.category,
+        preview.facts.location_id,
+        preview.facts.delay_minutes != null,
+        preview.facts.duration_minutes != null,
+        preview.facts.budget_max_twd != null || preview.facts.budget_unknown,
+        preview.facts.roles_confirmed,
+      ].filter(Boolean).length
+    : 0;
+  if (saved)
+    return (
+      <View style={styles.saved}>
+        <View style={styles.savedIcon}>
+          <MaterialCommunityIcons name="check" size={22} color={colors.ink} />
+        </View>
+        <View style={{ flex: 1, gap: 5 }}>
+          <Text style={styles.savedTitle}>需求已儲存</Text>
+          <Text style={styles.hint}>到下方查看配對進度，任何邀請都由你決定。</Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={restart} style={styles.smallButton}>
+          <Text style={styles.link}>再聊一個</Text>
+        </Pressable>
       </View>
-      <Text style={styles.body}>
-        想吃什麼、手上有什麼優惠，或願意幫忙做什麼，打字或說出來就好。
-      </Text>
-      {chat ? (
-        <>
-          <Text style={styles.hint}>
-            聊天補充是選填，不用答完所有問題；確認目前資訊就能開始找人。
-          </Text>
-          {turns.map((turn, index) => (
-            <View key={index} style={styles.bubble}>
-              <Text style={styles.body}>你：{turn}</Text>
-            </View>
+    );
+  return (
+    <View style={styles.panel}>
+      <View style={styles.panelHeader}>
+        <View style={styles.avatar}>
+          <BrandLogo size={25} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>你的偷揪分身</Text>
+          <Text style={styles.hint}>先聊需求，確認後才開始找人</Text>
+        </View>
+        {turns.length ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="重新開始對話"
+            disabled={busy}
+            onPress={restart}
+          >
+            <MaterialCommunityIcons name="restart" size={20} color={colors.muted} />
+          </Pressable>
+        ) : null}
+      </View>
+      <ScrollView
+        ref={transcript}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        style={styles.transcript}
+        contentContainerStyle={styles.messages}
+        onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })}
+      >
+        <View style={styles.assistantBubble}>
+          <Text style={styles.body}>{greeting}</Text>
+        </View>
+        {messages.map((message, index) => (
+          <View
+            key={index}
+            style={[
+              styles.bubble,
+              message.role === 'user' ? styles.userBubble : styles.assistantBubble,
+            ]}
+          >
+            <Text style={styles.body}>{message.text}</Text>
+          </View>
+        ))}
+        {pendingAnswer ? (
+          <View style={styles.userBubble}>
+            <Text style={styles.body}>{pendingAnswer}</Text>
+          </View>
+        ) : null}
+        {phase === 'interview' ? (
+          <View style={styles.assistantBubble}>
+            <InlineLoading label="正在理解你的需求" textStyle={styles.hint} />
+          </View>
+        ) : null}
+      </ScrollView>
+      {!turns.length && !busy ? (
+        <View style={styles.choices}>
+          {starters.map((item) => (
+            <Pressable
+              key={item.label}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              disabled={disabled}
+              onPress={() => {
+                if (!locked.current) void analyze(item.answer, item.label);
+              }}
+              style={styles.starter}
+            >
+              <MaterialCommunityIcons name={item.icon} size={19} color={colors.brown} />
+              <Text style={styles.choiceText}>{item.label}</Text>
+            </Pressable>
           ))}
-          {preview ? (
-            <View accessibilityLiveRegion="polite" style={styles.summary}>
-              <Text style={styles.subtitle}>分身目前理解</Text>
-              <Text style={styles.body}>{preview.facts.title}</Text>
-              {signal ? (
-                <>
-                  <Text style={styles.body}>
-                    {
-                      { need: '想找人一起吃', offer: '提供手上的資源', plan: '願意順路幫忙取餐' }[
-                        signal.kind
-                      ]
-                    }{' '}
-                    · {locations[signal.location_id]}
-                  </Text>
-                  <Text style={styles.hint}>
-                    配合時間：{new Date(signal.starts_at).toLocaleString('zh-TW')} ～{' '}
-                    {new Date(signal.ends_at).toLocaleString('zh-TW')}
-                  </Text>
-                  <Text style={styles.body}>
-                    預算：
-                    {signal.budget_max_twd === null
-                      ? '未設定'
-                      : `每人上限 NT$ ${signal.budget_max_twd}`}
-                    ；已知費用：
-                    {signal.known_cost_twd === null
-                      ? '待協調'
-                      : `每人 NT$ ${signal.known_cost_twd}`}
-                  </Text>
-                  <Text style={styles.body}>
-                    本人願意：{signal.roles.map((role) => roles[role]).join('、') || '尚未承諾分工'}
-                  </Text>
-                </>
-              ) : (
-                <Text style={styles.hint}>
-                  有必要資訊尚待釐清，請先回覆下方問題；其他細節可以稍後再談。
-                </Text>
-              )}
-              {preview.sources.map((source) => (
-                <Text key={source} style={styles.hint}>
-                  {source}
-                </Text>
-              ))}
-              {preview.questions.length ? (
-                <Text style={styles.subtitle}>想補充的話，可以聊聊</Text>
-              ) : null}
-              {preview.questions.map((question) => (
-                <Text key={question.field} style={styles.hint}>
-                  {question.text}
-                </Text>
-              ))}
-              {preview.interpretation === 'keyword_fallback' ? (
-                <Text style={styles.hint}>目前先依關鍵字整理。AI 訪談未啟用時仍可直接幫你揪。</Text>
-              ) : null}
-            </View>
-          ) : null}
-        </>
+        </View>
       ) : null}
-      <TextInput
-        accessibilityLabel={chat ? '補充時間地點或預算' : '一句話告訴分身'}
-        placeholder={
-          chat
-            ? '例如：改成東側門，30 分鐘後，預算 120 元'
-            : '例如：想喝50嵐／我有披薩優惠券／我願意幫忙取餐'
-        }
-        multiline
-        maxLength={1000}
-        value={text}
-        onChangeText={setText}
-        editable={!busy}
-        style={styles.input}
-      />
+      {preview?.question && !busy ? (
+        <View style={styles.choices}>
+          {preview.choices.map((choice) => (
+            <Pressable
+              key={choice.answer}
+              accessibilityRole="button"
+              disabled={disabled || !!text.trim()}
+              onPress={() => {
+                if (!locked.current) void analyze(choice.answer, choice.label);
+              }}
+              style={styles.choice}
+            >
+              <Text style={styles.choiceText}>{choice.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      <View style={styles.composer}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="用語音回答"
+          disabled={disabled || busy}
+          onPress={() => {
+            void speak();
+          }}
+          style={styles.voice}
+        >
+          <MaterialCommunityIcons
+            name="microphone-outline"
+            size={23}
+            color={busy || disabled ? colors.subtle : colors.ink}
+          />
+        </Pressable>
+        <TextInput
+          accessibilityLabel="跟偷揪分身聊天"
+          placeholder={turns.length ? '回答我，或隨時更改需求' : '想吃什麼？有什麼想分享的？'}
+          value={text}
+          onChangeText={(value) => {
+            setText(value);
+            if (value.trim()) setReviewing(false);
+          }}
+          multiline
+          maxLength={1000}
+          editable={!busy && !disabled}
+          style={styles.input}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="傳送給分身"
+          accessibilityState={{ busy: phase === 'interview' }}
+          disabled={disabled || busy || !inputValid}
+          onPress={() => {
+            if (!locked.current) void analyze(text);
+          }}
+          style={[styles.send, (disabled || busy || !inputValid) && styles.disabled]}
+        >
+          {phase === 'interview' ? (
+            <ActivityIndicator
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel="正在理解"
+              size="small"
+              color={colors.ink}
+            />
+          ) : (
+            <MaterialCommunityIcons name="arrow-up" size={23} color={colors.ink} />
+          )}
+        </Pressable>
+      </View>
       {phase === 'listening' ? (
-        <>
-          <Text accessibilityLiveRegion="polite" style={styles.body}>
-            正在聆聽，每次最多 60 秒
-          </Text>
+        <View style={styles.voicePanel}>
+          <Text style={styles.body}>正在聆聽，每次最多 60 秒</Text>
           <PrimaryButton
             onPress={() => {
-              capture.current?.stop();
               setPhase('finishing');
+              capture.current?.stop();
             }}
           >
-            說好了，{chat ? '補充給分身' : '確認語音文字'}
+            說好了，傳給分身
           </PrimaryButton>
           <PrimaryButton secondary onPress={cancel}>
             取消語音
           </PrimaryButton>
-        </>
-      ) : (
-        <PrimaryButton
-          secondary
-          disabled={disabled || busy || !actor || turns.length >= 8}
-          onPress={() => {
-            void speak();
-          }}
-        >
-          用語音{chat ? '回答' : '說一句'}
-        </PrimaryButton>
-      )}
-      {busy ? (
-        <InlineLoading
-          textStyle={styles.hint}
-          label={
-            phase === 'starting'
-              ? '正在取得語音權限'
-              : phase === 'interview'
-                ? '分身正在整理補充'
-                : phase === 'saving'
-                  ? '分身正在理解並找人'
-                  : phase === 'finishing'
-                    ? '正在整理語音文字'
-                    : '正在聆聽'
-          }
-        />
+        </View>
       ) : null}
       {phase === 'starting' || phase === 'finishing' ? (
-        <PrimaryButton secondary onPress={cancel}>
-          取消語音
-        </PrimaryButton>
+        <View style={styles.voicePanel}>
+          <InlineLoading label={phase === 'starting' ? '正在取得語音權限' : '正在整理語音文字'} />
+          <PrimaryButton secondary onPress={cancel}>
+            取消語音
+          </PrimaryButton>
+        </View>
       ) : null}
-      {!enabled ? (
-        <Text style={styles.hint}>
-          按下啟用並幫我揪，才會開啟分身並儲存需求；聊天整理不會先啟用。
-        </Text>
-      ) : null}
-      {chat ? (
-        <>
-          <PrimaryButton
-            secondary
-            loading={phase === 'interview'}
-            disabled={disabled || busy || !inputValid}
-            onPress={() => {
-              if (!locked.current) void analyze([...turns, text.trim()]);
-            }}
-          >
-            補充給分身
-          </PrimaryButton>
-          <PrimaryButton
-            loading={phase === 'saving'}
-            disabled={disabled || busy || !signal || !!text.trim()}
-            onPress={() => {
-              if (signal) void save(signal);
-            }}
-          >
-            {enabled ? '先用目前資訊幫我揪' : '啟用分身並用目前資訊幫我揪'}
-          </PrimaryButton>
-          {text.trim() && signal ? (
-            <Text style={styles.hint}>還有未整理的補充，先送給分身，避免漏掉你的更正。</Text>
-          ) : null}
-          <PrimaryButton secondary disabled={busy} onPress={restart}>
-            重新開始
-          </PrimaryButton>
-          {turns.length >= 8 ? (
-            <Text style={styles.hint}>已聊到八輪，可確認目前資訊開始找人，或重新開始。</Text>
-          ) : null}
-        </>
+      {preview ? (
+        <View style={styles.progressRow}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${(count / 6) * 100}%` }]} />
+          </View>
+          <Text style={styles.hint}>已整理 {count}／6 項</Text>
+        </View>
       ) : (
-        <>
-          <Text style={styles.hint}>
-            未指定時，先找正門、接下來兩小時；有近期同類需求時會參考地點與預算。
-          </Text>
+        <Text style={styles.footnote}>可打字或用說的；不知道的細節可以先留待討論。</Text>
+      )}
+      {preview?.signal && !reviewing ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="先確認目前需求"
+          disabled={busy || !!text.trim()}
+          onPress={() => setReviewing(true)}
+          style={styles.reviewLink}
+        >
+          <Text style={styles.link}>先確認目前需求</Text>
+          <MaterialCommunityIcons name="arrow-right" size={16} color={colors.brown} />
+        </Pressable>
+      ) : null}
+      {reviewing && preview?.signal ? (
+        <View style={styles.review}>
+          <View style={styles.reviewTitle}>
+            <MaterialCommunityIcons name="clipboard-check-outline" size={20} color={colors.brown} />
+            <Text style={styles.savedTitle}>這次幫你找</Text>
+          </View>
+          <StealthRequestSummary signal={preview.signal} facts={preview.facts} />
           <PrimaryButton
             loading={phase === 'saving'}
-            disabled={disabled || busy || !inputValid}
+            disabled={disabled || busy || !!text.trim()}
             onPress={() => {
               void save();
             }}
           >
-            {enabled ? '幫我揪' : '啟用分身並幫我揪'}
+            確認條件，開始找人
           </PrimaryButton>
-          <PrimaryButton
-            secondary
-            loading={phase === 'interview'}
-            disabled={disabled || busy || !inputValid}
-            onPress={() => {
-              setChat(true);
-              if (!locked.current) void analyze([text.trim()]);
-            }}
-          >
-            想講清楚，繼續聊聊（選填）
-          </PrimaryButton>
-        </>
-      )}
+          <Text style={styles.footnote}>
+            {enabled
+              ? '只會建立這次需求，不會替你接受邀請或下單。'
+              : '確認後會啟用分身並建立需求；邀請與下單仍由你決定。'}
+          </Text>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => setReviewing(false)}>
+            <Text style={styles.link}>回到聊天補充</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {turns.length >= 16 ? (
+        <Text style={styles.hint}>這段對話已達長度上限，可以確認目前需求，或重新開始。</Text>
+      ) : null}
       {error ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
-        </Text>
-      ) : null}
-      {saved ? (
-        <Text accessibilityLiveRegion="polite" style={styles.body}>
-          已記住：{saved.created.signal.title}
-          {saved.interpretation === 'keyword_fallback' ? '（依關鍵字整理）' : ''}
         </Text>
       ) : null}
     </View>
   );
 }
 const styles = StyleSheet.create({
-  card: {
-    gap: spacing.md,
-    padding: spacing.md,
+  panel: {
     backgroundColor: colors.background,
-    borderRadius: radius.md,
-  },
-  heading: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  title: { fontSize: 21, fontWeight: '800', color: colors.ink },
-  subtitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
-  body: { fontSize: 15, lineHeight: 24, color: colors.ink },
-  hint: { fontSize: 13, lineHeight: 21, color: colors.muted },
-  input: {
-    minHeight: 85,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    color: colors.ink,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
-    fontSize: 16,
+    overflow: 'hidden',
+    padding: 16,
+    gap: 14,
   },
-  bubble: { padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface },
-  summary: {
-    gap: spacing.sm,
-    padding: spacing.md,
+  panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
     backgroundColor: colors.yellowSoft,
-    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  error: { color: colors.danger, lineHeight: 22 },
+  name: { fontSize: 15, fontWeight: '800', color: colors.ink },
+  hint: { fontSize: 12, lineHeight: 19, color: colors.muted },
+  transcript: { maxHeight: 340 },
+  messages: { gap: 12, paddingVertical: 4 },
+  bubble: { maxWidth: '94%', borderRadius: 18, padding: 14 },
+  assistantBubble: {
+    alignSelf: 'flex-start',
+    maxWidth: '94%',
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderTopLeftRadius: 4,
+    padding: 14,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    maxWidth: '90%',
+    borderRadius: 18,
+    borderBottomRightRadius: 4,
+    backgroundColor: colors.yellowSoft,
+    padding: 14,
+  },
+  body: { fontSize: 15, lineHeight: 25, color: colors.ink },
+  choices: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  starter: {
+    flexGrow: 1,
+    flexBasis: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
+    paddingVertical: 13,
+    paddingHorizontal: 5,
+  },
+  choice: {
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: '#E8DDA9',
+    borderRadius: 999,
+    backgroundColor: '#FFFEF7',
+  },
+  choiceText: { fontSize: 13, lineHeight: 20, color: colors.ink },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: colors.surface,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 6,
+    gap: 6,
+  },
+  voice: { width: 34, height: 38, alignItems: 'center', justifyContent: 'center' },
+  input: {
+    flex: 1,
+    color: colors.ink,
+    fontSize: 15,
+    lineHeight: 23,
+    minHeight: 38,
+    maxHeight: 100,
+    paddingVertical: 8,
+  },
+  send: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.yellow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disabled: { opacity: 0.4 },
+  footnote: { fontSize: 12, lineHeight: 19, color: colors.muted },
+  progressRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  progressTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: colors.surface,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: { height: 4, backgroundColor: colors.yellow },
+  reviewLink: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    alignItems: 'center',
+    padding: 6,
+  },
+  link: {
+    color: colors.brown,
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  review: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#F2E7BC',
+    borderRadius: 18,
+    padding: 14,
+    gap: 14,
+  },
+  reviewTitle: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  saved: {
+    flexDirection: 'row',
+    gap: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 15,
+    alignItems: 'center',
+  },
+  savedTitle: { fontSize: 16, fontWeight: '800', color: colors.ink },
+  savedIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.yellowSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smallButton: { padding: 4 },
+  voicePanel: { gap: 10 },
+  error: { color: colors.danger, fontSize: 13, lineHeight: 21 },
 });
