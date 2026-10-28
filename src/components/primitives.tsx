@@ -64,21 +64,31 @@ export function AppHeader({
   );
 }
 
-export function DetailHeader({ title, right }: { title: string; right?: ReactNode }) {
+export function DetailHeader({
+  title,
+  right,
+  sideWidth = 40,
+}: {
+  title: string;
+  right?: ReactNode;
+  sideWidth?: number;
+}) {
   return (
     <View style={styles.header}>
-      <IconButton
-        icon="chevron-left"
-        label="返回"
-        onPress={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/');
-        }}
-      />
+      <View style={{ width: sideWidth }}>
+        <IconButton
+          icon="chevron-left"
+          label="返回"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/');
+          }}
+        />
+      </View>
       <Text numberOfLines={1} style={styles.headerTitle}>
         {title}
       </Text>
-      <View style={styles.headerRight}>{right}</View>
+      <View style={[styles.headerRight, { width: sideWidth }]}>{right}</View>
     </View>
   );
 }

@@ -3,7 +3,6 @@ import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
-import { BrandLogo } from '@/components/brand-logo';
 import { InlineLoading } from '@/components/inline-loading';
 import { StealthRequestSummary } from '@/components/stealth-request-summary';
 import { coreError, newRequestKey } from '@/lib/core-api';
@@ -46,6 +45,7 @@ export function QuickStealthComposer({
   onStarted,
 }: Props) {
   const [text, setText] = useState('');
+  const [voiceReview, setVoiceReview] = useState(false);
   const [turns, setTurns] = useState<string[]>([]);
   const [fields, setFields] = useState<(ConversationField | null)[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -130,6 +130,7 @@ export function QuickStealthComposer({
     locked.current = true;
     setPhase('interview');
     setError('');
+    setVoiceReview(false);
     setReviewing(false);
     setPendingAnswer(display);
     const next = [...turns, answer.trim()];
@@ -198,6 +199,7 @@ export function QuickStealthComposer({
   }
   async function speak() {
     if (disabled || locked.current || !actor || turns.length >= 16) return;
+    onStarted?.();
     const id = ++epoch.current;
     const before = text.trim();
     let ended = false;
@@ -212,10 +214,13 @@ export function QuickStealthComposer({
       const session = await startPostSpeech(
         {
           onText: (spoken) => {
-            if (alive(id)) setText(combine(spoken));
+            if (alive(id) && !ended) {
+              setText(combine(spoken));
+              setVoiceReview(!!spoken.trim());
+            }
           },
           onEnd: (spoken) => {
-            if (!alive(id)) return;
+            if (!alive(id) || ended) return;
             ended = true;
             capture.current = null;
             const answer = combine(spoken);
@@ -230,10 +235,14 @@ export function QuickStealthComposer({
               );
               return;
             }
-            void analyze(answer, answer, id);
+            // Recognition only prepares a draft. The user edits and explicitly
+            // confirms before anything is sent to the conversation endpoint.
+            locked.current = false;
+            setPhase('idle');
+            setVoiceReview(true);
           },
           onError: (code) => {
-            if (alive(id)) {
+            if (alive(id) && !ended) {
               ended = true;
               capture.current = null;
               locked.current = false;
@@ -261,6 +270,7 @@ export function QuickStealthComposer({
   function restart() {
     cancel();
     setText('');
+    setVoiceReview(false);
     setTurns([]);
     setFields([]);
     setMessages([]);
@@ -270,16 +280,6 @@ export function QuickStealthComposer({
     setError('');
     request.current = null;
   }
-  const count = preview
-    ? [
-        preview.facts.category,
-        preview.facts.location_id,
-        preview.facts.delay_minutes != null,
-        preview.facts.duration_minutes != null,
-        preview.facts.budget_max_twd != null || preview.facts.budget_unknown,
-        preview.facts.roles_confirmed,
-      ].filter(Boolean).length
-    : 0;
   if (saved)
     return (
       <View style={styles.saved}>
@@ -298,12 +298,9 @@ export function QuickStealthComposer({
   return (
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
-        <View style={styles.avatar}>
-          <BrandLogo size={25} />
-        </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>你的偷揪分身</Text>
-          <Text style={styles.hint}>先聊需求，確認後才開始找人</Text>
+          <Text style={styles.name}>聊聊想揪的事</Text>
+          <Text style={styles.hint}>說個大概就好，細節可以慢慢補</Text>
         </View>
         {turns.length ? (
           <Pressable
@@ -320,7 +317,7 @@ export function QuickStealthComposer({
         ref={transcript}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
-        style={styles.transcript}
+        style={[styles.transcript, voiceReview && { maxHeight: 140 }]}
         contentContainerStyle={styles.messages}
         onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })}
       >
@@ -345,18 +342,18 @@ export function QuickStealthComposer({
         ) : null}
         {phase === 'interview' ? (
           <View style={styles.assistantBubble}>
-            <InlineLoading label="正在理解你的需求" textStyle={styles.hint} />
+            <InlineLoading label="正在整理回覆" textStyle={styles.hint} />
           </View>
         ) : null}
       </ScrollView>
-      {!turns.length && !busy ? (
+      {!turns.length && !busy && !voiceReview ? (
         <View style={styles.choices}>
           {starters.map((item) => (
             <Pressable
               key={item.label}
               accessibilityRole="button"
               accessibilityLabel={item.label}
-              disabled={disabled}
+              disabled={disabled || !!text.trim()}
               onPress={() => {
                 if (!locked.current) void analyze(item.answer, item.label);
               }}
@@ -368,7 +365,7 @@ export function QuickStealthComposer({
           ))}
         </View>
       ) : null}
-      {preview?.question && !busy ? (
+      {preview?.question && !busy && !voiceReview ? (
         <View style={styles.choices}>
           {preview.choices.map((choice) => (
             <Pressable
@@ -383,6 +380,12 @@ export function QuickStealthComposer({
               <Text style={styles.choiceText}>{choice.label}</Text>
             </Pressable>
           ))}
+        </View>
+      ) : null}
+      {voiceReview && !busy ? (
+        <View style={styles.voiceReviewHeading} accessibilityLiveRegion="polite">
+          <Text style={styles.name}>確認語音文字</Text>
+          <Text style={styles.hint}>下方文字可以直接修改，確認後才會送出。</Text>
         </View>
       ) : null}
       <View style={styles.composer}>
@@ -416,7 +419,7 @@ export function QuickStealthComposer({
         />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="傳送給分身"
+          accessibilityLabel={voiceReview ? '送出語音文字' : '傳送給分身'}
           accessibilityState={{ busy: phase === 'interview' }}
           disabled={disabled || busy || !inputValid}
           onPress={() => {
@@ -446,7 +449,7 @@ export function QuickStealthComposer({
               capture.current?.stop();
             }}
           >
-            說好了，傳給分身
+            結束錄音
           </PrimaryButton>
           <PrimaryButton secondary onPress={cancel}>
             取消語音
@@ -461,16 +464,19 @@ export function QuickStealthComposer({
           </PrimaryButton>
         </View>
       ) : null}
-      {preview ? (
-        <View style={styles.progressRow}>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${(count / 6) * 100}%` }]} />
-          </View>
-          <Text style={styles.hint}>已整理 {count}／6 項</Text>
-        </View>
-      ) : (
+      {voiceReview && !busy ? (
+        <PrimaryButton
+          disabled={disabled || !inputValid}
+          onPress={() => {
+            if (!locked.current) void analyze(text);
+          }}
+        >
+          確認文字並送出
+        </PrimaryButton>
+      ) : null}
+      {!preview && !voiceReview ? (
         <Text style={styles.footnote}>可打字或用說的；不知道的細節可以先留待討論。</Text>
-      )}
+      ) : null}
       {preview?.signal && !reviewing ? (
         <Pressable
           accessibilityRole="button"
@@ -523,25 +529,15 @@ export function QuickStealthComposer({
 const styles = StyleSheet.create({
   panel: {
     backgroundColor: colors.background,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 0,
     overflow: 'hidden',
-    padding: 16,
+    padding: 0,
     gap: 14,
   },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 16,
-    backgroundColor: colors.yellowSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   name: { fontSize: 15, fontWeight: '800', color: colors.ink },
   hint: { fontSize: 12, lineHeight: 19, color: colors.muted },
-  transcript: { maxHeight: 340 },
+  transcript: { maxHeight: 240 },
   messages: { gap: 12, paddingVertical: 4 },
   bubble: { maxWidth: '94%', borderRadius: 18, padding: 14 },
   assistantBubble: {
@@ -568,18 +564,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    backgroundColor: '#FFFBEB',
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 5,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 20,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
   },
   choice: {
     paddingHorizontal: 13,
     paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#E8DDA9',
+    borderColor: colors.border,
     borderRadius: 999,
-    backgroundColor: '#FFFEF7',
+    backgroundColor: colors.background,
   },
   choiceText: { fontSize: 13, lineHeight: 20, color: colors.ink },
   composer: {
@@ -612,15 +611,6 @@ const styles = StyleSheet.create({
   },
   disabled: { opacity: 0.4 },
   footnote: { fontSize: 12, lineHeight: 19, color: colors.muted },
-  progressRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  progressTrack: {
-    flex: 1,
-    height: 4,
-    backgroundColor: colors.surface,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: { height: 4, backgroundColor: colors.yellow },
   reviewLink: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -636,9 +626,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   review: {
-    backgroundColor: '#FFFBEB',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#F2E7BC',
+    borderColor: colors.border,
     borderRadius: 18,
     padding: 14,
     gap: 14,
@@ -664,5 +654,6 @@ const styles = StyleSheet.create({
   },
   smallButton: { padding: 4 },
   voicePanel: { gap: 10 },
+  voiceReviewHeading: { gap: 4, paddingTop: 4 },
   error: { color: colors.danger, fontSize: 13, lineHeight: 21 },
 });

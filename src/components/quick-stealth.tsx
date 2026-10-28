@@ -6,7 +6,6 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { KeyboardScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
-import { BrandLogo } from '@/components/brand-logo';
 import { InlineLoading } from '@/components/inline-loading';
 import {
   StealthRequestSummary,
@@ -113,59 +112,29 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
         m.my_decision !== 'declined' &&
         Date.parse(m.expires_at) > now,
     );
-  const step = visible.some((m) => m.status === 'ready')
-    ? 2
-    : active.length || visible.length
-      ? 1
-      : 0;
   return (
     <Screen>
       <DetailHeader
         title="偷揪"
-        right={<IconButton icon="tune-variant" label="分身與需求進階設定" onPress={onAdvanced} />}
+        sideWidth={80}
+        right={
+          <View style={{ flexDirection: 'row' }}>
+            <IconButton
+              icon="message-outline"
+              label="我的偷揪聊天"
+              onPress={() => router.push('/messages')}
+            />
+            <IconButton icon="tune-variant" label="分身與需求進階設定" onPress={onAdvanced} />
+          </View>
+        }
       />
       <KeyboardScrollView contentContainerStyle={styles.page}>
-        {!chatStarted && !active.length ? (
-          <View style={styles.hero}>
-            <View style={styles.heroTop}>
-              <View style={styles.brandTile}>
-                <BrandLogo size={35} />
-              </View>
-              <View>
-                <Text style={styles.eyebrow}>你的揪團搭子</Text>
-                <Text style={styles.heroTitle}>想揪什麼？</Text>
-              </View>
-            </View>
-            <Text style={styles.heroBody}>
-              跟我聊聊，把想吃的、手上的優惠和順路小事，變成一場揪團。
-            </Text>
-            <View style={styles.steps}>
-              {['聊需求', '找夥伴', '聊細節'].map((label, index) => (
-                <View key={label} style={styles.step}>
-                  <View style={[styles.stepNumber, index <= step && styles.stepActive]}>
-                    <Text style={styles.stepText}>{index + 1}</Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.stepLabel,
-                      index === step && { color: colors.ink, fontWeight: '800' },
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                  {index < 2 ? <View style={styles.stepLine} /> : null}
-                </View>
-              ))}
-            </View>
+        {!chatStarted ? (
+          <View style={styles.intro}>
+            <Text style={styles.heroTitle}>今天想揪什麼？</Text>
+            <Text style={styles.heroBody}>一起吃飯、分享優惠，或找人順路幫忙。</Text>
           </View>
-        ) : (
-          <View style={styles.compactSteps}>
-            <Text style={styles.eyebrow}>
-              {step === 2 ? '③ 聊細節' : step === 1 ? '② 找夥伴' : '① 聊需求'}
-            </Text>
-            <Text style={styles.hint}>聊需求 → 找夥伴 → 聊細節</Text>
-          </View>
-        )}
+        ) : null}
         <QuickStealthComposer
           actor={actor}
           enabled={!!agent.data?.enabled}
@@ -187,14 +156,12 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
                 ? '需求已儲存，目前是分身的安靜時段。'
                 : result.created.matching === 'unavailable'
                   ? '需求已儲存，配對暫時未完成，稍後可再找找。'
-                  : '需求已交給分身，配對結果會出現在下方。',
+                  : '已開始找人，有合適的夥伴會顯示在下方。',
             );
             await refresh();
           }}
         />
-        {agent.isPending || capability.isPending ? (
-          <InlineLoading label="正在準備你的分身" />
-        ) : null}
+        {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
         {!capability.isPending && !capability.data?.ready ? (
           <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
         ) : null}
@@ -220,7 +187,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
         ) : null}
         {active.length || visible.length ? (
           <View style={styles.sectionHeading}>
-            <Text style={styles.title}>我的配對進度</Text>
+            <Text style={styles.title}>揪團進度</Text>
             <Text style={styles.hint}>{active.length} 個有效需求</Text>
           </View>
         ) : null}
@@ -228,7 +195,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
           <View style={styles.statusCard}>
             <View style={styles.statusIcon}>
               <MaterialCommunityIcons
-                name={visible.length ? 'account-multiple-check-outline' : 'radar'}
+                name={visible.length ? 'account-multiple-check-outline' : 'account-search-outline'}
                 size={24}
                 color={colors.brown}
               />
@@ -247,15 +214,6 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             </View>
           </View>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/messages')}
-          style={styles.chatLink}
-        >
-          <MaterialCommunityIcons name="message-outline" size={18} color={colors.brown} />
-          <Text style={styles.hint}>我的偷揪聊天</Text>
-          <MaterialCommunityIcons name="chevron-right" size={18} color={colors.brown} />
-        </Pressable>
         {matches.error ? (
           <Text accessibilityRole="alert" style={styles.error}>
             {coreError(matches.error)}
@@ -277,7 +235,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             disabled={busy || !capability.data?.ready}
             onPress={() => retry.mutate()}
           >
-            {retry.isPending ? '分身再看看' : '請分身再看看'}
+            再找找看
           </PrimaryButton>
         ) : null}
         {retry.error ? (
@@ -376,7 +334,7 @@ export function QuickMatch({
           </Text>
         </View>
       </View>
-      <Text style={styles.eyebrow}>為什麼推薦你們</Text>
+      <Text style={styles.eyebrow}>可以一起揪的原因</Text>
       <Text style={styles.body}>
         {(explanation.length ? explanation : match.reasons).slice(0, 2).join('。')}
       </Text>
@@ -457,17 +415,12 @@ const styles = StyleSheet.create({
   },
   watchStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   chatLink: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
-  hero: {
-    backgroundColor: '#FFF8D9',
-    borderRadius: 24,
-    padding: 18,
-    gap: 14,
-  },
+  intro: { gap: 6, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: colors.border },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 22,
-    padding: 18,
+    borderRadius: 16,
+    padding: 16,
     gap: 14,
   },
   title: { fontSize: 21, fontWeight: '800', lineHeight: 32, color: colors.ink },
@@ -485,40 +438,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   error: { color: colors.danger, lineHeight: 22 },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandTile: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
-    backgroundColor: colors.yellow,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  eyebrow: { fontSize: 12, lineHeight: 19, fontWeight: '700', color: colors.brown },
-  heroTitle: { fontSize: 27, lineHeight: 37, fontWeight: '900', color: colors.ink },
-  compactSteps: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 5,
-    paddingVertical: 4,
-  },
-  heroBody: { fontSize: 14, lineHeight: 23, color: '#646056' },
-  steps: { flexDirection: 'row', alignItems: 'center', paddingTop: 6 },
-  step: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 6 },
-  stepNumber: {
-    width: 23,
-    height: 23,
-    borderRadius: 12,
-    backgroundColor: '#ECE6D2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepActive: { backgroundColor: colors.yellow },
-  stepText: { fontSize: 11, fontWeight: '800', color: colors.ink },
-  stepLabel: { fontSize: 12, color: colors.muted },
-  stepLine: { flex: 1, height: 1, backgroundColor: '#DFD6B6', marginRight: 6 },
+  eyebrow: { fontSize: 12, lineHeight: 19, fontWeight: '700', color: colors.muted },
+  heroTitle: { fontSize: 25, lineHeight: 35, fontWeight: '800', color: colors.ink },
+  heroBody: { fontSize: 14, lineHeight: 23, color: colors.muted },
   sectionHeading: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -527,7 +449,7 @@ const styles = StyleSheet.create({
   },
   statusCard: {
     padding: 16,
-    borderRadius: 20,
+    borderRadius: 14,
     backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',

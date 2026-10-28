@@ -68,13 +68,11 @@ const props = {
 beforeEach(() => {
   jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
   jest.mocked(stealthApi.conversation).mockResolvedValue(draft);
-  jest
-    .mocked(stealthApi.quickStart)
-    .mockResolvedValue({
-      created: { signal: draft.signal, matching: 'completed' },
-      sources: [],
-      interpretation: 'reviewed',
-    } as never);
+  jest.mocked(stealthApi.quickStart).mockResolvedValue({
+    created: { signal: draft.signal, matching: 'completed' },
+    sources: [],
+    interpretation: 'reviewed',
+  } as never);
   props.onSaved.mockResolvedValue(undefined);
 });
 afterEach(() => {
@@ -164,7 +162,7 @@ it('retries saving the exact reviewed timestamps and request key without regener
   );
   expect(stealthApi.conversation).toHaveBeenCalledTimes(1);
 });
-it('sends spoken answers into the conversation without automatically creating a request', async () => {
+it('previews speech, lets the user correct it and sends only the confirmed text', async () => {
   let events!: SpeechCallbacks;
   const stop = jest.fn(() => events.onEnd('我有披薩優惠券'));
   jest.mocked(startPostSpeech).mockImplementation(async (callbacks) => {
@@ -173,13 +171,16 @@ it('sends spoken answers into the conversation without automatically creating a 
   });
   const screen = await render(<QuickStealthComposer {...props} />);
   await fireEvent.press(screen.getByRole('button', { name: '用語音回答' }));
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: '說好了，傳給分身' })).toBeTruthy(),
-  );
-  await fireEvent.press(screen.getByRole('button', { name: '說好了，傳給分身' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '結束錄音' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '結束錄音' }));
+  await waitFor(() => expect(screen.getByText('確認語音文字')).toBeTruthy());
+  expect(stealthApi.conversation).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('跟偷揪分身聊天').props.value).toBe('我有披薩優惠券');
+  await fireEvent.changeText(screen.getByLabelText('跟偷揪分身聊天'), '我有飲料優惠券');
+  await fireEvent.press(screen.getByRole('button', { name: '確認文字並送出' }));
   await waitFor(() =>
     expect(stealthApi.conversation).toHaveBeenCalledWith(
-      ['我有披薩優惠券'],
+      ['我有飲料優惠券'],
       undefined,
       [null],
       expect.any(AbortSignal),
@@ -196,9 +197,7 @@ it('cancels capture and ignores callbacks after focus is lost', async () => {
   });
   const screen = await render(<QuickStealthComposer {...props} />);
   await fireEvent.press(screen.getByRole('button', { name: '用語音回答' }));
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: '說好了，傳給分身' })).toBeTruthy(),
-  );
+  await waitFor(() => expect(screen.getByRole('button', { name: '結束錄音' })).toBeTruthy());
   await screen.rerender(<QuickStealthComposer {...props} focused={false} />);
   await act(async () => events.onEnd('過期的語音'));
   expect(cancel).toHaveBeenCalled();
@@ -221,4 +220,22 @@ it('aborts pending understanding on exit and ignores a result from a previous ac
   await act(async () => resolve(draft));
   expect(screen.queryByText(draft.message)).toBeNull();
   expect(stealthApi.quickStart).not.toHaveBeenCalled();
+});
+
+it('keeps partial speech editable after an error and blocks an empty confirmation', async () => {
+  let events!: SpeechCallbacks;
+  jest.mocked(startPostSpeech).mockImplementation(async (callbacks) => {
+    events = callbacks;
+    return { stop: jest.fn(), cancel: jest.fn() };
+  });
+  const screen = await render(<QuickStealthComposer {...props} />);
+  await fireEvent.press(screen.getByRole('button', { name: '用語音回答' }));
+  await act(async () => {
+    events.onText('晚餐想吃披薩');
+    events.onError('post_speech_network');
+  });
+  expect(stealthApi.conversation).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('跟偷揪分身聊天').props.value).toBe('晚餐想吃披薩');
+  await fireEvent.changeText(screen.getByLabelText('跟偷揪分身聊天'), '');
+  expect(screen.getByRole('button', { name: '確認文字並送出' })).toBeDisabled();
 });
