@@ -13,6 +13,7 @@ import {
   type StealthQuickResult,
 } from '@/lib/stealth-api';
 import { startPostSpeech } from '@/lib/post-speech';
+import { createReplyVoice, type ReplyVoice } from '@/lib/reply-voice';
 import type { SpeechCapture } from '@/lib/post-speech.types';
 import { useAuthStore } from '@/store/auth-store';
 import { colors } from '@/theme/tokens';
@@ -46,6 +47,9 @@ export function QuickStealthComposer({
 }: Props) {
   const [text, setText] = useState('');
   const [voiceReview, setVoiceReview] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voicePlaying, setVoicePlaying] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
   const [turns, setTurns] = useState<string[]>([]);
   const [fields, setFields] = useState<(ConversationField | null)[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -69,6 +73,8 @@ export function QuickStealthComposer({
   const epoch = useRef(0);
   const locked = useRef(false);
   const capture = useRef<SpeechCapture | null>(null);
+  const replyVoice = useRef<ReplyVoice | null>(null);
+  const voiceEnabledRef = useRef(false);
   const speechAbort = useRef<AbortController | null>(null);
   const inferenceAbort = useRef<AbortController | null>(null);
   const request = useRef<{ payload: string; key: string } | null>(null);
@@ -82,6 +88,7 @@ export function QuickStealthComposer({
     inferenceAbort.current?.abort();
     capture.current?.cancel();
     capture.current = null;
+    replyVoice.current?.stop();
     locked.current = false;
     setPendingAnswer('');
     setPhase('idle');
@@ -94,6 +101,7 @@ export function QuickStealthComposer({
       inferenceAbort.current?.abort();
       capture.current?.cancel();
       capture.current = null;
+      replyVoice.current?.stop();
       locked.current = false;
     }
   }, [focused]);
@@ -108,6 +116,7 @@ export function QuickStealthComposer({
       speechAbort.current?.abort();
       inferenceAbort.current?.abort();
       capture.current?.cancel();
+      replyVoice.current?.stop();
       subscription.remove();
       onBusyChange(false);
     };
@@ -123,10 +132,42 @@ export function QuickStealthComposer({
     turns.length < 16 &&
     turns.join('').length + answer.trim().length <= 4000;
   const inputValid = validAnswer(text);
+  const playReply = (message: string) => {
+    if (!focused || !mounted.current || useAuthStore.getState().user?.id !== actor) return;
+    replyVoice.current ??= createReplyVoice();
+    setVoiceError('');
+    if (!replyVoice.current) {
+      setVoiceError('目前裝置不支援朗讀，仍可繼續文字聊天。');
+      return;
+    }
+    replyVoice.current.speak(
+      message,
+      (playing) => {
+        if (mounted.current && visible.current) setVoicePlaying(playing);
+      },
+      () => {
+        if (mounted.current && visible.current)
+          setVoiceError('朗讀未完成，可按「重聽回覆」再試一次，文字不受影響。');
+      },
+    );
+  };
+  const toggleVoice = () => {
+    const enabled = !voiceEnabledRef.current;
+    voiceEnabledRef.current = enabled;
+    setVoiceEnabled(enabled);
+    if (enabled)
+      playReply(
+        busy
+          ? '語音回覆已開啟，回覆完成後會為你朗讀。'
+          : (messages.filter((m) => m.role === 'assistant').at(-1)?.text ?? greeting),
+      );
+    else replyVoice.current?.stop();
+  };
 
   async function analyze(answer: string, display = answer, id = ++epoch.current) {
     if (!actor || disabled || !alive(id) || !validAnswer(answer)) return;
     onStarted?.();
+    replyVoice.current?.stop();
     locked.current = true;
     setPhase('interview');
     setError('');
@@ -143,6 +184,7 @@ export function QuickStealthComposer({
         preview?.facts,
         nextFields,
         controller.signal,
+        messages.filter((message) => message.role === 'assistant').map((message) => message.text),
       );
       if (!alive(id)) return;
       setTurns(next);
@@ -156,6 +198,7 @@ export function QuickStealthComposer({
       ]);
       setReviewing(result.ready_for_review);
       request.current = null;
+      if (voiceEnabledRef.current) playReply(result.message);
     } catch (e) {
       if (alive(id)) {
         setText(answer);
@@ -174,6 +217,7 @@ export function QuickStealthComposer({
     if (disabled || locked.current || !actor || !signal || text.trim() || !reviewing) return;
     const id = ++epoch.current;
     const payload = JSON.stringify(signal);
+    replyVoice.current?.stop();
     if (request.current?.payload !== payload) request.current = { payload, key: newRequestKey() };
     locked.current = true;
     setPhase('saving');
@@ -200,6 +244,7 @@ export function QuickStealthComposer({
   async function speak() {
     if (disabled || locked.current || !actor || turns.length >= 16) return;
     onStarted?.();
+    replyVoice.current?.stop();
     const id = ++epoch.current;
     const before = text.trim();
     let ended = false;
@@ -302,6 +347,22 @@ export function QuickStealthComposer({
           <Text style={styles.name}>聊聊想揪的事</Text>
           <Text style={styles.hint}>說個大概就好，細節可以慢慢補</Text>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={voiceEnabled ? '關閉語音回覆' : '開啟語音回覆'}
+          accessibilityState={{ selected: voiceEnabled }}
+          disabled={
+            !focused || phase === 'listening' || phase === 'starting' || phase === 'finishing'
+          }
+          onPress={toggleVoice}
+          style={styles.voiceToggle}
+        >
+          <MaterialCommunityIcons
+            name={voiceEnabled ? 'volume-high' : 'volume-off'}
+            size={21}
+            color={voiceEnabled ? colors.ink : colors.muted}
+          />
+        </Pressable>
         {turns.length ? (
           <Pressable
             accessibilityRole="button"
@@ -313,6 +374,28 @@ export function QuickStealthComposer({
           </Pressable>
         ) : null}
       </View>
+      {voiceEnabled ? (
+        <View style={styles.voiceStatus}>
+          <Text style={styles.hint}>{voicePlaying ? '正在朗讀回覆' : '語音回覆已開啟'}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={voicePlaying ? '停止朗讀' : '重聽回覆'}
+            disabled={busy && !voicePlaying}
+            onPress={() => {
+              if (voicePlaying) replyVoice.current?.stop();
+              else
+                playReply(messages.filter((m) => m.role === 'assistant').at(-1)?.text ?? greeting);
+            }}
+          >
+            <Text style={styles.link}>{voicePlaying ? '停止朗讀' : '重聽回覆'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {voiceError ? (
+        <Text accessibilityRole="alert" style={styles.hint}>
+          {voiceError}
+        </Text>
+      ) : null}
       <ScrollView
         ref={transcript}
         nestedScrollEnabled
@@ -535,6 +618,13 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  voiceToggle: { minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
+  voiceStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
   name: { fontSize: 15, fontWeight: '800', color: colors.ink },
   hint: { fontSize: 12, lineHeight: 19, color: colors.muted },
   transcript: { maxHeight: 240 },

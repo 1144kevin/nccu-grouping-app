@@ -137,7 +137,7 @@ export type StealthConversation = Omit<StealthQuickInterview, 'questions' | 'int
   question: { field: ConversationField; text: string } | null;
   choices: { label: string; answer: string }[];
   ready_for_review: boolean;
-  interpretation: 'local_model' | 'quick_answer' | 'keyword_fallback';
+  interpretation: 'local_model' | 'quick_answer' | 'keyword_fallback' | 'gemini';
 };
 export type StealthRoomMessage = {
   id: string;
@@ -221,17 +221,30 @@ export type StealthIntake = {
 };
 const root = '/stealth-cloud';
 export const stealthApi = {
-  quickStatus: async () => (await api.get<{ ready: boolean }>(`${root}/quick-status`)).data,
+  quickStatus: async () =>
+    (
+      await api.get<{
+        ready: boolean;
+        conversation_provider?: 'local' | 'gemini';
+        conversation_configured?: boolean;
+      }>(`${root}/quick-status`)
+    ).data,
   conversation: async (
     turns: string[],
     previous: StealthIntake['facts'] | undefined,
     answer_fields: (ConversationField | null)[],
     signal?: AbortSignal,
+    assistant_turns: string[] = [],
   ) =>
     (
       await api.post<StealthConversation>(
         `${root}/conversation`,
-        { turns, answer_fields, ...(previous ? { previous } : {}) },
+        {
+          turns,
+          answer_fields,
+          ...(previous ? { previous } : {}),
+          ...(assistant_turns.length ? { assistant_turns } : {}),
+        },
         { timeout: 330_000, signal },
       )
     ).data,

@@ -144,6 +144,7 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             agent.isPending ||
             !!agent.error ||
             !capability.data?.ready ||
+            capability.data?.conversation_configured === false ||
             retry.isPending
           }
           onBusyChange={setComposerBusy}
@@ -162,6 +163,15 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
           }}
         />
         {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
+        {capability.data?.conversation_configured === false ? (
+          <Text style={styles.error}>
+            Gemini 尚未完成後端設定，請先由管理者完成設定。進階需求設定仍可使用。
+          </Text>
+        ) : null}
+        {capability.data?.conversation_provider === 'gemini' &&
+        capability.data.conversation_configured ? (
+          <Text style={styles.hint}>由 Gemini 協助釐清需求；確認後才會開始找人。</Text>
+        ) : null}
         {!capability.isPending && !capability.data?.ready ? (
           <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
         ) : null}
