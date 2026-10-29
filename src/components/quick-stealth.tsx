@@ -20,14 +20,14 @@ import { QuickStealthComposer } from '@/components/quick-stealth-composer';
 import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors } from '@/theme/tokens';
 
-export function QuickStealthScreen({ onAdvanced }: { onAdvanced: () => void }) {
+export function QuickStealthScreen() {
   const actor = useAuthStore((s) => s.user?.id);
-  return <QuickSession key={actor} actor={actor} onAdvanced={onAdvanced} />;
+  return <QuickSession key={actor} actor={actor} />;
 }
 
-function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () => void }) {
+function QuickSession({ actor }: { actor?: string }) {
   const focused = useCoreScreenFocused();
   const current = useRef(true);
   useEffect(() => {
@@ -63,7 +63,6 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
   });
   const clock = useCoreClock();
   const [composerBusy, setComposerBusy] = useState(false);
-  const [chatStarted, setChatStarted] = useState(false);
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
   const [details, setDetails] = useState(false);
@@ -124,17 +123,15 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
               label="我的偷揪聊天"
               onPress={() => router.push('/messages')}
             />
-            <IconButton icon="tune-variant" label="分身與需求進階設定" onPress={onAdvanced} />
+            <IconButton
+              icon="tune-variant"
+              label="分身偏好"
+              onPress={() => router.push('/stealth-preferences')}
+            />
           </View>
         }
       />
       <KeyboardScrollView contentContainerStyle={styles.page}>
-        {!chatStarted ? (
-          <View style={styles.intro}>
-            <Text style={styles.heroTitle}>今天想揪什麼？</Text>
-            <Text style={styles.heroBody}>一起吃飯、分享優惠，或找人順路幫忙。</Text>
-          </View>
-        ) : null}
         <QuickStealthComposer
           actor={actor}
           enabled={!!agent.data?.enabled}
@@ -148,7 +145,6 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             retry.isPending
           }
           onBusyChange={setComposerBusy}
-          onStarted={() => setChatStarted(true)}
           onSaved={async (result) => {
             if (!sameActor()) return;
             setAnalysis(undefined);
@@ -164,16 +160,10 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
         />
         {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
         {capability.data?.conversation_configured === false ? (
-          <Text style={styles.error}>
-            Gemini 尚未完成後端設定，請先由管理者完成設定。進階需求設定仍可使用。
-          </Text>
-        ) : null}
-        {capability.data?.conversation_provider === 'gemini' &&
-        capability.data.conversation_configured ? (
-          <Text style={styles.hint}>由 Gemini 協助釐清需求；確認後才會開始找人。</Text>
+          <Text style={styles.error}>暫時無法聊天，請稍後再試。</Text>
         ) : null}
         {!capability.isPending && !capability.data?.ready ? (
-          <Text style={styles.hint}>目前無法自動找人，請先使用進階設定。</Text>
+          <Text style={styles.hint}>目前無法自動找人，請稍後再試。</Text>
         ) : null}
         {agent.error ? (
           <>
@@ -282,11 +272,6 @@ function QuickSession({ actor, onAdvanced }: { actor?: string; onAdvanced: () =>
             ) : null}
             {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
           </>
-        ) : null}
-        {!active.length && !visible.length ? (
-          <Text style={styles.footnote}>
-            目前支援正餐、飲料、披薩、麵包與點心。只會配對平台上已啟用分身的需求。
-          </Text>
         ) : null}
       </KeyboardScrollView>
     </Screen>
@@ -410,8 +395,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 620,
     alignSelf: 'center',
-    padding: 16,
-    paddingBottom: 100,
+    padding: 20,
+    paddingBottom: 32,
+    flexGrow: 1,
     gap: 18,
   },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -425,7 +411,6 @@ const styles = StyleSheet.create({
   },
   watchStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   chatLink: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
-  intro: { gap: 6, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: colors.border },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -437,20 +422,8 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 18, fontWeight: '700', color: colors.ink },
   body: { fontSize: 15, lineHeight: 24, color: colors.ink },
   hint: { fontSize: 13, lineHeight: 21, color: colors.muted },
-  input: {
-    backgroundColor: colors.surface,
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    color: colors.ink,
-    fontSize: 16,
-  },
   error: { color: colors.danger, lineHeight: 22 },
   eyebrow: { fontSize: 12, lineHeight: 19, fontWeight: '700', color: colors.muted },
-  heroTitle: { fontSize: 25, lineHeight: 35, fontWeight: '800', color: colors.ink },
-  heroBody: { fontSize: 14, lineHeight: 23, color: colors.muted },
   sectionHeading: {
     flexDirection: 'row',
     alignItems: 'center',

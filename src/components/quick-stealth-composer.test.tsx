@@ -5,6 +5,7 @@ import { QuickStealthComposer } from './quick-stealth-composer';
 import { stealthApi, type StealthConversation } from '@/lib/stealth-api';
 import { startPostSpeech } from '@/lib/post-speech';
 import { createReplyVoice } from '@/lib/reply-voice';
+import { useStealthPreferencesStore } from '@/store/stealth-preferences-store';
 import type { SpeechCallbacks } from '@/lib/post-speech.types';
 let mockActor = 'self';
 let mockKey = 0;
@@ -68,6 +69,7 @@ const props = {
   onBusyChange: jest.fn(),
 };
 beforeEach(() => {
+  useStealthPreferencesStore.setState({ accounts: {} });
   jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
   jest.mocked(stealthApi.conversation).mockResolvedValue(draft);
   jest.mocked(stealthApi.quickStart).mockResolvedValue({
@@ -76,6 +78,19 @@ beforeEach(() => {
     interpretation: 'reviewed',
   } as never);
   props.onSaved.mockResolvedValue(undefined);
+});
+it('sends only this account’s saved preferences alongside the actual conversation', async () => {
+  useStealthPreferencesStore.getState().save('other', { tone: 'playful', context: '別人的偏好' });
+  useStealthPreferencesStore.getState().save('self', { tone: 'direct', context: '常在東側門' });
+  await startChat();
+  expect(stealthApi.conversation).toHaveBeenCalledWith(
+    ['想喝50嵐'],
+    undefined,
+    [null],
+    expect.any(AbortSignal),
+    [],
+    { tone: 'direct', context: '常在東側門' },
+  );
 });
 afterEach(() => {
   jest.resetAllMocks();
@@ -108,6 +123,7 @@ it('greets immediately, asks one question and only creates a request after expli
     [null],
     expect.any(AbortSignal),
     [],
+    undefined,
   );
   expect(screen.queryByRole('button', { name: '確認條件，開始找人' })).toBeNull();
   await reviewDraft(screen);
@@ -138,6 +154,7 @@ it('carries question context and all previous facts with a shortcut or free corr
     [null, 'location_id'],
     expect.any(AbortSignal),
     [draft.message],
+    undefined,
   );
   await fireEvent.changeText(screen.getByLabelText('跟偷揪分身聊天'), '預算改成120元');
   expect(screen.getByRole('button', { name: '先確認目前需求' })).toBeDisabled();
@@ -189,6 +206,7 @@ it('previews speech, lets the user correct it and sends only the confirmed text'
       [null],
       expect.any(AbortSignal),
       [],
+      undefined,
     ),
   );
   expect(stealthApi.quickStart).not.toHaveBeenCalled();

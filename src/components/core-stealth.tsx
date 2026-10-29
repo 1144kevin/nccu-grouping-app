@@ -131,12 +131,7 @@ function ErrorText({ error }: { error: unknown }) {
 }
 
 export function CoreStealthScreen() {
-  const [advanced, setAdvanced] = useState(false);
-  return advanced ? (
-    <AdvancedStealthScreen onQuick={() => setAdvanced(false)} />
-  ) : (
-    <QuickStealthScreen onAdvanced={() => setAdvanced(true)} />
-  );
+  return <QuickStealthScreen />;
 }
 
 export function AdvancedStealthScreen({ onQuick }: { onQuick?: () => void } = {}) {

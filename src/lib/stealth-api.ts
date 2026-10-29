@@ -1,4 +1,5 @@
 import { api } from './api';
+import type { StealthPreferences } from './stealth-preferences';
 
 export type StealthCategory = 'pizza' | 'meal' | 'drink' | 'bakery' | 'snack';
 export type StealthRole = 'order' | 'pickup' | 'coupon' | 'share';
@@ -235,6 +236,7 @@ export const stealthApi = {
     answer_fields: (ConversationField | null)[],
     signal?: AbortSignal,
     assistant_turns: string[] = [],
+    preferences?: StealthPreferences,
   ) =>
     (
       await api.post<StealthConversation>(
@@ -244,6 +246,7 @@ export const stealthApi = {
           answer_fields,
           ...(previous ? { previous } : {}),
           ...(assistant_turns.length ? { assistant_turns } : {}),
+          ...(preferences ? { preferences } : {}),
         },
         { timeout: 330_000, signal },
       )

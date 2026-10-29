@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { AppText as Text } from '@/components/app-text';
+import { ChatTextInput } from '@/components/chat-text-input';
 import { PrimaryButton } from '@/components/primitives';
 import { InlineLoading } from '@/components/inline-loading';
 import { StealthRequestSummary } from '@/components/stealth-request-summary';
@@ -16,6 +17,7 @@ import { startPostSpeech } from '@/lib/post-speech';
 import { createReplyVoice, type ReplyVoice } from '@/lib/reply-voice';
 import type { SpeechCapture } from '@/lib/post-speech.types';
 import { useAuthStore } from '@/store/auth-store';
+import { useStealthPreferencesStore } from '@/store/stealth-preferences-store';
 import { colors } from '@/theme/tokens';
 
 type Props = {
@@ -29,7 +31,7 @@ type Props = {
 };
 type Phase = 'idle' | 'starting' | 'listening' | 'finishing' | 'interview' | 'saving';
 type Message = { role: 'user' | 'assistant'; text: string };
-const greeting = '今天有什麼想跟我分享的嗎？想吃的東西、手上的優惠，或願意幫忙取餐，都可以跟我說。';
+const greeting = '今天有什麼想跟我分享的嗎？';
 const starters = [
   { icon: 'cup-outline' as const, label: '想喝飲料', answer: '我想找人一起喝飲料' },
   { icon: 'ticket-percent-outline' as const, label: '手上有優惠', answer: '我有優惠券想分享' },
@@ -185,6 +187,7 @@ export function QuickStealthComposer({
         nextFields,
         controller.signal,
         messages.filter((message) => message.role === 'assistant').map((message) => message.text),
+        useStealthPreferencesStore.getState().accounts[actor],
       );
       if (!alive(id)) return;
       setTurns(next);
@@ -343,10 +346,7 @@ export function QuickStealthComposer({
   return (
     <View style={styles.panel}>
       <View style={styles.panelHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>聊聊想揪的事</Text>
-          <Text style={styles.hint}>說個大概就好，細節可以慢慢補</Text>
-        </View>
+        <View style={{ flex: 1 }} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={voiceEnabled ? '關閉語音回覆' : '開啟語音回覆'}
@@ -376,7 +376,7 @@ export function QuickStealthComposer({
       </View>
       {voiceEnabled ? (
         <View style={styles.voiceStatus}>
-          <Text style={styles.hint}>{voicePlaying ? '正在朗讀回覆' : '語音回覆已開啟'}</Text>
+          <View />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={voicePlaying ? '停止朗讀' : '重聽回覆'}
@@ -399,14 +399,17 @@ export function QuickStealthComposer({
       <ScrollView
         ref={transcript}
         nestedScrollEnabled
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         style={[styles.transcript, voiceReview && { maxHeight: 140 }]}
         contentContainerStyle={styles.messages}
         onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })}
       >
-        <View style={styles.assistantBubble}>
-          <Text style={styles.body}>{greeting}</Text>
-        </View>
+        {!messages.length && !pendingAnswer && phase !== 'interview' ? (
+          <View style={styles.greeting}>
+            <Text style={styles.greetingText}>{greeting}</Text>
+          </View>
+        ) : null}
         {messages.map((message, index) => (
           <View
             key={index}
@@ -442,7 +445,6 @@ export function QuickStealthComposer({
               }}
               style={styles.starter}
             >
-              <MaterialCommunityIcons name={item.icon} size={19} color={colors.brown} />
               <Text style={styles.choiceText}>{item.label}</Text>
             </Pressable>
           ))}
@@ -468,7 +470,7 @@ export function QuickStealthComposer({
       {voiceReview && !busy ? (
         <View style={styles.voiceReviewHeading} accessibilityLiveRegion="polite">
           <Text style={styles.name}>確認語音文字</Text>
-          <Text style={styles.hint}>下方文字可以直接修改，確認後才會送出。</Text>
+          <Text style={styles.hint}>可修改後再送出。</Text>
         </View>
       ) : null}
       <View style={styles.composer}>
@@ -487,9 +489,9 @@ export function QuickStealthComposer({
             color={busy || disabled ? colors.subtle : colors.ink}
           />
         </Pressable>
-        <TextInput
+        <ChatTextInput
           accessibilityLabel="跟偷揪分身聊天"
-          placeholder={turns.length ? '回答我，或隨時更改需求' : '想吃什麼？有什麼想分享的？'}
+          placeholder="說說你的想法"
           value={text}
           onChangeText={(value) => {
             setText(value);
@@ -557,9 +559,6 @@ export function QuickStealthComposer({
           確認文字並送出
         </PrimaryButton>
       ) : null}
-      {!preview && !voiceReview ? (
-        <Text style={styles.footnote}>可打字或用說的；不知道的細節可以先留待討論。</Text>
-      ) : null}
       {preview?.signal && !reviewing ? (
         <Pressable
           accessibilityRole="button"
@@ -588,11 +587,7 @@ export function QuickStealthComposer({
           >
             確認條件，開始找人
           </PrimaryButton>
-          <Text style={styles.footnote}>
-            {enabled
-              ? '只會建立這次需求，不會替你接受邀請或下單。'
-              : '確認後會啟用分身並建立需求；邀請與下單仍由你決定。'}
-          </Text>
+          <Text style={styles.footnote}>確認後才開始找人，邀請由你決定。</Text>
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => setReviewing(false)}>
             <Text style={styles.link}>回到聊天補充</Text>
           </Pressable>
@@ -615,7 +610,8 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     overflow: 'hidden',
     padding: 0,
-    gap: 14,
+    gap: 16,
+    flexGrow: 1,
   },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   voiceToggle: { minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
@@ -627,7 +623,9 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 15, fontWeight: '800', color: colors.ink },
   hint: { fontSize: 12, lineHeight: 19, color: colors.muted },
-  transcript: { maxHeight: 240 },
+  transcript: { maxHeight: 460, minHeight: 180, flexGrow: 1 },
+  greeting: { paddingTop: 16, paddingBottom: 28 },
+  greetingText: { fontSize: 25, lineHeight: 37, fontWeight: '600', color: colors.ink },
   messages: { gap: 12, paddingVertical: 4 },
   bubble: { maxWidth: '94%', borderRadius: 18, padding: 14 },
   assistantBubble: {
@@ -643,7 +641,7 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     borderRadius: 18,
     borderBottomRightRadius: 4,
-    backgroundColor: colors.yellowSoft,
+    backgroundColor: '#F0EFEB',
     padding: 14,
   },
   body: { fontSize: 15, lineHeight: 25, color: colors.ink },
@@ -654,9 +652,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0,
+    backgroundColor: colors.surface,
     borderRadius: 20,
     paddingVertical: 9,
     paddingHorizontal: 10,
@@ -668,7 +665,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 999,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   choiceText: { fontSize: 13, lineHeight: 20, color: colors.ink },
   composer: {
@@ -676,8 +673,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     backgroundColor: colors.surface,
     borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0,
     padding: 6,
     gap: 6,
   },
@@ -685,11 +681,8 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.ink,
-    fontSize: 15,
+    fontSize: 16,
     lineHeight: 23,
-    minHeight: 38,
-    maxHeight: 100,
-    paddingVertical: 8,
   },
   send: {
     width: 38,

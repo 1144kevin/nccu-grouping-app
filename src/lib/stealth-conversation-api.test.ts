@@ -32,3 +32,18 @@ it('includes the actual assistant replies for a contextual follow-up', async () 
     { timeout: 330_000, signal: undefined },
   );
 });
+
+it('keeps saved preferences separate from the user’s confirmed turns', async () => {
+  jest.mocked(api.post).mockResolvedValue({ data: { message: '一樣約東側門嗎？' } });
+  const preferences = { tone: 'direct' as const, context: '平常在東側門' };
+  await stealthApi.conversation(['想喝飲料'], undefined, [null], undefined, [], preferences);
+  expect(api.post).toHaveBeenLastCalledWith(
+    '/stealth-cloud/conversation',
+    {
+      turns: ['想喝飲料'],
+      answer_fields: [null],
+      preferences,
+    },
+    { timeout: 330_000, signal: undefined },
+  );
+});
