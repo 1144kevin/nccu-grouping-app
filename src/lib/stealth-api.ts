@@ -223,6 +223,19 @@ export type StealthIntake = {
 };
 const root = '/stealth-cloud';
 export const stealthApi = {
+  speechStream: async (text: string, signal: AbortSignal) =>
+    (
+      await api.post<ReadableStream<Uint8Array>>(
+        `${root}/speech-stream`,
+        { text },
+        {
+          adapter: 'fetch',
+          responseType: 'stream',
+          signal,
+          timeout: 40_000,
+        },
+      )
+    ).data,
   speech: async (text: string, signal?: AbortSignal) =>
     (
       await api.post<{ mime_type: 'audio/wav'; audio_base64: string }>(

@@ -277,6 +277,7 @@ it('reads replies only after opt-in and stops playback before microphone capture
       draft.message,
       expect.any(Function),
       expect.any(Function),
+      expect.any(Function),
     ),
   );
   voice.stop.mockClear();

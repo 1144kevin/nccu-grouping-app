@@ -1,10 +1,13 @@
 import { stealthApi } from './stealth-api';
 import type { ReplyVoice } from './reply-voice';
+import { createStreamingReplyVoice } from './streaming-reply-voice.web';
 
 // A tiny silent WAV starts the same audio element in the user's tap gesture.
 const SILENCE =
   'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==';
 export function createNaturalReplyVoice(): ReplyVoice | null {
+  const streaming = createStreamingReplyVoice();
+  if (streaming) return streaming;
   if (typeof Audio === 'undefined') return null;
   const audio = new Audio();
   let epoch = 0;

@@ -51,6 +51,7 @@ export function QuickStealthComposer({
   const [voiceReview, setVoiceReview] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voicePlaying, setVoicePlaying] = useState(false);
+  const [voicePreparing, setVoicePreparing] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [turns, setTurns] = useState<string[]>([]);
   const [fields, setFields] = useState<(ConversationField | null)[]>([]);
@@ -119,6 +120,7 @@ export function QuickStealthComposer({
       inferenceAbort.current?.abort();
       capture.current?.cancel();
       replyVoice.current?.stop();
+      replyVoice.current?.dispose?.();
       subscription.remove();
       onBusyChange(false);
     };
@@ -145,11 +147,17 @@ export function QuickStealthComposer({
     replyVoice.current.speak(
       message,
       (playing) => {
-        if (mounted.current && visible.current) setVoicePlaying(playing);
+        if (mounted.current && visible.current) {
+          setVoicePlaying(playing);
+          if (!playing) setVoicePreparing(false);
+        }
       },
       () => {
         if (mounted.current && visible.current)
           setVoiceError('朗讀未完成，可按「重聽回覆」再試一次，文字不受影響。');
+      },
+      (pending) => {
+        if (mounted.current && visible.current) setVoicePreparing(pending);
       },
     );
   };
@@ -357,11 +365,15 @@ export function QuickStealthComposer({
           onPress={toggleVoice}
           style={styles.voiceToggle}
         >
-          <MaterialCommunityIcons
-            name={voiceEnabled ? 'volume-high' : 'volume-off'}
-            size={21}
-            color={voiceEnabled ? colors.ink : colors.muted}
-          />
+          {voicePreparing ? (
+            <ActivityIndicator accessibilityLabel="正在準備語音" size="small" color={colors.ink} />
+          ) : (
+            <MaterialCommunityIcons
+              name={voiceEnabled ? 'volume-high' : 'volume-off'}
+              size={21}
+              color={voiceEnabled ? colors.ink : colors.muted}
+            />
+          )}
         </Pressable>
         {turns.length ? (
           <Pressable
