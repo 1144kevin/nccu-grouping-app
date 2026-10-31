@@ -150,7 +150,7 @@ export function createWebAppServer({
           req.method === 'POST';
         const modelRequest =
           req.method === 'POST' &&
-          /^\/api\/v1\/stealth-cloud\/(?:conversation|quick-start|quick-interview|draft|intake|matches\/(?:semantic|discover|[0-9a-f-]{36}\/reply-suggestions))$/.test(
+          /^\/api\/v1\/stealth-cloud\/(?:conversation|speech|quick-start|quick-interview|draft|intake|matches\/(?:semantic|discover|[0-9a-f-]{36}\/reply-suggestions))$/.test(
             pathname,
           );
         if (

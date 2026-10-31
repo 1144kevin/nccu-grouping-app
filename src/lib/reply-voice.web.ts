@@ -1,6 +1,8 @@
 import type { ReplyVoice } from './reply-voice';
+import { createNaturalReplyVoice } from './natural-reply-voice.web';
 
-export function createReplyVoice(): ReplyVoice | null {
+export function createReplyVoice(natural = false): ReplyVoice | null {
+  if (natural) return createNaturalReplyVoice();
   if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined')
     return null;
   const synth = speechSynthesis;

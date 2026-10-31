@@ -4,6 +4,6 @@ export type ReplyVoice = {
 };
 
 // The current product is a Web App. Native builds can supply their own adapter.
-export function createReplyVoice(): ReplyVoice | null {
+export function createReplyVoice(_natural = false): ReplyVoice | null {
   return null;
 }

@@ -136,7 +136,7 @@ export function QuickStealthComposer({
   const inputValid = validAnswer(text);
   const playReply = (message: string) => {
     if (!focused || !mounted.current || useAuthStore.getState().user?.id !== actor) return;
-    replyVoice.current ??= createReplyVoice();
+    replyVoice.current ??= createReplyVoice(true);
     setVoiceError('');
     if (!replyVoice.current) {
       setVoiceError('目前裝置不支援朗讀，仍可繼續文字聊天。');

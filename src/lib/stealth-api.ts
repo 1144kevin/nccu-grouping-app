@@ -222,6 +222,14 @@ export type StealthIntake = {
 };
 const root = '/stealth-cloud';
 export const stealthApi = {
+  speech: async (text: string, signal?: AbortSignal) =>
+    (
+      await api.post<{ mime_type: 'audio/wav'; audio_base64: string }>(
+        `${root}/speech`,
+        { text },
+        { signal, timeout: 40_000 },
+      )
+    ).data,
   quickStatus: async () =>
     (
       await api.get<{

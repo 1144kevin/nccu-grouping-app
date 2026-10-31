@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { createReplyVoice } from './reply-voice.web';
+jest.mock('./natural-reply-voice.web', () => ({ createNaturalReplyVoice: jest.fn() }));
 
 class Utterance {
   lang = '';
