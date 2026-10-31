@@ -27,9 +27,11 @@ const categoryIcons = {
 export function StealthRequestSummary({
   signal,
   facts,
+  createdAt,
 }: {
   signal: StealthSignalInput;
   facts?: StealthIntake['facts'];
+  createdAt?: string;
 }) {
   const range = [signal.starts_at, signal.ends_at]
     .map((value) => {
@@ -46,24 +48,33 @@ export function StealthRequestSummary({
     })
     .join(' — ');
   const proposedLocation = !!facts && facts.location_id == null;
-  const proposedTime = !!facts && (facts.delay_minutes == null || facts.duration_minutes == null);
   const items = [
     {
       icon: 'map-marker-outline' as const,
       text: `${proposedLocation ? '建議：' : ''}${stealthLocations[signal.location_id] ?? signal.location_id ?? '地點待確認'}`,
     },
-    { icon: 'clock-outline' as const, text: `${proposedTime ? '建議時段：' : ''}${range}` },
+    { icon: 'clock-outline' as const, text: `可接受時段：${range}` },
     {
       icon: 'wallet-outline' as const,
-      text: signal.budget_max_twd == null ? '預算待討論' : `每人預算上限 $${signal.budget_max_twd}`,
+      text:
+        signal.budget_max_twd == null
+          ? '預算先依餐點價格評估'
+          : `每人可接受金額 $${signal.budget_max_twd} 以內`,
     },
     {
       icon: 'handshake-outline' as const,
-      text: signal.roles?.length
-        ? `我願意${signal.roles.map((role) => roles[role]).join('、')}`
-        : facts?.roles_confirmed
-          ? '本人暫不負責分工'
-          : '分工待討論',
+      text:
+        signal.participation_preference === 'receive'
+          ? '偏好原地收餐，分攤自己的餐費' +
+            (signal.roles?.filter((role) => role !== 'share').length
+              ? `；願意${signal.roles
+                  .filter((role) => role !== 'share')
+                  .map((role) => roles[role])
+                  .join('、')}`
+              : '')
+          : signal.roles?.length
+            ? `我願意${signal.roles.map((role) => roles[role]).join('、')}`
+            : '分攤自己的餐費，暫不承擔下單與取餐',
     },
   ];
   return (
@@ -91,16 +102,14 @@ export function StealthRequestSummary({
           </View>
         ))}
       </View>
-      <Text style={styles.note}>
-        {signal.known_cost_twd == null
-          ? '實際費用待協調，預算不代表報價。'
-          : `目前已知費用：每人 NT$ ${signal.known_cost_twd}`}
-      </Text>
-      {proposedLocation || proposedTime ? (
-        <Text style={styles.note}>
-          標示「建議」的條件尚未由你提供；可以回到聊天更改，或確認採用。
-        </Text>
+      {signal.known_cost_twd != null ? (
+        <Text style={styles.note}>目前每人費用 NT$ {signal.known_cost_twd}</Text>
       ) : null}
+      <Text style={styles.note}>
+        {createdAt
+          ? `新增於 ${new Date(createdAt).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} · 保留24小時`
+          : '暫定條件，可回到聊天調整；確認新增後保留24小時。'}
+      </Text>
     </View>
   );
 }

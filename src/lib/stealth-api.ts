@@ -37,6 +37,7 @@ export type StealthSignalInput = {
   dietary_requirements: string[];
   dietary_verified: string[];
   roles: StealthRole[];
+  participation_preference?: 'receive' | 'flexible' | null;
 };
 export type StealthSignal = StealthSignalInput & {
   id: string;

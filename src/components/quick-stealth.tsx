@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { KeyboardScrollView } from '@/components/keyboard-layout';
 import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
@@ -65,7 +65,8 @@ function QuickSession({ actor }: { actor?: string }) {
   const [composerBusy, setComposerBusy] = useState(false);
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
-  const [details, setDetails] = useState(false);
+  const [carouselWidth, setCarouselWidth] = useState(320);
+  const carousel = useRef<ScrollView>(null);
   const [localMatches, setLocalMatches] = useState<Record<string, StealthMatch>>({});
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -91,6 +92,11 @@ function QuickSession({ actor }: { actor?: string }) {
   const active = (signals.data?.items ?? []).filter(
     (s) => s.status === 'active' && Date.parse(s.expires_at) > now,
   );
+  const firstRequest = active[0]?.id;
+  useEffect(() => {
+    carousel.current?.scrollTo({ x: 0, animated: false });
+  }, [firstRequest]);
+  const cardWidth = active.length > 1 ? Math.min(440, carouselWidth - 20) : carouselWidth;
   const { ordered, valid } = selectSemanticMatches(
     matches.data?.items ?? [],
     focused ? analysis : undefined,
@@ -245,31 +251,33 @@ function QuickSession({ actor }: { actor?: string }) {
         ) : null}
         {active.length ? (
           <>
-            {(details ? active : active.slice(0, 1)).map((signal) => (
-              <View key={signal.id} style={styles.card}>
-                <Text style={styles.eyebrow}>這次幫你找</Text>
-                <StealthRequestSummary signal={signal} />
-                <PrimaryButton
-                  secondary
-                  loading={revoke.isPending && revoke.variables === signal.id}
-                  disabled={revoke.isPending}
-                  onPress={() => revoke.mutate(signal.id)}
-                >
-                  停止這個需求
-                </PrimaryButton>
-              </View>
-            ))}
-            {active.length > 1 ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setDetails(!details)}
-                style={styles.chatLink}
+            <View
+              onLayout={(event) => setCarouselWidth(Math.max(240, event.nativeEvent.layout.width))}
+            >
+              <ScrollView
+                ref={carousel}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                accessibilityLabel="我的需求卡片，可左右滑動"
+                snapToInterval={cardWidth + 12}
+                decelerationRate="fast"
+                contentContainerStyle={{ gap: 12 }}
               >
-                <Text style={styles.hint}>
-                  {details ? '收起其他需求' : `查看其他 ${active.length - 1} 個需求`}
-                </Text>
-              </Pressable>
-            ) : null}
+                {active.map((signal) => (
+                  <View key={signal.id} style={{ width: cardWidth, gap: 12 }}>
+                    <StealthRequestSummary signal={signal} createdAt={signal.created_at} />
+                    <PrimaryButton
+                      secondary
+                      loading={revoke.isPending && revoke.variables === signal.id}
+                      disabled={revoke.isPending}
+                      onPress={() => revoke.mutate(signal.id)}
+                    >
+                      停止這個需求
+                    </PrimaryButton>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
             {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
           </>
         ) : null}

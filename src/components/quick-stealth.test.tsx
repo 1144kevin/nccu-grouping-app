@@ -109,6 +109,45 @@ const wrap = (children: React.ReactNode) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
+it('shows multiple independent requests in a horizontal carousel until their own expiry', async () => {
+  jest.mocked(stealthApi.signals).mockResolvedValue({
+    items: [
+      {
+        id: 'one',
+        title: '需求一',
+        category: 'drink',
+        location_id: 'main_gate',
+        status: 'active',
+        roles: [],
+        budget_max_twd: 200,
+        starts_at: '2026-10-22T08:00:00Z',
+        ends_at: '2026-10-22T09:00:00Z',
+        expires_at: '2026-10-23T08:00:00Z',
+        created_at: '2026-10-22T08:00:00Z',
+      },
+      {
+        id: 'two',
+        title: '需求二',
+        category: 'meal',
+        location_id: '自強10舍',
+        status: 'active',
+        roles: [],
+        budget_max_twd: 100,
+        starts_at: '2026-10-22T10:00:00Z',
+        ends_at: '2026-10-22T12:00:00Z',
+        expires_at: '2026-10-23T10:00:00Z',
+        created_at: '2026-10-22T10:00:00Z',
+      },
+    ],
+  } as never);
+  const screen = await render(wrap(<QuickStealthScreen />));
+  await waitFor(() => expect(screen.getByText('需求二')).toBeTruthy());
+  expect(screen.getByText('需求一')).toBeTruthy();
+  expect(screen.getByLabelText('我的需求卡片，可左右滑動')).toHaveProp('horizontal', true);
+  expect(screen.getAllByRole('button', { name: '停止這個需求' })).toHaveLength(2);
+  expect(screen.queryByText('這次幫你找')).toBeNull();
+});
+
 it('opens with a greeting without inference or automatic matching', async () => {
   const screen = await render(wrap(<QuickStealthScreen />));
   expect(screen.getByText(/今天有什麼想跟我分享/)).toBeTruthy();

@@ -574,10 +574,6 @@ export function QuickStealthComposer({
       ) : null}
       {reviewing && preview?.signal ? (
         <View style={styles.review}>
-          <View style={styles.reviewTitle}>
-            <MaterialCommunityIcons name="clipboard-check-outline" size={20} color={colors.brown} />
-            <Text style={styles.savedTitle}>這次幫你找</Text>
-          </View>
           <StealthRequestSummary signal={preview.signal} facts={preview.facts} />
           <PrimaryButton
             loading={phase === 'saving'}
