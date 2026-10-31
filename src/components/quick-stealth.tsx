@@ -340,7 +340,7 @@ export function QuickMatch({
             hour: '2-digit',
             minute: '2-digit',
           })}{' '}
-          · {stealthLocations[match.location_id]}
+          · {stealthLocations[match.location_id] ?? match.location_id}
         </Text>
         <Text style={styles.hint}>
           {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}

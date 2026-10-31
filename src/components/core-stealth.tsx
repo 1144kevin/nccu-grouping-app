@@ -36,7 +36,7 @@ const categories: [StealthCategory, string][] = [
   ['bakery', '麵包'],
   ['snack', '零食'],
 ];
-const locations = { main_gate: '政大正門', east_gate: '政大東側門', south_gate: '政大南門' };
+const locations: Record<string, string> = { main_gate: '政大正門', east_gate: '政大東側門', south_gate: '政大南門' };
 const roles: [StealthRole, string][] = [
   ['share', '一起分食'],
   ['coupon', '提供優惠券'],

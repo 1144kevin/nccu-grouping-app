@@ -3,7 +3,13 @@ import { Platform, type TextInput, type TextInputProps } from 'react-native';
 import { AppTextInput } from '@/components/app-text';
 
 const clamp = (height: number) => Math.min(120, Math.max(40, Math.ceil(height)));
-export function ChatTextInput({ value, style, onContentSizeChange, ...props }: TextInputProps) {
+export function ChatTextInput({
+  value,
+  style,
+  onContentSizeChange,
+  emptyCentered = false,
+  ...props
+}: TextInputProps & { emptyCentered?: boolean }) {
   const input = useRef<TextInput>(null);
   const [height, setHeight] = useState(40);
   useLayoutEffect(() => {
@@ -34,7 +40,8 @@ export function ChatTextInput({ value, style, onContentSizeChange, ...props }: T
           height: value ? height : 40,
           paddingVertical: 7,
           lineHeight: 24,
-          textAlignVertical: 'top',
+          textAlignVertical: emptyCentered && !value ? 'center' : 'top',
+          textAlign: emptyCentered && !value ? 'center' : 'left',
         },
       ]}
     />

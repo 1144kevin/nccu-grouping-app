@@ -490,6 +490,7 @@ export function QuickStealthComposer({
           />
         </Pressable>
         <ChatTextInput
+          emptyCentered
           accessibilityLabel="跟偷揪分身聊天"
           placeholder="說說你的想法"
           value={text}
@@ -709,11 +710,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   review: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.background,
+    borderWidth: 0,
     borderRadius: 18,
-    padding: 14,
+    padding: 0,
     gap: 14,
   },
   reviewTitle: { flexDirection: 'row', gap: 8, alignItems: 'center' },

@@ -27,7 +27,7 @@ export type StealthSignalInput = {
   category: StealthCategory;
   acceptable_categories: StealthCategory[];
   title: string;
-  location_id: 'main_gate' | 'east_gate' | 'south_gate';
+  location_id: string;
   starts_at: string;
   ends_at: string;
   expires_at: string;
