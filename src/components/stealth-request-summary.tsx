@@ -17,13 +17,6 @@ export const stealthCategories = {
   snack: '點心零食',
 };
 const roles = { order: '下單', pickup: '取餐', coupon: '提供優惠券', share: '一起分食' };
-const categoryIcons = {
-  drink: 'cup-outline',
-  meal: 'silverware-fork-knife',
-  pizza: 'pizza',
-  bakery: 'bread-slice-outline',
-  snack: 'cookie-outline',
-} as const;
 export function StealthRequestSummary({
   signal,
   facts,
@@ -79,19 +72,7 @@ export function StealthRequestSummary({
   ];
   return (
     <View style={styles.card}>
-      <View style={styles.heading}>
-        <View style={styles.categoryIcon}>
-          <MaterialCommunityIcons
-            name={categoryIcons[signal.category] ?? 'account-group-outline'}
-            size={24}
-            color={colors.ink}
-          />
-        </View>
-        <View style={{ flex: 1, gap: 3 }}>
-          <Text style={styles.category}>{stealthCategories[signal.category]}</Text>
-          <Text style={styles.title}>{signal.title}</Text>
-        </View>
-      </View>
+      <Text style={styles.title}>{signal.title}</Text>
       <View style={styles.items}>
         {items.map(({ icon, text }) => (
           <View key={icon} style={styles.item}>
@@ -124,16 +105,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: colors.yellow,
   },
-  heading: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  categoryIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.yellowSoft,
-  },
-  category: { fontSize: 11, lineHeight: 17, color: colors.muted },
   itemIcon: {
     width: 30,
     height: 30,
