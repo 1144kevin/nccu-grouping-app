@@ -31,6 +31,7 @@ import {
 import { coreError, toFeedPost } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
 import { usePostCacheSync } from '@/lib/core-post-cache';
+import { orderStateLabel } from '@/lib/order-state';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
@@ -79,8 +80,8 @@ export function CoreOrderDetail({ id }: { id: string }) {
         )}
       </Screen>
     );
-  const completed = summary.data?.completed ?? false;
-  const formed = summary.data?.formed ?? post.joined > 1;
+  const completed = summary.data?.completed ?? post.completed ?? false;
+  const formed = completed || post.joined >= post.capacity;
   const members = summary.data?.members ?? [
     {
       id: post.author_id,
@@ -101,15 +102,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
   ];
   const pending = requests.data?.filter((r) => r.status === 'pending') ?? [];
   const closed = post.status === 'expired' || post.status === 'cancelled';
-  const status = completed
-    ? '已完成'
-    : post.status === 'cancelled'
-      ? '已取消'
-      : post.status === 'expired'
-        ? '已截止'
-        : formed
-          ? '已成團'
-          : '進行中';
+  const status = orderStateLabel(post, completed);
   return (
     <Screen>
       <DetailHeader title="拼單詳情" />

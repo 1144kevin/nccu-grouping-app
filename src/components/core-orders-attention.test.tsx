@@ -119,7 +119,7 @@ it('shows participation as a compact host/content/status row with separate profi
   const s = await render(
     <ParticipatingOrderRow post={{ ...mockPost, my_status: 'pending' } as CorePost} />,
   );
-  expect(s.getByText('待接受')).toBeTruthy();
+  expect(s.getByText('審核中')).toBeTruthy();
   expect(s.getByText('普通拼單')).toBeTruthy();
   expect(s.queryByText('取餐地點')).toBeNull();
   await fireEvent.press(s.getByRole('button', { name: '查看 測試主揪 的公開資料' }));

@@ -19,6 +19,9 @@ import { useExperience } from '@/lib/social-api';
 import { coreError, type CorePost } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { PostThumbnail } from './post-thumbnail';
+import { orderStateLabel } from '@/lib/order-state';
+import { displayTimestamp } from '@/lib/display-time';
 
 export function postEmoji(post: Pick<CorePost, 'content' | 'tags'>) {
   const s = post.tags.join('') + post.content;
@@ -167,14 +170,8 @@ export function CoreProfileScreen() {
     </Screen>
   );
 }
-export function HistoryRow({ post, completed = false }: { post: CorePost; completed?: boolean }) {
-  const status = completed
-    ? '已完成'
-    : post.status === 'cancelled'
-      ? '已取消'
-      : post.status === 'expired'
-        ? '已截止'
-        : '進行中';
+export function HistoryRow({ post, completed }: { post: CorePost; completed?: boolean }) {
+  const status = orderStateLabel(post, completed ?? post.completed);
   return (
     <Pressable
       accessibilityRole="button"
@@ -182,18 +179,13 @@ export function HistoryRow({ post, completed = false }: { post: CorePost; comple
       onPress={() => router.push(`/order/${post.id}`)}
       style={styles.historyRow}
     >
-      <View style={styles.historyImage}>
-        <Text fixedSize style={styles.historyEmoji}>
-          {postEmoji(post)}
-        </Text>
-      </View>
+      <PostThumbnail post={post} />
       <View style={styles.historyText}>
         <Text numberOfLines={2} style={styles.historyTitle}>
           {post.content.split('\n')[0]}
         </Text>
         <Text style={styles.historyDetail}>
-          {new Date(post.created_at).toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })}{' '}
-          · {post.joined}/{post.capacity} 人
+          {displayTimestamp(post.created_at)} · {post.joined}/{post.capacity} 人
         </Text>
       </View>
       <Pill tone={completed ? 'success' : 'plain'}>{status}</Pill>

@@ -9,6 +9,8 @@ import { CorePostGallery } from '@/components/post-photo-carousel';
 import type { CorePost } from '@/lib/core-api';
 import { formatPrice } from '@/lib/price';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { orderStateLabel } from '@/lib/order-state';
+import { displayTimestamp } from '@/lib/display-time';
 
 export const postStatusLabels = {
   open: '進行中',
@@ -18,13 +20,7 @@ export const postStatusLabels = {
 };
 
 export function shortDate(value: string) {
-  return new Date(value).toLocaleString('zh-TW', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
+  return displayTimestamp(value);
 }
 
 export function SegmentedTabs<T extends string>({
@@ -117,7 +113,7 @@ export function CorePostRow({
         <Pill
           tone={post.status === 'open' ? 'yellow' : post.status === 'full' ? 'success' : 'plain'}
         >
-          {postStatusLabels[post.status]}
+          {orderStateLabel(post)}
         </Pill>
         <MaterialCommunityIcons name="chevron-right" size={18} color={colors.subtle} />
       </View>

@@ -157,13 +157,15 @@ export function FeedPostCard({
         </Text>
       ) : null}
       {corePost?.is_demo ? <Text style={styles.time}>示範資料 · 沒有真實訂購</Text> : null}
-      {corePost && corePost.status !== 'open' ? (
+      {corePost && (corePost.completed || corePost.status !== 'open') ? (
         <Text style={styles.time}>
-          {corePost.status === 'cancelled'
-            ? '已取消'
-            : corePost.status === 'expired'
-              ? '已截止'
-              : '已額滿'}
+          {corePost.completed
+            ? '已完成'
+            : corePost.status === 'cancelled'
+              ? '已取消'
+              : corePost.status === 'expired'
+                ? '已截止'
+                : '已額滿'}
         </Text>
       ) : null}
       <View style={styles.actions}>

@@ -1,4 +1,5 @@
 import { PageLoading } from '@/components/page-loading';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useCoreClock } from '@/lib/core-clock';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
@@ -21,11 +22,11 @@ import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { shortDate } from '@/components/list-ui';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
 import { usePostCacheSync } from '@/lib/core-post-cache';
+import { orderStateLabel } from '@/lib/order-state';
 
-const statusLabels = { open: '進行中', full: '已額滿', expired: '已截止', cancelled: '已取消' };
 const decisionLabels = {
-  pending: '待接受',
-  accepted: '已加入',
+  pending: '審核中',
+  accepted: '進行中',
   rejected: '已拒絕',
   cancelled: '已退出／取消申請',
 };
@@ -149,12 +150,7 @@ export function CoreOrdersScreen() {
   );
 }
 export function ParticipatingOrderRow({ post }: { post: CorePost }) {
-  const label =
-    post.status === 'expired' || post.status === 'cancelled'
-      ? statusLabels[post.status]
-      : post.my_status in decisionLabels
-        ? decisionLabels[post.my_status as keyof typeof decisionLabels]
-        : statusLabels[post.status];
+  const label = orderStateLabel(post);
   return (
     <View style={styles.participatingRow}>
       <Pressable
@@ -232,12 +228,13 @@ function HostedApplicants({ post }: { post: CorePost }) {
           </Text>
           <Text style={styles.hint}>{shortDate(post.created_at)}</Text>
         </Pressable>
+        <Pill tone={post.completed ? 'success' : 'plain'}>{orderStateLabel(post)}</Pill>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`查看 ${post.content} 的團員與貼文`}
           onPress={() => router.push(`/order/${post.id}`)}
         >
-          <Text style={styles.link}>查看全部</Text>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.muted} />
         </Pressable>
       </View>
       <View style={styles.applicants}>

@@ -202,6 +202,18 @@ it.each(['expired', 'cancelled'] as const)(
     expect(coreApi.withdraw).not.toHaveBeenCalled();
   },
 );
+it('shows actual completed orders as completed and prevents membership changes', async () => {
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <CorePostActions
+        post={{ ...post, completed: true, my_status: 'accepted', status: 'expired' }}
+      />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByRole('button', { name: '已完成' }).props.accessibilityState?.disabled).toBe(
+    true,
+  );
+});
 it('opens post management from an embedded order card without pushing the order again', async () => {
   const screen = await render(
     <QueryClientProvider client={queryClient}>

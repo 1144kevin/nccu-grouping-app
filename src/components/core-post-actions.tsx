@@ -23,7 +23,7 @@ export function CorePostActions({
   // A new parent snapshot takes precedence, including a later host acceptance.
   const post = confirmed?.source === suppliedPost ? confirmed.post : suppliedPost;
   const withdrawing = post.my_status === 'pending' || post.my_status === 'accepted';
-  const closed = post.status === 'expired' || post.status === 'cancelled';
+  const closed = !!post.completed || post.status === 'expired' || post.status === 'cancelled';
   const mutation = useMutation({
     mutationFn: async () => {
       if (withdrawing) {
@@ -46,17 +46,19 @@ export function CorePostActions({
   const label =
     post.my_status === 'host'
       ? '管理拼單'
-      : post.status === 'cancelled'
-        ? '已取消'
-        : post.status === 'expired'
-          ? '已截止'
-          : post.my_status === 'pending'
-            ? '取消申請'
-            : post.my_status === 'accepted'
-              ? '退出並釋出名額'
-              : post.status === 'full'
-                ? '已額滿'
-                : '想被揪';
+      : post.completed
+        ? '已完成'
+        : post.status === 'cancelled'
+          ? '已取消'
+          : post.status === 'expired'
+            ? '已截止'
+            : post.my_status === 'pending'
+              ? '取消申請'
+              : post.my_status === 'accepted'
+                ? '退出並釋出名額'
+                : post.status === 'full'
+                  ? '已額滿'
+                  : '想被揪';
   return (
     <View style={{ flex: 1, gap: 6 }}>
       <PrimaryButton
