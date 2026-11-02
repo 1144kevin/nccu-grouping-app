@@ -399,6 +399,7 @@ const messages: Record<string, string> = {
   local_model_unavailable: '本機模型未啟動，請執行 run_local_model.py。',
   local_model_not_installed: '本機模型尚未下載，請依開發文件完成下載。',
   local_model_timeout: '本機模型回應逾時，內容仍保留，請稍後重試。',
+  web_session_storage_unavailable: '此裝置暫時無法儲存登入狀態，請確認允許儲存網站資料後重試。',
   local_model_busy: '本機模型正在處理另一筆需求，請稍後重試。',
   invalid_local_model_response: '本機模型暫時無法回應，請確認模型服務已啟動。',
   invalid_local_model_output: '模型未能產生完整資料，請換個說法，或使用手動表單。',
