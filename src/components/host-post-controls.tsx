@@ -14,13 +14,15 @@ export function HostPostControls({ post }: { post: CorePost }) {
   const cancel = useMutation({
     mutationFn: () => coreApi.cancel(post.id),
     onSuccess: sync.update,
-    onSettled: () => {
+    onError: () => {
       void sync.refresh(post.id);
+    },
+    onSettled: () => {
       void invalidateCore();
     },
   });
   if (post.my_status !== 'host') return null;
-  const closed = post.status === 'expired' || post.status === 'cancelled';
+  const closed = cancel.isSuccess || post.status === 'expired' || post.status === 'cancelled';
   return (
     <View style={{ gap: 12 }}>
       {!closed && !confirm ? (

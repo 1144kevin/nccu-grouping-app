@@ -1,4 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { router } from 'expo-router';
 import { View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
@@ -8,21 +9,37 @@ import { invalidateCore } from '@/lib/core-hooks';
 import { usePostCacheSync } from '@/lib/core-post-cache';
 import { colors } from '@/theme/tokens';
 
-export function CorePostActions({ post, onManage }: { post: CorePost; onManage?: () => void }) {
+export function CorePostActions({
+  post: suppliedPost,
+  onManage,
+}: {
+  post: CorePost;
+  onManage?: () => void;
+}) {
   const sync = usePostCacheSync();
+  const [confirmed, setConfirmed] = useState<{ source: CorePost; post: CorePost } | null>(null);
+  // A card can be rendered from a fixed search/detail/list snapshot. Its own
+  // successful action must still update the button before that parent refreshes.
+  // A new parent snapshot takes precedence, including a later host acceptance.
+  const post = confirmed?.source === suppliedPost ? confirmed.post : suppliedPost;
   const withdrawing = post.my_status === 'pending' || post.my_status === 'accepted';
   const closed = post.status === 'expired' || post.status === 'cancelled';
   const mutation = useMutation({
     mutationFn: async () => {
       if (withdrawing) {
-        sync.update(await coreApi.withdraw(post.id));
+        return coreApi.withdraw(post.id);
       } else {
         const request = await coreApi.requestJoin(post.id, post.version ?? 1);
-        sync.update({ id: post.id, my_status: request.status });
+        return { ...post, my_status: request.status };
       }
     },
-    onSettled: () => {
+    onSuccess: (updated) => {
+      if (sync.update(updated)) setConfirmed({ source: suppliedPost, post: updated });
+    },
+    onError: () => {
       void sync.refresh(post.id);
+    },
+    onSettled: () => {
       void invalidateCore();
     },
   });

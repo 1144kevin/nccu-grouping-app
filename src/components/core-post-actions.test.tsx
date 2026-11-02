@@ -147,6 +147,45 @@ it('keeps the original button state when the application fails', async () => {
   ).toBe('none');
 });
 
+it('updates its own label even when the parent keeps the same post snapshot', async () => {
+  jest.mocked(coreApi.requestJoin).mockResolvedValue({ status: 'pending' } as never);
+  jest.mocked(coreApi.withdraw).mockResolvedValue({ ...post, my_status: 'cancelled' });
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <CorePostActions post={post} />
+    </QueryClientProvider>,
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '想被揪' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '取消申請' })).toBeTruthy(), {
+    timeout: 700,
+  });
+  await fireEvent.press(screen.getByRole('button', { name: '取消申請' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '想被揪' })).toBeTruthy());
+  await screen.rerender(
+    <QueryClientProvider client={queryClient}>
+      <CorePostActions post={{ ...post, my_status: 'accepted' }} />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByRole('button', { name: '退出並釋出名額' })).toBeTruthy();
+});
+
+it('keeps a confirmed application instead of overwriting it with a redundant stale read', async () => {
+  seedFeed();
+  jest.mocked(coreApi.requestJoin).mockResolvedValue({ status: 'pending' } as never);
+  jest.mocked(coreApi.post).mockResolvedValue(post);
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <CachedFeedActions />
+    </QueryClientProvider>,
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '想被揪' }));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 80));
+  });
+  expect(screen.getByRole('button', { name: '取消申請' })).toBeTruthy();
+  expect(coreApi.post).not.toHaveBeenCalled();
+});
+
 it.each(['expired', 'cancelled'] as const)(
   'does not submit membership changes for a %s post',
   async (status) => {

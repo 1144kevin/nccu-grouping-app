@@ -53,7 +53,9 @@ export function usePostCacheSync() {
     if (actor && useAuthStore.getState().user?.id === actor) {
       versions.set(key(post.id), (versions.get(key(post.id)) ?? 0) + 1);
       updateCachedPost(client, actor, post);
+      return true;
     }
+    return false;
   };
   return {
     update,
