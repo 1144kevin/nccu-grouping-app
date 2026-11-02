@@ -2,6 +2,8 @@ import { skipToken, useQuery } from '@tanstack/react-query';
 import type { CorePost } from '@/lib/core-api';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
+import { useState } from 'react';
+import { orderFeedPosts } from './feed-ordering';
 
 const publishedKey = (actor: string | undefined) => ['core', actor, 'newly-published-post'];
 
@@ -12,6 +14,8 @@ export function showPublishedPost(actor: string, post: CorePost) {
 }
 
 export function useFeedPresentation(rankedPosts: CorePost[]) {
+  const [refresh, setRefresh] = useState(0);
+  const ordered = orderFeedPosts(rankedPosts, refresh);
   const actor = useAuthStore((state) => state.user?.id);
   const { data: published } = useQuery<CorePost | null>({
     queryKey: publishedKey(actor),
@@ -24,10 +28,13 @@ export function useFeedPresentation(rankedPosts: CorePost[]) {
     publishedId: recent?.id,
     posts: recent
       ? [
-          rankedPosts.find((post) => post.id === recent.id) ?? recent,
-          ...rankedPosts.filter((post) => post.id !== recent.id),
+          ordered.find((post) => post.id === recent.id) ?? recent,
+          ...ordered.filter((post) => post.id !== recent.id),
         ]
-      : rankedPosts,
-    restoreRanking: () => queryClient.setQueryData(publishedKey(actor), null),
+      : ordered,
+    restoreRanking: () => {
+      queryClient.setQueryData(publishedKey(actor), null);
+      setRefresh((value) => value + 1);
+    },
   };
 }

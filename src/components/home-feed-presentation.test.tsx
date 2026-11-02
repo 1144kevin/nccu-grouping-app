@@ -78,7 +78,7 @@ it('shows a new post even outside the recommendation page, keeps it through back
   await act(async () => {
     await fireEvent(screen.getByTestId('home-feed-refresh'), 'refresh');
   });
-  await waitFor(() => expect(ids()).toEqual(['ranked-b', 'ranked-a']));
+  await waitFor(() => expect(ids()).toEqual(['ranked-a', 'ranked-b']));
   expect(mockRefetch).toHaveBeenCalledTimes(1);
 });
 it('deduplicates a recommended new post and uses its current server copy', async () => {
