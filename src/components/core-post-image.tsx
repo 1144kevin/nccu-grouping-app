@@ -54,12 +54,12 @@ function SignedPostImage({
     },
     enabled: !!actor && focused,
     retry: false,
-    staleTime: 45_000,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: 'always',
-    gcTime: 0,
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    gcTime: 10 * 60_000,
   });
-  const attempt = `${query.data?.url}:${query.dataUpdatedAt}`;
+  const attempt = query.data?.url ?? '';
   const failed = failedAttempt === attempt;
   const intrinsicWidth =
     intrinsicHeight && query.data
@@ -83,7 +83,7 @@ function SignedPostImage({
         backgroundColor ? { backgroundColor } : null,
       ]}
     >
-      {!focused || query.isPending || query.isFetching ? (
+      {!query.data && query.isPending ? (
         <PageLoading accessibilityLabel="正在載入拼單圖片" />
       ) : query.data && !failed ? (
         <Image

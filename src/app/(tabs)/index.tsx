@@ -26,7 +26,7 @@ export default function HomeScreen() {
 }
 
 function CoreHomeScreen() {
-  const latest = useCorePosts();
+  const latest = useCorePosts('feed', '', false, 30, !CORE_SUPABASE_MODE);
   const recommendations = useCoreRecommendations(CORE_SUPABASE_MODE);
   const query = CORE_SUPABASE_MODE ? recommendations : latest;
   const feed = useFeedPresentation(query.posts);

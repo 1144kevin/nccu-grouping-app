@@ -8,7 +8,16 @@ import { useAuthStore } from '@/store/auth-store';
 import { useAppStore } from '@/store/app-store';
 
 export async function invalidateCore() {
-  await queryClient.invalidateQueries({ queryKey: ['core'] });
+  await queryClient.invalidateQueries({
+    queryKey: ['core'],
+    predicate: (query) => {
+      const kind = query.queryKey[2];
+      return (
+        !['image-link', 'chat-photo', 'recommendations'].includes(String(kind)) &&
+        !(kind === 'posts' && query.queryKey[3] === 'feed')
+      );
+    },
+  });
 }
 
 export function useCoreScreenFocused() {
@@ -34,6 +43,7 @@ export function useCorePosts(
   q = '',
   activeOnly = false,
   pageSize = 30,
+  active = true,
 ) {
   const user = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
@@ -42,8 +52,11 @@ export function useCorePosts(
     queryFn: ({ pageParam }) => coreApi.posts(scope, pageParam, q, activeOnly, pageSize),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
-    enabled: CORE_API_ENABLED && !!user && focused,
-    refetchInterval: 10_000,
+    enabled: active && CORE_API_ENABLED && !!user && focused,
+    refetchInterval: scope === 'feed' ? false : focused ? 15_000 : false,
+    ...(scope === 'feed'
+      ? { staleTime: Infinity, refetchOnMount: false, refetchOnWindowFocus: false }
+      : {}),
   });
   useEffect(() => {
     if (CORE_API_ENABLED && scope === 'feed' && !q && !activeOnly && query.data) {

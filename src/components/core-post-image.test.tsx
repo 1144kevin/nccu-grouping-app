@@ -103,7 +103,7 @@ const signedLink = (token: string) => ({
   expires_in: 60,
   url: `https://axdwbfhrkbovgrbngrrh.supabase.co/storage/v1/object/sign/core-post-images/00000000-0000-4000-8000-000000000001/00000000-0000-4000-8000-000000000002.jpg?token=${token}`,
 });
-it('waits for route focus and refreshes an expired cached link before displaying an image on another page', async () => {
+it('keeps a cached image visible on route changes and refreshes its link only if download fails', async () => {
   mockFocused = false;
   client.setQueryData(['core', 'synthetic-owner', 'image-link', 'image'], signedLink('expired'), {
     updatedAt: Date.now() - 120000,
@@ -115,10 +115,14 @@ it('waits for route focus and refreshes an expired cached link before displaying
     </QueryClientProvider>
   );
   const screen = await render(view());
-  expect(screen.queryByLabelText('拼單附圖')).toBeNull();
+  expect(screen.getByLabelText('拼單附圖')).toBeTruthy();
   expect(mediaApi.link).not.toHaveBeenCalled();
   mockFocused = true;
   await screen.rerender(view());
+  expect(mediaApi.link).not.toHaveBeenCalled();
+  await fireEvent(screen.getByLabelText('拼單附圖'), 'error', {
+    nativeEvent: { error: 'expired' },
+  });
   await waitFor(() =>
     expect(imageUrl(screen.getByLabelText('拼單附圖').props.source)).toBe(signedLink('fresh').url),
   );

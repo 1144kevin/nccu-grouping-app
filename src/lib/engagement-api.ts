@@ -36,7 +36,13 @@ export type ReportInput = {
   platform: 'web' | 'ios' | 'android' | 'unknown';
   app_version: string;
 };
-export type Report = ReportInput & { id: string; status: 'received' | 'reviewing' | 'resolved' | 'dismissed'; created_at: string; public_response?: string; review_version?: number };
+export type Report = ReportInput & {
+  id: string;
+  status: 'received' | 'reviewing' | 'resolved' | 'dismissed';
+  created_at: string;
+  public_response?: string;
+  review_version?: number;
+};
 export type SemanticFeedPage = CorePostPage & {
   status: 'completed' | 'unavailable' | 'empty';
   candidate_count: number;
@@ -57,9 +63,15 @@ export const engagementApi = {
   recommendations: async (cursor?: string) =>
     (await api.get<CorePostPage>('/recommendations', { params: { limit: 30, cursor } })).data,
   semanticRecommendations: async (query: string) =>
-    (await api.post<SemanticFeedPage>('/recommendations/semantic', { query }, { timeout: 420_000 })).data,
+    (await api.post<SemanticFeedPage>('/recommendations/semantic', { query }, { timeout: 420_000 }))
+      .data,
   validateSemanticRecommendations: async (ids: string[], preference_version: number) =>
-    (await api.post<CorePostPage>('/recommendations/semantic/validate', { ids, preference_version })).data,
+    (
+      await api.post<CorePostPage>('/recommendations/semantic/validate', {
+        ids,
+        preference_version,
+      })
+    ).data,
   savedPosts: async () =>
     (await api.get<{ items: SavedPostPreference[] }>('/account/saved-posts')).data,
   savePost: async (id: string, value: { hidden: boolean; reminder: boolean }) =>
@@ -96,7 +108,10 @@ export function useCoreRecommendations(active: boolean) {
     getNextPageParam: (page) => page.next_cursor ?? undefined,
     enabled:
       active && focused && CORE_API_ENABLED && CORE_SUPABASE_MODE && !!id && !!preferences.data,
-    refetchInterval: 10_000,
+    staleTime: Infinity,
+    refetchInterval: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
   return {
     ...query,
@@ -130,6 +145,7 @@ export function visibleChatActivity<
     groups: { post_id: string; unread_count: number }[];
     total_unread: number;
     pending_requests: number;
+    accepted_requests?: number;
   },
 >(value: T, inbox: InboxPreference[], preferences?: AccountPreferences): T {
   const hidden = new Set(
@@ -145,5 +161,11 @@ export function visibleChatActivity<
     total_unread: groups.reduce((sum, group) => sum + group.unread_count, 0),
     pending_requests:
       preferences?.notifications.joinRequests === false ? 0 : value.pending_requests,
+    ...(value.accepted_requests !== undefined
+      ? {
+          accepted_requests:
+            preferences?.notifications.joinRequests === false ? 0 : value.accepted_requests,
+        }
+      : {}),
   };
 }
