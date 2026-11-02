@@ -1,8 +1,7 @@
-import { displayTimestamp } from '@/lib/display-time';
 import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { api } from '@/lib/api';
 import { queryClient } from '@/lib/query-client';
 import { router } from 'expo-router';
@@ -11,10 +10,9 @@ import { AppText as Text } from '@/components/app-text';
 import { Avatar, DetailHeader, EmptyState, PrimaryButton, Screen } from '@/components/primitives';
 import { coreError, type CoreOrderActivity } from '@/lib/core-api';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
-import { SegmentedTabs, shortDate } from '@/components/list-ui';
+import { shortDate } from '@/components/list-ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '@/theme/tokens';
-import { useSavedPostPreferences } from '@/lib/engagement-api';
 
 export function CoreOrderActivityScreen() {
   useEffect(() => {
@@ -28,19 +26,10 @@ export function CoreOrderActivityScreen() {
       )
       .catch(() => undefined);
   }, []);
-  const [reminders, setReminders] = useState(false);
   return (
     <Screen>
       <DetailHeader title="拼單動態" />
-      <SegmentedTabs
-        value={reminders ? 'reminders' : 'activity'}
-        onChange={(value) => setReminders(value === 'reminders')}
-        options={[
-          { value: 'activity', label: '申請與審核' },
-          { value: 'reminders', label: '截止提醒' },
-        ]}
-      />
-      {reminders ? <CoreDeadlineReminders /> : <CoreRequestActivity />}
+      <CoreRequestActivity />
     </Screen>
   );
 }
@@ -158,59 +147,6 @@ function CoreRequestActivity() {
                 {item.post_cancelled ? '這筆拼單目前已取消。' : '這筆拼單目前已截止。'}
               </Text>
             ) : null}
-          </Pressable>
-        )}
-      />
-    </View>
-  );
-}
-
-function CoreDeadlineReminders() {
-  const query = useSavedPostPreferences();
-  const items = query.data?.items.filter((item) => item.reminder) ?? [];
-  const labels = {
-    scheduled: '已設定提醒',
-    due: '即將截止',
-    expired: '已截止',
-    cancelled: '拼單已取消',
-  };
-  return (
-    <View style={{ flex: 1 }}>
-      {query.error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {coreError(query.error)}
-        </Text>
-      ) : null}
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.post_id}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <PullRefreshControl
-            onRefresh={() => {
-              return query.refetch();
-            }}
-          />
-        }
-        ListEmptyComponent={
-          query.isPending ? (
-            <PageLoading />
-          ) : (
-            <EmptyState
-              icon="bell-outline"
-              title={query.error ? '提醒載入失敗' : '尚未設定截止提醒'}
-            />
-          )
-        }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            style={styles.card}
-            onPress={() => router.push(`/post/${item.post_id}`)}
-          >
-            <Text style={styles.title}>{labels[item.status]}</Text>
-            <Text style={styles.body}>{item.post_content}</Text>
-            <Text style={styles.hint}>截止：{displayTimestamp(item.deadline_at)}</Text>
           </Pressable>
         )}
       />

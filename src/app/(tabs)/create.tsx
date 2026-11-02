@@ -688,7 +688,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   headerSide: { width: 64, alignItems: 'flex-start' },

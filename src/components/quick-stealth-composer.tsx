@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     borderRadius: 18,
     borderBottomRightRadius: 4,
-    backgroundColor: '#F0EFEB',
+    backgroundColor: colors.surface,
     padding: 14,
   },
   body: { fontSize: 15, lineHeight: 25, color: colors.ink },

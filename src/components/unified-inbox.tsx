@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   rowButton: { flex: 1, minWidth: 0, minHeight: 96, flexDirection: 'row', alignItems: 'center' },

@@ -94,7 +94,12 @@ export function CorePostRow({
       ]}
     >
       <View style={styles.author}>
-        <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={44} />
+        <Avatar
+          name={post.author_name}
+          badge={post.author_badge ?? '🍱'}
+          userId={post.author_id}
+          size={44}
+        />
         <View style={styles.identity}>
           <Text numberOfLines={1} style={styles.name}>
             {post.author_name}
@@ -185,10 +190,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: spacing.lg,
     gap: 9,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  attention: { backgroundColor: '#FFF9DF' },
+  attention: { backgroundColor: colors.yellowSoft },
   author: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   identity: { flex: 1, minWidth: 0, gap: 3 },
   name: { color: colors.ink, fontSize: 15, fontFamily: typography.rounded, fontWeight: '700' },

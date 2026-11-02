@@ -34,7 +34,7 @@ export function AppText({
     ? undefined
     : scaledStyle(StyleSheet.flatten(style), fontSizes[size].scale, nested ? undefined : 14);
   return (
-    <NativeText {...props} ref={ref} style={[style, scaled]}>
+    <NativeText {...props} ref={ref} style={[!nested && { color: colors.ink }, style, scaled]}>
       <InsideText.Provider value>{children}</InsideText.Provider>
     </NativeText>
   );

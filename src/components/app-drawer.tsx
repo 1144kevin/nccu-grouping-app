@@ -13,11 +13,11 @@ import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 
 const supportItems = [
-  { label: 'App 字級', icon: 'format-size', href: '/font-size' },
+  { label: '介面調整', icon: 'palette-outline', href: '/font-size' },
   { label: '通知中心', icon: 'bell-outline', href: '/notifications' },
   { label: '推薦偏好', icon: 'tune-variant', href: '/preferences' },
-  { label: '帳號與隱私', icon: 'shield-account-outline', href: '/settings' },
-  { label: '幫助與回報', icon: 'help-circle-outline', href: '/help' },
+  { label: '帳號設定', icon: 'shield-account-outline', href: '/settings' },
+  { label: '幫助', icon: 'help-circle-outline', href: '/help' },
 ] as const;
 
 export function AppDrawer() {
@@ -63,18 +63,11 @@ export function AppDrawer() {
             <Avatar name={currentUser.name} badge={currentUser.badge} size={52} />
             <View style={styles.accountText}>
               <Text style={styles.name}>{currentUser.name}</Text>
-              <Text style={styles.level}>
-                {CORE_API_ENABLED ? '已登入' : `${currentUser.badge} 五分熟 · Lv.5`}
-              </Text>
             </View>
           </View>
           <ScrollView contentContainerStyle={styles.items}>
             {CORE_API_ENABLED && CORE_SUPABASE_MODE ? (
-              <DrawerItem
-                label="偷揪 · 我的 AI 分身"
-                icon="robot-outline"
-                onPress={() => navigate('/stealth')}
-              />
+              <DrawerItem label="偷揪" icon="robot-outline" onPress={() => navigate('/stealth')} />
             ) : null}
             <View style={styles.divider} />
             {supportItems.map((item) => (
@@ -103,7 +96,7 @@ export function AppDrawer() {
                 </Text>
               ) : null}
               <DrawerItem
-                label={busy ? '登出中' : '登出帳號'}
+                label={busy ? '登出中' : '登出'}
                 loading={busy}
                 icon="logout"
                 disabled={busy}

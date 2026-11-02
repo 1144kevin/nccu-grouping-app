@@ -34,7 +34,7 @@ export function useChatDateIndicator(inverted = true) {
           top: 8,
           alignSelf: 'center',
           zIndex: 10,
-          backgroundColor: '#EEEDE8',
+          backgroundColor: colors.surface,
           paddingHorizontal: 14,
           paddingVertical: 6,
           borderRadius: 14,

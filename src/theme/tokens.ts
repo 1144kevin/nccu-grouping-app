@@ -1,18 +1,45 @@
 import { Platform } from 'react-native';
 
-export const colors = {
+export const lightColors = {
   background: '#FFFFFF',
   ink: '#171717',
   muted: '#77756F',
   subtle: '#A8A59D',
   surface: '#F6F6F4',
-  border: '#E6E4DF',
-  yellow: '#FFCC00',
+  border: '#EFEFED',
+  yellow: '#FFD700',
+  onYellow: '#171717',
   yellowSoft: '#FFF1A8',
   brown: '#8B6847',
   danger: '#DF4F4F',
+  dangerSoft: '#FFF0F0',
   success: '#327A51',
+  successSoft: '#EDF8F1',
 } as const;
+
+export const darkColors: Record<keyof typeof lightColors, string> = {
+  ...lightColors,
+  background: '#171817',
+  ink: '#F3F3EF',
+  muted: '#B3B2AB',
+  subtle: '#96958E',
+  surface: '#242623',
+  border: '#383A35',
+  yellowSoft: '#49421D',
+  brown: '#D3B18A',
+  danger: '#FF8484',
+  dangerSoft: '#452929',
+  success: '#84CBA1',
+  successSoft: '#203C2B',
+};
+
+// React Native Web preserves CSS variables, so existing StyleSheets follow theme changes.
+export const colors = Object.fromEntries(
+  Object.entries(lightColors).map(([key, value]) => [
+    key,
+    Platform.OS === 'web' ? `var(--app-${key}, ${value})` : value,
+  ]),
+) as Record<keyof typeof lightColors, string>;
 
 export const spacing = {
   xs: 4,

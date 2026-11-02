@@ -9,7 +9,7 @@ import { beginGoogleSignIn, clearGoogleCallback } from '@/lib/google-login';
 import { onUnauthorized } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppStore } from '@/store/app-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, spacing } from '@/theme/tokens';
 import { AccountDeletionRecovery } from '@/components/core-account-deletion';
 import { APPLE_INTAKE_TRIAL } from '@/lib/apple-intake';
 import { AppleIntakeTrialScreen } from '@/components/apple-intake-trial';
@@ -116,8 +116,15 @@ function LoginForm() {
   }
   return (
     <Screen scroll style={styles.form}>
-      <BrandLogo size={64} />
-      <Text style={styles.title}>政缺一咖</Text>
+      <View style={styles.welcome}>
+        <View style={styles.logoTile}>
+          <BrandLogo size={54} onBrand />
+        </View>
+        <Text style={styles.title}>
+          {mode === 'login' ? '一起揪，更有味' : '從這裡，找到你的咖'}
+        </Text>
+        <Text style={styles.hint}>政缺一咖 · 和附近的同學一起分享</Text>
+      </View>
       {accountDeleted ? (
         <Text accessibilityRole="alert" style={styles.hint}>
           App 帳號已刪除。再次使用 Google 登入會建立新帳號，舊資料不會恢復。
@@ -141,7 +148,11 @@ function LoginForm() {
           >
             {googleBusy ? '正在前往 Google' : '使用 Google 帳號登入'}
           </PrimaryButton>
-          <Text style={styles.hint}>首次使用會為你建立帳號。</Text>
+          <View style={styles.separator}>
+            <View style={styles.rule} />
+            <Text style={styles.hint}>或使用 Email</Text>
+            <View style={styles.rule} />
+          </View>
           {googleError ? (
             <Text accessibilityRole="alert" style={styles.error}>
               {googleError}
@@ -201,12 +212,12 @@ function LoginForm() {
           : mode === 'login'
             ? '登入'
             : CORE_SUPABASE_MODE
-              ? '註冊（需驗證信箱）'
+              ? '建立帳號'
               : '註冊並登入'}
       </PrimaryButton>
       <Pressable
         accessibilityRole="button"
-        disabled={busy}
+        disabled={busy || googleBusy}
         onPress={() => {
           setMode(mode === 'login' ? 'register' : 'login');
           setPassword('');
@@ -235,24 +246,37 @@ const styles = StyleSheet.create({
   form: {
     flexGrow: 1,
     padding: spacing.xl,
+    paddingTop: 56,
+    paddingBottom: 40,
     gap: spacing.md,
     justifyContent: 'center',
     width: '100%',
     maxWidth: 480,
     alignSelf: 'center',
   },
-  title: { fontSize: 30, fontWeight: '800', color: colors.ink },
+  welcome: { alignItems: 'center', gap: 12, marginBottom: 22 },
+  logoTile: {
+    width: 86,
+    height: 86,
+    borderRadius: 28,
+    backgroundColor: colors.yellow,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  separator: { flexDirection: 'row', alignItems: 'center', gap: 14, marginVertical: 14 },
+  rule: { flex: 1, height: 1, backgroundColor: colors.border },
+  title: { fontSize: 27, fontWeight: '800', color: colors.ink },
   subtitle: { fontSize: 20, fontWeight: '700', color: colors.ink },
   hint: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   input: {
-    minHeight: 48,
+    minHeight: 54,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 14,
     paddingHorizontal: spacing.md,
     color: colors.ink,
     backgroundColor: colors.background,
   },
   error: { color: colors.danger, padding: spacing.sm, fontSize: 14 },
-  link: { color: colors.brown, padding: spacing.sm, fontWeight: '700' },
+  link: { color: colors.brown, padding: spacing.sm, textAlign: 'center', fontWeight: '700' },
 });

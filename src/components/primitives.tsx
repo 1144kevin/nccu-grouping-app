@@ -9,6 +9,12 @@ import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useBurgerLogoPress } from '@/components/burger-shower';
+import { useQuery } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { useAuthStore } from '@/store/auth-store';
+import { CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { profileSocial } from '@/lib/profile-social';
 
 export function Screen({
   children,
@@ -40,6 +46,7 @@ export function AppHeader({
   searchScope?: 'all' | 'posts' | 'orders' | 'messages' | 'history';
 }) {
   const openDrawer = useNavigationStore((state) => state.openDrawer);
+  const onLogoPress = useBurgerLogoPress();
   return (
     <View style={styles.header}>
       <IconButton icon="menu" label="開啟選單" onPress={openDrawer} />
@@ -49,6 +56,7 @@ export function AppHeader({
         <Link href="/" asChild>
           <Pressable
             accessibilityLabel="返回首頁"
+            onPress={onLogoPress}
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
           >
             <BrandLogo size={30} />
@@ -123,22 +131,78 @@ export function IconButton({
   );
 }
 
-export function Avatar({ name, badge, size = 48 }: { name: string; badge: string; size?: number }) {
+type AvatarProps = {
+  name: string;
+  badge: string;
+  size?: number;
+  userId?: string;
+  uri?: string;
+  onPress?: () => void;
+  square?: boolean;
+};
+export function Avatar(props: AvatarProps) {
+  return props.userId &&
+    /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(props.userId) &&
+    CORE_SUPABASE_MODE &&
+    !props.uri ? (
+    <AccountAvatar {...props} />
+  ) : (
+    <AvatarBody {...props} />
+  );
+}
+function AccountAvatar(props: AvatarProps) {
+  const actor = useAuthStore((state) => state.user?.id);
+  const photo = useQuery({
+    queryKey: ['core', actor, 'avatar', props.userId],
+    queryFn: () => profileSocial.avatar(props.userId!),
+    enabled: !!actor,
+    staleTime: 300_000,
+    retry: false,
+  });
+  return (
+    <AvatarBody
+      {...props}
+      uri={photo.data ? `data:image/jpeg;base64,${photo.data.content_base64}` : undefined}
+    />
+  );
+}
+function AvatarBody({ name, badge, size = 48, uri: source, onPress, square = false }: AvatarProps) {
   const palette = ['#CDE2EA', '#E8E1B4', '#E7CDC3', '#D2DDC9'];
   const index =
     [...name].reduce((sum, character) => sum + character.charCodeAt(0), 0) % palette.length;
-  return (
+  const avatar = (
     <View
       accessibilityLabel={`${name} 的頭像`}
       style={[
         styles.avatar,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: palette[index] },
+        {
+          width: size,
+          height: size,
+          borderRadius: square ? 0 : size / 2,
+          backgroundColor: palette[index],
+          overflow: 'hidden',
+        },
       ]}
     >
-      <Text fixedSize style={{ fontSize: size * 0.44 }}>
-        {badge}
-      </Text>
+      {source ? (
+        <Image source={{ uri: source }} contentFit="cover" style={{ width: size, height: size }} />
+      ) : (
+        <Text fixedSize style={{ fontSize: size * 0.44 }}>
+          {badge}
+        </Text>
+      )}
     </View>
+  );
+  return onPress ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`查看 ${name} 的個人資料`}
+      onPress={onPress}
+    >
+      {avatar}
+    </Pressable>
+  ) : (
+    avatar
   );
 }
 
@@ -220,7 +284,13 @@ export function PrimaryButton({
             accessibilityState={{ busy: true }}
           />
         ) : null}
-        <Text style={[styles.primaryButtonText, textColor ? { color: textColor } : undefined]}>
+        <Text
+          style={[
+            styles.primaryButtonText,
+            { color: secondary ? colors.ink : colors.onYellow },
+            textColor ? { color: textColor } : undefined,
+          ]}
+        >
           {children}
         </Text>
       </View>
@@ -274,7 +344,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   headerTitle: {
@@ -306,8 +376,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   pillYellow: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
-  pillDanger: { borderColor: '#F2C9C9', backgroundColor: '#FFF0F0' },
-  pillSuccess: { borderColor: '#BFDDCA', backgroundColor: '#EDF8F1' },
+  pillDanger: { borderColor: colors.danger, backgroundColor: colors.dangerSoft },
+  pillSuccess: { borderColor: colors.success, backgroundColor: colors.successSoft },
   pillText: { fontFamily: typography.regular, fontSize: 14, color: colors.ink },
   primaryButton: {
     minHeight: 43,
@@ -318,7 +388,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellow,
   },
   secondaryButton: { backgroundColor: colors.surface },
-  disabledButton: { backgroundColor: '#E5E5E3' },
+  disabledButton: { backgroundColor: colors.surface },
   primaryButtonText: {
     fontFamily: typography.rounded,
     fontSize: 16,

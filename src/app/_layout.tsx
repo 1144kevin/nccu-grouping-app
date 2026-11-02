@@ -1,7 +1,7 @@
 import { PageLoading } from '@/components/page-loading';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { AppearanceController } from '@/components/appearance-controller';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { queryClient } from '@/lib/query-client';
@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Screen } from '@/components/primitives';
 import { PostLoginReturn } from '@/components/post-login-return';
 import { WebInputNavigation } from '@/components/web-input-navigation';
+import { BurgerShowerProvider } from '@/components/burger-shower';
 
 export default function RootLayout() {
   const user = useAuthStore((state) => state.user);
@@ -21,12 +22,14 @@ export default function RootLayout() {
       <WebInputNavigation />
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <StatusBar style="dark" />
-          <CoreAuthGate>
-            <RootNavigator />
-            {CORE_API_ENABLED ? <PostLoginReturn /> : null}
-            {!CORE_API_ENABLED || (user && !user.profile_setup_required) ? <AppDrawer /> : null}
-          </CoreAuthGate>
+          <BurgerShowerProvider>
+            <AppearanceController />
+            <CoreAuthGate>
+              <RootNavigator />
+              {CORE_API_ENABLED ? <PostLoginReturn /> : null}
+              {!CORE_API_ENABLED || (user && !user.profile_setup_required) ? <AppDrawer /> : null}
+            </CoreAuthGate>
+          </BurgerShowerProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

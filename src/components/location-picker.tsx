@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: colors.background,
   },
-  activeChip: { borderColor: colors.yellow, backgroundColor: '#FFF7CB' },
+  activeChip: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
   chipLabel: { color: colors.ink, fontSize: 13 },
   smallButton: { minWidth: 36, minHeight: 34, alignItems: 'center', justifyContent: 'center' },
   toolButton: { minHeight: 38, paddingHorizontal: 12 },
