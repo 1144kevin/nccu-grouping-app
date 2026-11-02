@@ -107,20 +107,28 @@ function GroupChat({ id }: { id: string }) {
   return (
     <Screen>
       <DetailHeader
+        sideWidth={80}
         title={
           query.data?.pages[0]?.post
             ? `【群組】${query.data.pages[0].post.content.split('\n')[0]}`
             : '拼單聊天室'
         }
         right={
-          <IconButton
-            icon="refresh"
-            label="重新整理訊息"
-            disabled={query.isFetching}
-            onPress={() => {
-              void query.refetch();
-            }}
-          />
+          <View style={{ flexDirection: 'row' }}>
+            <IconButton
+              icon="clipboard-check-outline"
+              label="拼單詳情與完成訂單"
+              onPress={() => router.push(`/order/${id}`)}
+            />
+            <IconButton
+              icon="refresh"
+              label="重新整理訊息"
+              disabled={query.isFetching}
+              onPress={() => {
+                void query.refetch();
+              }}
+            />
+          </View>
         }
       />
       {!current || denied ? (
@@ -187,52 +195,65 @@ function GroupChat({ id }: { id: string }) {
                   </PrimaryButton>
                 ) : null
               }
-              renderItem={({ item }) => (
-                <View style={[styles.message, item.sender_id === user?.id && styles.mine]}>
-                  <View style={styles.sender}>
-                    <Avatar name={item.sender_name} badge={item.sender_badge} size={28} />
-                    <Text style={styles.muted}>{item.sender_name}</Text>
-                    <ReputationBadge level={item.sender_level} />
-                  </View>
-                  <View
-                    style={[
-                      styles.bubble,
-                      item.sender_id === user?.id && styles.mineBubble,
-                      item.image_id && styles.photoBubble,
-                    ]}
+              renderItem={({ item }) =>
+                item.event_kind ? (
+                  <Text
+                    style={{
+                      textAlign: 'center',
+                      color: colors.muted,
+                      fontSize: 12,
+                      paddingVertical: 8,
+                    }}
                   >
-                    {item.image_id ? (
-                      <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
-                    ) : (
-                      <Text style={styles.body}>{item.content}</Text>
-                    )}
-                  </View>
-                  {item.delivery ? (
-                    item.delivery === 'sending' ? (
-                      <InlineLoading label="傳送中" textStyle={styles.muted} />
-                    ) : (
-                      <Text style={styles.muted}>尚未送出，請重試</Text>
-                    )
-                  ) : null}
-                  <Text style={styles.muted}>
-                    {new Date(item.created_at).toLocaleString('zh-TW')}
+                    {item.content}
                   </Text>
-                  {item.sender_id !== user?.id ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="檢舉這則訊息"
-                      onPress={() =>
-                        router.push({
-                          pathname: '/report',
-                          params: { kind: 'message', targetId: item.id },
-                        })
-                      }
+                ) : (
+                  <View style={[styles.message, item.sender_id === user?.id && styles.mine]}>
+                    <View style={styles.sender}>
+                      <Avatar name={item.sender_name} badge={item.sender_badge} size={28} />
+                      <Text style={styles.muted}>{item.sender_name}</Text>
+                      <ReputationBadge level={item.sender_level} />
+                    </View>
+                    <View
+                      style={[
+                        styles.bubble,
+                        item.sender_id === user?.id && styles.mineBubble,
+                        item.image_id && styles.photoBubble,
+                      ]}
                     >
-                      <Text style={styles.muted}>檢舉這則訊息</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              )}
+                      {item.image_id ? (
+                        <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
+                      ) : (
+                        <Text style={styles.body}>{item.content}</Text>
+                      )}
+                    </View>
+                    {item.delivery ? (
+                      item.delivery === 'sending' ? (
+                        <InlineLoading label="傳送中" textStyle={styles.muted} />
+                      ) : (
+                        <Text style={styles.muted}>尚未送出，請重試</Text>
+                      )
+                    ) : null}
+                    <Text style={styles.muted}>
+                      {new Date(item.created_at).toLocaleString('zh-TW')}
+                    </Text>
+                    {item.sender_id !== user?.id ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="檢舉這則訊息"
+                        onPress={() =>
+                          router.push({
+                            pathname: '/report',
+                            params: { kind: 'message', targetId: item.id },
+                          })
+                        }
+                      >
+                        <Text style={styles.muted}>檢舉這則訊息</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                )
+              }
             />
             {mutation.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
@@ -335,7 +356,13 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: 12,
   },
-  list: { padding: spacing.md, gap: spacing.md, paddingBottom: 24 },
+  list: {
+    paddingHorizontal: 8,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
+    paddingBottom: 24,
+    flexGrow: 1,
+  },
   card: {
     padding: spacing.md,
     marginBottom: spacing.md,

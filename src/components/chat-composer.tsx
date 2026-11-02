@@ -1,4 +1,4 @@
-import { useRef, useState, type PropsWithChildren } from 'react';
+import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -196,6 +196,7 @@ function ComposerSession({
   );
 }
 export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: string }) {
+  const insets = useSafeAreaInsets();
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
   const [expanded, setExpanded] = useState(false);
@@ -205,9 +206,19 @@ export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: s
     queryFn: () => chatPhotos.read(imageId),
     enabled: !!actor && focused,
     retry: false,
-    gcTime: 0,
-    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
+  useEffect(() => {
+    if (!expanded || Platform.OS !== 'web') return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpanded(false);
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [expanded]);
   const uri = photo.data ? `data:image/jpeg;base64,${photo.data.content_base64}` : preview;
   return (
     <View style={{ width: 220, maxWidth: '100%' }}>
@@ -221,8 +232,12 @@ export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: s
             accessibilityLabel="聊天照片"
             source={{ uri }}
             cachePolicy="memory"
-            contentFit="contain"
-            style={{ width: '100%', height: 180 }}
+            contentFit="cover"
+            style={{
+              width: '100%',
+              aspectRatio: photo.data ? photo.data.width / photo.data.height : 1,
+              borderRadius: 12,
+            }}
           />
         </Pressable>
       ) : (
@@ -238,20 +253,40 @@ export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: s
         </PrimaryButton>
       )}
       <Modal visible={expanded} transparent onRequestClose={() => setExpanded(false)}>
-        <View style={styles.overlay}>
-          <IconButton icon="close" label="關閉照片" onPress={() => setExpanded(false)} />
-          <Image
-            source={{ uri }}
-            cachePolicy="memory"
-            contentFit="contain"
-            style={{ width: '100%', height: '80%' }}
+        <View style={styles.viewer}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="關閉全螢幕照片"
+            onPress={() => setExpanded(false)}
+            style={StyleSheet.absoluteFill}
           />
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Image
+              source={{ uri }}
+              cachePolicy="memory"
+              contentFit="contain"
+              style={{ width: '100%', height: '100%' }}
+            />
+          </View>
+          <View
+            style={{
+              position: 'absolute',
+              top: Math.max(16, (insets.top ?? 0) + 8),
+              left: 16,
+              zIndex: 10,
+              backgroundColor: '#FFFFFFDD',
+              borderRadius: 24,
+            }}
+          >
+            <IconButton icon="close" label="關閉照片" onPress={() => setExpanded(false)} />
+          </View>
         </View>
       </Modal>
     </View>
   );
 }
 const styles = StyleSheet.create({
+  viewer: { flex: 1, backgroundColor: '#000' },
   footer: {
     paddingHorizontal: 12,
     paddingTop: 10,

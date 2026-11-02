@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { ChatComposer } from './chat-composer';
+import { ChatComposer, ChatPhoto } from './chat-composer';
 import { chatPhotos } from '@/lib/chat-photos';
 
 jest.mock('expo-image-picker', () => ({
@@ -16,7 +16,7 @@ jest.mock('@/lib/core-api', () => ({
   newRequestKey: () => 'photo-request-retry-key',
 }));
 jest.mock('@/lib/chat-photos', () => ({
-  chatPhotos: { upload: jest.fn(), send: jest.fn(), remove: jest.fn() },
+  chatPhotos: { upload: jest.fn(), send: jest.fn(), remove: jest.fn(), read: jest.fn() },
 }));
 jest.mock('@/store/auth-store', () => ({
   useAuthStore: Object.assign(
@@ -29,6 +29,20 @@ jest.mock('@/lib/font-size-storage', () => ({
 }));
 const client = new QueryClient({ defaultOptions: { mutations: { retry: false, gcTime: 0 } } });
 const sent = jest.fn();
+it('opens a chat photo and closes the full-screen view with its visible close control', async () => {
+  jest
+    .mocked(chatPhotos.read)
+    .mockResolvedValue({ content_base64: 'synthetic-image', width: 400, height: 300 });
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <ChatPhoto imageId="fixture-photo" />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(screen.getByRole('button', { name: '查看聊天照片' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '查看聊天照片' }));
+  await fireEvent.press(screen.getByRole('button', { name: '關閉照片' }));
+  expect(screen.queryByRole('button', { name: '關閉照片' })).toBeNull();
+});
 const ui = (kind: 'group' | 'direct' | 'stealth' = 'direct') => (
   <QueryClientProvider client={client}>
     <ChatComposer kind={kind} threadId="room" onSent={sent} />
@@ -38,14 +52,10 @@ beforeEach(() => {
   jest
     .mocked(ImagePicker.requestMediaLibraryPermissionsAsync)
     .mockResolvedValue({ granted: true } as never);
-  jest
-    .mocked(ImagePicker.launchImageLibraryAsync)
-    .mockResolvedValue({
-      canceled: false,
-      assets: [
-        { uri: 'data:image/jpeg;base64,aGVsbG8=', base64: 'aGVsbG8=', width: 20, height: 20 },
-      ],
-    } as never);
+  jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValue({
+    canceled: false,
+    assets: [{ uri: 'data:image/jpeg;base64,aGVsbG8=', base64: 'aGVsbG8=', width: 20, height: 20 }],
+  } as never);
   jest
     .mocked(chatPhotos.upload)
     .mockResolvedValue({ id: 'photo', width: 20, height: 20, state: 'ready' });

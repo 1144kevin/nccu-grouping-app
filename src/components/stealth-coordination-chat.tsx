@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { InlineLoading } from '@/components/inline-loading';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -40,6 +40,21 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     refetchInterval: focused ? 10_000 : false,
   });
   const match = matches.data?.items.find((m) => m.id === id);
+  useEffect(() => {
+    if (!actor || !query.data?.opened) return;
+    queryClient.setQueryData<Awaited<ReturnType<typeof stealthApi.matches>>>(
+      ['core', actor, 'stealth', 'matches'],
+      (old) =>
+        old
+          ? {
+              ...old,
+              items: old.items.map((item) =>
+                item.id === id ? { ...item, coordination_opened: true } : item,
+              ),
+            }
+          : old,
+    );
+  }, [actor, id, query.data?.opened]);
   const [text, setText] = useState('');
   const [formal, setFormal] = useState(false);
   const replyContext = JSON.stringify({
@@ -224,7 +239,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
 const styles = StyleSheet.create({
   note: { padding: spacing.md, color: colors.muted, lineHeight: 21, fontSize: 13 },
   error: { padding: spacing.sm, color: colors.danger },
-  messages: { padding: spacing.md, gap: spacing.sm },
+  messages: { paddingHorizontal: 8, paddingVertical: spacing.md, gap: spacing.sm, flexGrow: 1 },
   message: {
     padding: spacing.md,
     backgroundColor: colors.surface,

@@ -115,6 +115,7 @@ function QuickSession({ actor }: { actor?: string }) {
       (m) =>
         ['pending', 'ready'].includes(m.status) &&
         m.my_decision !== 'declined' &&
+        !m.coordination_opened &&
         Date.parse(m.expires_at) > now,
     );
   return (

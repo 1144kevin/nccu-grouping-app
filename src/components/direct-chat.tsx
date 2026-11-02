@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   peerName: { color: colors.ink, fontSize: 14 },
-  messages: { padding: 16 },
+  messages: { paddingHorizontal: 8, paddingVertical: 16, flexGrow: 1 },
   message: { alignItems: 'flex-start', marginBottom: 16, gap: 4 },
   mine: { alignItems: 'flex-end' },
   sender: { fontSize: 12, color: colors.muted },
