@@ -217,7 +217,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
           />
         </View>
         {['host', 'accepted'].includes(post.my_status) ? (
-          <PrimaryButton secondary onPress={() => router.push(`/chat/${post.id}`)}>
+          <PrimaryButton onPress={() => router.push(`/chat/${post.id}`)}>
             進入拼單聊天室
           </PrimaryButton>
         ) : null}

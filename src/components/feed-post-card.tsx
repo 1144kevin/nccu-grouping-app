@@ -173,7 +173,6 @@ export function FeedPostCard({
           corePost.my_status === 'host' && !showManagement ? (
             corePost.can_edit && ['open', 'full'].includes(corePost.status) ? (
               <PrimaryButton
-                secondary
                 style={{ flex: 1 }}
                 onPress={() => router.push(`/edit-post/${corePost.id}`)}
               >

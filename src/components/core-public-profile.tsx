@@ -72,7 +72,7 @@ export function CorePublicProfile({ id }: { id: string }) {
             <View style={{ alignItems: 'flex-end' }}>
               <IconButton icon="close" label="關閉選項" onPress={() => setOptions(false)} />
             </View>
-            <ScrollView>
+            <ScrollView contentContainerStyle={{ gap: 16 }}>
               <CloudBlockButton id={id} name={profile.data?.display_name} />
               <ReportButton kind="user" targetId={id} />
             </ScrollView>
