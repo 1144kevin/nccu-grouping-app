@@ -1,3 +1,4 @@
+import { displayTimestamp } from '@/lib/display-time';
 import { PageLoading } from '@/components/page-loading';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -21,6 +22,7 @@ export function CorePostImage({
   fit?: 'contain' | 'cover';
   intrinsicHeight?: number;
   backgroundColor?: string;
+  fallback?: import('react').ReactNode;
 }) {
   const actor = useAuthStore((state) => state.user?.id);
   return <SignedPostImage key={`${actor}:${props.imageId}`} {...props} actor={actor} />;
@@ -34,6 +36,7 @@ function SignedPostImage({
   intrinsicHeight,
   backgroundColor,
   actor,
+  fallback,
 }: {
   imageId: string;
   compact?: boolean;
@@ -42,6 +45,7 @@ function SignedPostImage({
   intrinsicHeight?: number;
   backgroundColor?: string;
   actor?: string;
+  fallback?: import('react').ReactNode;
 }) {
   const focused = useCoreScreenFocused();
   const [failedAttempt, setFailedAttempt] = useState<string | null>(null);
@@ -114,6 +118,8 @@ function SignedPostImage({
                 }
           }
         />
+      ) : fallback ? (
+        fallback
       ) : (
         <View style={styles.note}>
           <Text style={styles.hint}>
@@ -188,7 +194,7 @@ function DraftImageRow({ image }: { image: DraftImage }) {
   return (
     <View style={styles.note}>
       <Text style={styles.hint}>
-        {new Date(image.created_at).toLocaleString('zh-TW')} · {image.width}×{image.height} ·{' '}
+        {displayTimestamp(image.created_at)} · {image.width}×{image.height} ·{' '}
         {image.state === 'ready' ? '已上傳，尚未發佈' : '上傳未完成'}
       </Text>
       {confirm ? (

@@ -1,3 +1,4 @@
+import { displayTimestamp } from '@/lib/display-time';
 import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
@@ -209,9 +210,7 @@ function CoreDeadlineReminders() {
           >
             <Text style={styles.title}>{labels[item.status]}</Text>
             <Text style={styles.body}>{item.post_content}</Text>
-            <Text style={styles.hint}>
-              截止：{new Date(item.deadline_at).toLocaleString('zh-TW')}
-            </Text>
+            <Text style={styles.hint}>截止：{displayTimestamp(item.deadline_at)}</Text>
           </Pressable>
         )}
       />

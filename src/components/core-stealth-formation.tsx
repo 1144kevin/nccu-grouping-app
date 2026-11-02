@@ -1,3 +1,4 @@
+import { displayTimestamp } from '@/lib/display-time';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -158,7 +159,7 @@ export function StealthFormation({
             下單：{label(match.terms.order_member)}；取餐：{label(match.terms.pickup_member)}
           </Text>
           <Text style={styles.body}>
-            拼單截止／可退出至：{new Date(match.terms.deadline_at).toLocaleString('zh-TW')}
+            拼單截止／可退出至：{displayTimestamp(match.terms.deadline_at)}
           </Text>
           <Text style={styles.body}>公開說明：{match.terms.content}</Text>
           <Text style={styles.body}>

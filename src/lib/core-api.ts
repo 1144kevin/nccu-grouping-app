@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios';
 import { api } from '@/lib/api';
 import type { FeedPost, PostLocation } from '@/types/domain';
+import { displayTimestamp } from './display-time';
 
 export const CORE_API_ENABLED = process.env.EXPO_PUBLIC_CORE_API_ENABLED === 'true';
 export const CORE_SUPABASE_MODE = process.env.EXPO_PUBLIC_CORE_DATA_MODE === 'supabase';
@@ -37,6 +38,7 @@ export type CoreProfileInput = {
 };
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
+  completed?: boolean;
   images?: { id: string; width: number; height: number }[];
   semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {
@@ -254,10 +256,10 @@ export function toFeedPost(post: CorePost): FeedPost {
     name: post.author_name,
     badge: post.author_badge ?? '🍱',
     level: post.author_level ?? 1,
-    time: new Date(post.created_at).toLocaleString('zh-TW'),
+    time: displayTimestamp(post.created_at),
     content: post.content,
     tags: post.tags,
-    deadline: new Date(post.deadline_at).toLocaleString('zh-TW'),
+    deadline: post.deadline_at,
     deadlineAt: post.deadline_at,
     joined: post.joined,
     capacity: post.capacity,

@@ -1,3 +1,4 @@
+import { displayTimestamp } from '@/lib/display-time';
 import { PageLoading } from '@/components/page-loading';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -220,7 +221,7 @@ export function CoreHelpScreen() {
             {item.public_response ? (
               <Text style={styles.body}>處理回覆：{item.public_response}</Text>
             ) : null}
-            <Text style={styles.hint}>{new Date(item.created_at).toLocaleString('zh-TW')}</Text>
+            <Text style={styles.hint}>{displayTimestamp(item.created_at)}</Text>
           </View>
         ))}
       </ScrollView>

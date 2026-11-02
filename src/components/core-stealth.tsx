@@ -1,3 +1,4 @@
+import { displayTimestamp } from '@/lib/display-time';
 import { PageLoading } from '@/components/page-loading';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -36,7 +37,11 @@ const categories: [StealthCategory, string][] = [
   ['bakery', '麵包'],
   ['snack', '零食'],
 ];
-const locations: Record<string, string> = { main_gate: '政大正門', east_gate: '政大東側門', south_gate: '政大南門' };
+const locations: Record<string, string> = {
+  main_gate: '政大正門',
+  east_gate: '政大東側門',
+  south_gate: '政大南門',
+};
 const roles: [StealthRole, string][] = [
   ['share', '一起分食'],
   ['coupon', '提供優惠券'],
@@ -195,7 +200,7 @@ export function AdvancedStealthScreen({ onQuick }: { onQuick?: () => void } = {}
         {clock.data && Math.abs(clock.data.driftMs) > 60_000 ? (
           <Text style={styles.hint}>
             裝置時間與服務不同，需求與邀請期限以服務時間為準。載入時服務時間：
-            {new Date(clock.data.serverMs).toLocaleString('zh-TW')}
+            {displayTimestamp(clock.data.serverMs)}
           </Text>
         ) : null}
         <View style={styles.row}>
@@ -840,8 +845,7 @@ function SignalCard({ signal, refresh }: { signal: StealthSignal; refresh: () =>
             : '已保存（有效性依截止時間判斷）'}
       </Text>
       <Text style={styles.body}>
-        {new Date(signal.starts_at).toLocaleString('zh-TW')} ～{' '}
-        {new Date(signal.ends_at).toLocaleString('zh-TW')}
+        {displayTimestamp(signal.starts_at)} ～ {displayTimestamp(signal.ends_at)}
       </Text>
       {signal.status === 'active' ? (
         <PrimaryButton secondary disabled={revoke.isPending} onPress={() => revoke.mutate()}>
@@ -882,12 +886,9 @@ function MatchCard({
       ) : null}
       <Text style={styles.body}>來自你的需求：{match.my_signal_title}</Text>
       <Text style={styles.body}>
-        {new Date(match.starts_at).toLocaleString('zh-TW')} ～{' '}
-        {new Date(match.ends_at).toLocaleString('zh-TW')}
+        {displayTimestamp(match.starts_at)} ～ {displayTimestamp(match.ends_at)}
       </Text>
-      <Text style={styles.hint}>
-        邀請期限：{new Date(match.expires_at).toLocaleString('zh-TW')}
-      </Text>
+      <Text style={styles.hint}>邀請期限：{displayTimestamp(match.expires_at)}</Text>
       <Text style={styles.body}>
         每人已知費用：{match.known_cost_twd === null ? '尚未確認' : `NT$ ${match.known_cost_twd}`} ·
         共同預算上限：{match.budget_max_twd === null ? '未提供' : `NT$ ${match.budget_max_twd}`}

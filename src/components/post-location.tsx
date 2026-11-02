@@ -10,16 +10,11 @@ import { formatPrice } from '@/lib/price';
 import { useLocationStore } from '@/store/location-store';
 import type { FeedPost } from '@/types/domain';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { displayTimestamp } from '@/lib/display-time';
 
 function shortDeadline(value: string) {
   const date = new Date(value);
-  const now = new Date();
-  const time = date.toLocaleTimeString('zh-TW', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  return `${date.toDateString() === now.toDateString() ? '今天' : `${date.getMonth() + 1}/${date.getDate()}`} ${time}`;
+  return Number.isFinite(date.getTime()) ? displayTimestamp(value) : value;
 }
 function InfoRow({
   icon,

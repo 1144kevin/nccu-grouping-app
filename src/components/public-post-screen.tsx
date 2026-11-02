@@ -1,3 +1,4 @@
+import { displayTimestamp } from '@/lib/display-time';
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Redirect, router } from 'expo-router';
@@ -93,9 +94,7 @@ export function PublicPostScreen({ token }: { token: string }) {
             <Text style={styles.body}>
               每人金額：{data.price_per_person === null ? '待協調' : `NT$ ${data.price_per_person}`}
             </Text>
-            <Text style={styles.body}>
-              截止時間：{new Date(data.deadline_at).toLocaleString('zh-TW')}
-            </Text>
+            <Text style={styles.body}>截止時間：{displayTimestamp(data.deadline_at)}</Text>
             <Text style={styles.body}>
               {data.joined} / {data.capacity} 人 ·{' '}
               {data.status === 'expired' ? '已截止' : data.status === 'full' ? '已額滿' : '進行中'}
