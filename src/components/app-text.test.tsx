@@ -4,6 +4,7 @@ import { Platform, StyleSheet } from 'react-native';
 import { AppText, AppTextInput } from './app-text';
 import { useFontSizeStore } from '@/store/font-size-store';
 import { fontSizeStorage } from '@/lib/font-size-storage';
+import { colors } from '@/theme/tokens';
 
 jest.mock('@/lib/font-size-storage', () => ({
   fontSizeStorage: { getItem: jest.fn(() => null), setItem: jest.fn(), removeItem: jest.fn() },
@@ -11,6 +12,14 @@ jest.mock('@/lib/font-size-storage', () => ({
 
 beforeEach(() => {
   useFontSizeStore.setState({ fontSize: 'standard' });
+});
+
+it('uses gray only for the placeholder while keeping typed or AI draft text dark', async () => {
+  const screen = await render(
+    <AppTextInput testID="draft" value="AI 潤稿完成的內容" placeholder="分享想揪的餐點、價格…" />,
+  );
+  expect(screen.getByTestId('draft').props.placeholderTextColor).toBe(colors.subtle);
+  expect(StyleSheet.flatten(screen.getByTestId('draft').props.style).color).toBe(colors.ink);
 });
 
 it('scales text and line height immediately while preserving nested text inheritance', async () => {

@@ -5,9 +5,11 @@ import { colors } from '@/theme/tokens';
 export function InlineLoading({
   label = '處理中',
   textStyle,
+  showLabel = true,
 }: {
   label?: string;
   textStyle?: StyleProp<TextStyle>;
+  showLabel?: boolean;
 }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
@@ -19,7 +21,7 @@ export function InlineLoading({
         accessibilityLabel={label}
         accessibilityState={{ busy: true }}
       />
-      <Text style={textStyle}>{label}</Text>
+      {showLabel ? <Text style={textStyle}>{label}</Text> : null}
     </View>
   );
 }

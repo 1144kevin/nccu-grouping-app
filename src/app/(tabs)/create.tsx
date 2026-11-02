@@ -345,6 +345,8 @@ function CreateForm({
         <Text style={styles.title}>建立新貼文</Text>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={isSubmitting ? '發布中' : '發布'}
+          accessibilityState={{ busy: isSubmitting }}
           disabled={!formReady || !tags.length || isSubmitting || imageBusy || writingBusy}
           onPress={submit}
           style={[
@@ -354,7 +356,7 @@ function CreateForm({
           ]}
         >
           {isSubmitting ? (
-            <InlineLoading label="發布中" textStyle={styles.publishText} />
+            <InlineLoading label="發布中" showLabel={false} />
           ) : (
             <Text style={styles.publishText}>發布</Text>
           )}

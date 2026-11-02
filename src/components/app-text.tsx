@@ -52,7 +52,7 @@ export function AppTextInput({
     fontSizes[size].scale,
     14,
   );
-  scaled.color = colors.muted;
+  scaled.color = inputStyle?.color ?? colors.ink;
   // Safari zooms focused inputs below 16px, including sizes reduced by the user's
   // font preference. Keep the input stable without restricting page/pinch zoom.
   if (Platform.OS === 'web') {
