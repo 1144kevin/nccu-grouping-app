@@ -21,6 +21,7 @@ import { useStealthPreferencesStore } from '@/store/stealth-preferences-store';
 import { colors } from '@/theme/tokens';
 
 type Props = {
+  viewportHeight?: number;
   actor?: string;
   enabled: boolean;
   disabled: boolean;
@@ -39,6 +40,7 @@ const starters = [
 ];
 
 export function QuickStealthComposer({
+  viewportHeight,
   actor,
   enabled,
   disabled,
@@ -336,23 +338,19 @@ export function QuickStealthComposer({
     setError('');
     request.current = null;
   }
-  if (saved)
-    return (
-      <View style={styles.saved}>
-        <View style={styles.savedIcon}>
-          <MaterialCommunityIcons name="check" size={22} color={colors.ink} />
-        </View>
-        <View style={{ flex: 1, gap: 5 }}>
-          <Text style={styles.savedTitle}>需求已儲存</Text>
-          <Text style={styles.hint}>到下方查看配對進度，任何邀請都由你決定。</Text>
-        </View>
-        <Pressable accessibilityRole="button" onPress={restart} style={styles.smallButton}>
-          <Text style={styles.link}>再聊一個</Text>
-        </Pressable>
-      </View>
-    );
   return (
-    <View style={styles.panel}>
+    <View
+      style={[styles.panel, viewportHeight ? { minHeight: viewportHeight, flexShrink: 0 } : null]}
+    >
+      {saved ? (
+        <View style={styles.saved}>
+          <MaterialCommunityIcons name="check-circle-outline" size={20} color={colors.brown} />
+          <Text style={{ flex: 1, color: colors.muted }}>需求已儲存</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="再聊一個" onPress={restart}>
+            <MaterialCommunityIcons name="plus" size={24} color={colors.ink} />
+          </Pressable>
+        </View>
+      ) : null}
       <View style={styles.panelHeader}>
         <View style={{ flex: 1 }} />
         <Pressable
@@ -413,7 +411,11 @@ export function QuickStealthComposer({
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        style={[styles.transcript, voiceReview && { maxHeight: 140 }]}
+        style={[
+          styles.transcript,
+          viewportHeight ? { maxHeight: Math.max(240, viewportHeight - 150) } : null,
+          voiceReview && { maxHeight: 140 },
+        ]}
         contentContainerStyle={styles.messages}
         onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })}
       >
@@ -507,6 +509,7 @@ export function QuickStealthComposer({
           placeholder="說說你的想法"
           value={text}
           onChangeText={(value) => {
+            if (saved) restart();
             setText(value);
             if (value.trim()) setReviewing(false);
           }}
@@ -572,7 +575,7 @@ export function QuickStealthComposer({
           確認文字並送出
         </PrimaryButton>
       ) : null}
-      {preview?.signal && !reviewing ? (
+      {preview?.signal && !reviewing && !saved ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="先確認目前需求"
@@ -584,7 +587,7 @@ export function QuickStealthComposer({
           <MaterialCommunityIcons name="arrow-right" size={16} color={colors.brown} />
         </Pressable>
       ) : null}
-      {reviewing && preview?.signal ? (
+      {reviewing && preview?.signal && !saved ? (
         <View style={styles.review}>
           <StealthRequestSummary signal={preview.signal} facts={preview.facts} />
           <PrimaryButton

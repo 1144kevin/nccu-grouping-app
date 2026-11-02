@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { displayTimestamp } from '@/lib/display-time';
 import { AppText as Text } from '@/components/app-text';
 import type { StealthIntake, StealthSignalInput } from '@/lib/stealth-api';
 import { colors } from '@/theme/tokens';
@@ -21,23 +22,21 @@ export function StealthRequestSummary({
   signal,
   facts,
   createdAt,
+  onClose,
+  closing,
+  closeDisabled,
 }: {
   signal: StealthSignalInput;
   facts?: StealthIntake['facts'];
   createdAt?: string;
+  onClose?: () => void;
+  closing?: boolean;
+  closeDisabled?: boolean;
 }) {
   const range = [signal.starts_at, signal.ends_at]
     .map((value) => {
       const date = new Date(value);
-      return Number.isFinite(date.getTime())
-        ? date.toLocaleString('zh-TW', {
-            month: 'numeric',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })
-        : '待確認';
+      return Number.isFinite(date.getTime()) ? displayTimestamp(value) : '待確認';
     })
     .join(' — ');
   const proposedLocation = !!facts && facts.location_id == null;
@@ -72,7 +71,25 @@ export function StealthRequestSummary({
   ];
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{signal.title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+        <Text style={[styles.title, { flex: 1 }]}>{signal.title}</Text>
+        {onClose ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`停止需求：${signal.title}`}
+            disabled={closeDisabled}
+            onPress={onClose}
+            hitSlop={10}
+            style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}
+          >
+            {closing ? (
+              <ActivityIndicator size="small" color={colors.danger} />
+            ) : (
+              <MaterialCommunityIcons name="close" size={20} color={colors.danger} />
+            )}
+          </Pressable>
+        ) : null}
+      </View>
       <View style={styles.items}>
         {items.map(({ icon, text }) => (
           <View key={icon} style={styles.item}>
@@ -88,7 +105,7 @@ export function StealthRequestSummary({
       ) : null}
       <Text style={styles.note}>
         {createdAt
-          ? `新增於 ${new Date(createdAt).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })} · 保留24小時`
+          ? `新增於 ${displayTimestamp(createdAt)} · 保留24小時`
           : '暫定條件，可回到聊天調整；確認新增後保留24小時。'}
       </Text>
     </View>

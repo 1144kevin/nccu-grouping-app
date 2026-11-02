@@ -21,6 +21,7 @@ import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
 import { colors } from '@/theme/tokens';
+import { displayTimestamp } from '@/lib/display-time';
 
 export function QuickStealthScreen() {
   const actor = useAuthStore((s) => s.user?.id);
@@ -63,6 +64,7 @@ function QuickSession({ actor }: { actor?: string }) {
   });
   const clock = useCoreClock();
   const [composerBusy, setComposerBusy] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(640);
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
   const [carouselWidth, setCarouselWidth] = useState(320);
@@ -138,151 +140,159 @@ function QuickSession({ actor }: { actor?: string }) {
           </View>
         }
       />
-      <KeyboardScrollView contentContainerStyle={styles.page}>
-        <QuickStealthComposer
-          actor={actor}
-          enabled={!!agent.data?.enabled}
-          focused={focused}
-          disabled={
-            !focused ||
-            agent.isPending ||
-            !!agent.error ||
-            !capability.data?.ready ||
-            capability.data?.conversation_configured === false ||
-            retry.isPending
-          }
-          onBusyChange={setComposerBusy}
-          onSaved={async (result) => {
-            if (!sameActor()) return;
-            setAnalysis(undefined);
-            setNotice(
-              result.created.matching === 'quiet'
-                ? '需求已儲存，目前是分身的安靜時段。'
-                : result.created.matching === 'unavailable'
-                  ? '需求已儲存，配對暫時未完成，稍後可再找找。'
-                  : '已開始找人，有合適的夥伴會顯示在下方。',
-            );
-            await refresh();
-          }}
-        />
-        {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
-        {capability.data?.conversation_configured === false ? (
-          <Text style={styles.error}>暫時無法聊天，請稍後再試。</Text>
-        ) : null}
-        {!capability.isPending && !capability.data?.ready ? (
-          <Text style={styles.hint}>目前無法自動找人，請稍後再試。</Text>
-        ) : null}
-        {agent.error ? (
-          <>
-            <Text accessibilityRole="alert" style={styles.error}>
-              {coreError(agent.error)}
+      <View
+        style={{ flex: 1 }}
+        onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
+      >
+        <KeyboardScrollView contentContainerStyle={styles.page}>
+          <QuickStealthComposer
+            viewportHeight={Math.max(400, viewportHeight - 40)}
+            actor={actor}
+            enabled={!!agent.data?.enabled}
+            focused={focused}
+            disabled={
+              !focused ||
+              agent.isPending ||
+              !!agent.error ||
+              !capability.data?.ready ||
+              capability.data?.conversation_configured === false ||
+              retry.isPending
+            }
+            onBusyChange={setComposerBusy}
+            onSaved={async (result) => {
+              if (!sameActor()) return;
+              setAnalysis(undefined);
+              setNotice(
+                result.created.matching === 'quiet'
+                  ? '需求已儲存，目前是分身的安靜時段。'
+                  : result.created.matching === 'unavailable'
+                    ? '需求已儲存，配對暫時未完成，稍後可再找找。'
+                    : '已開始找人，有合適的夥伴會顯示在下方。',
+              );
+              await refresh();
+            }}
+          />
+          {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
+          {capability.data?.conversation_configured === false ? (
+            <Text style={styles.error}>暫時無法聊天，請稍後再試。</Text>
+          ) : null}
+          {!capability.isPending && !capability.data?.ready ? (
+            <Text style={styles.hint}>目前無法自動找人，請稍後再試。</Text>
+          ) : null}
+          {agent.error ? (
+            <>
+              <Text accessibilityRole="alert" style={styles.error}>
+                {coreError(agent.error)}
+              </Text>
+              <PrimaryButton
+                secondary
+                onPress={() => {
+                  void agent.refetch();
+                }}
+              >
+                重試連線
+              </PrimaryButton>
+            </>
+          ) : null}
+          {notice ? (
+            <Text accessibilityRole="alert" style={styles.hint}>
+              {notice}
             </Text>
+          ) : null}
+          {active.length || visible.length ? (
+            <View style={styles.sectionHeading}>
+              <Text style={styles.title}>揪團進度</Text>
+              <Text style={styles.hint}>{active.length} 個有效需求</Text>
+            </View>
+          ) : null}
+          {active.length ? (
+            <View style={styles.statusCard}>
+              <View style={styles.statusIcon}>
+                <MaterialCommunityIcons
+                  name={
+                    visible.length ? 'account-multiple-check-outline' : 'account-search-outline'
+                  }
+                  size={24}
+                  color={colors.brown}
+                />
+              </View>
+              <View style={{ flex: 1, gap: 4 }}>
+                <Text style={styles.statusTitle}>
+                  {visible.length
+                    ? '有合適的夥伴，看看要不要聊聊'
+                    : agent.data?.enabled
+                      ? '正在留意合適的夥伴'
+                      : '需求已保留，分身目前暫停'}
+                </Text>
+                <Text style={styles.hint}>
+                  可以先逛首頁，回來查看結果。所有夥伴都願意聊聊後，才會開啟聊天室。
+                </Text>
+              </View>
+            </View>
+          ) : null}
+          {matches.error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {coreError(matches.error)}
+            </Text>
+          ) : null}
+          {(capability.data?.ready ? visible : []).map((match) => (
+            <QuickMatch
+              key={match.id}
+              match={match}
+              explanation={valid.get(match.id)?.explanations ?? []}
+              refresh={refresh}
+              onUpdated={(result) => setLocalMatches((old) => ({ ...old, [result.id]: result }))}
+            />
+          ))}
+          {active.length ? (
             <PrimaryButton
               secondary
-              onPress={() => {
-                void agent.refetch();
-              }}
+              loading={retry.isPending}
+              disabled={busy || !capability.data?.ready}
+              onPress={() => retry.mutate()}
             >
-              重試連線
+              再找找看
             </PrimaryButton>
-          </>
-        ) : null}
-        {notice ? (
-          <Text accessibilityRole="alert" style={styles.hint}>
-            {notice}
-          </Text>
-        ) : null}
-        {active.length || visible.length ? (
-          <View style={styles.sectionHeading}>
-            <Text style={styles.title}>揪團進度</Text>
-            <Text style={styles.hint}>{active.length} 個有效需求</Text>
-          </View>
-        ) : null}
-        {active.length ? (
-          <View style={styles.statusCard}>
-            <View style={styles.statusIcon}>
-              <MaterialCommunityIcons
-                name={visible.length ? 'account-multiple-check-outline' : 'account-search-outline'}
-                size={24}
-                color={colors.brown}
-              />
-            </View>
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.statusTitle}>
-                {visible.length
-                  ? '有合適的夥伴，看看要不要聊聊'
-                  : agent.data?.enabled
-                    ? '正在留意合適的夥伴'
-                    : '需求已保留，分身目前暫停'}
-              </Text>
-              <Text style={styles.hint}>
-                可以先逛首頁，回來查看結果。所有夥伴都願意聊聊後，才會開啟聊天室。
-              </Text>
-            </View>
-          </View>
-        ) : null}
-        {matches.error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {coreError(matches.error)}
-          </Text>
-        ) : null}
-        {(capability.data?.ready ? visible : []).map((match) => (
-          <QuickMatch
-            key={match.id}
-            match={match}
-            explanation={valid.get(match.id)?.explanations ?? []}
-            refresh={refresh}
-            onUpdated={(result) => setLocalMatches((old) => ({ ...old, [result.id]: result }))}
-          />
-        ))}
-        {active.length ? (
-          <PrimaryButton
-            secondary
-            loading={retry.isPending}
-            disabled={busy || !capability.data?.ready}
-            onPress={() => retry.mutate()}
-          >
-            再找找看
-          </PrimaryButton>
-        ) : null}
-        {retry.error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {coreError(retry.error)} 原本需求與結果仍保留。
-          </Text>
-        ) : null}
-        {active.length ? (
-          <>
-            <View
-              onLayout={(event) => setCarouselWidth(Math.max(240, event.nativeEvent.layout.width))}
-            >
-              <ScrollView
-                ref={carousel}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                accessibilityLabel="我的需求卡片，可左右滑動"
-                snapToInterval={cardWidth + 12}
-                decelerationRate="fast"
-                contentContainerStyle={{ gap: 12 }}
+          ) : null}
+          {retry.error ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {coreError(retry.error)} 原本需求與結果仍保留。
+            </Text>
+          ) : null}
+          {active.length ? (
+            <>
+              <View
+                onLayout={(event) =>
+                  setCarouselWidth(Math.max(240, event.nativeEvent.layout.width))
+                }
               >
-                {active.map((signal) => (
-                  <View key={signal.id} style={{ width: cardWidth, gap: 12 }}>
-                    <StealthRequestSummary signal={signal} createdAt={signal.created_at} />
-                    <PrimaryButton
-                      secondary
-                      loading={revoke.isPending && revoke.variables === signal.id}
-                      disabled={revoke.isPending}
-                      onPress={() => revoke.mutate(signal.id)}
-                    >
-                      停止這個需求
-                    </PrimaryButton>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-            {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
-          </>
-        ) : null}
-      </KeyboardScrollView>
+                <ScrollView
+                  ref={carousel}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  accessibilityLabel="我的需求卡片，可左右滑動"
+                  snapToInterval={cardWidth + 12}
+                  decelerationRate="fast"
+                  contentContainerStyle={{ gap: 12 }}
+                >
+                  {active.map((signal) => (
+                    <View key={signal.id} style={{ width: cardWidth, gap: 12 }}>
+                      <StealthRequestSummary
+                        signal={signal}
+                        createdAt={signal.created_at}
+                        onClose={() => revoke.mutate(signal.id)}
+                        closing={revoke.isPending && revoke.variables === signal.id}
+                        closeDisabled={revoke.isPending}
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+              {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
+            </>
+          ) : null}
+        </KeyboardScrollView>
+      </View>
     </Screen>
   );
 }
@@ -345,11 +355,8 @@ export function QuickMatch({
       <View style={styles.watchStatus}>
         <MaterialCommunityIcons name="clock-outline" size={16} color={colors.brown} />
         <Text style={styles.hint}>
-          {new Date(match.starts_at).toLocaleTimeString('zh-TW', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}{' '}
-          · {stealthLocations[match.location_id] ?? match.location_id}
+          {displayTimestamp(match.starts_at)} ·{' '}
+          {stealthLocations[match.location_id] ?? match.location_id}
         </Text>
         <Text style={styles.hint}>
           {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}

@@ -144,7 +144,8 @@ it('shows multiple independent requests in a horizontal carousel until their own
   await waitFor(() => expect(screen.getByText('需求二')).toBeTruthy());
   expect(screen.getByText('需求一')).toBeTruthy();
   expect(screen.getByLabelText('我的需求卡片，可左右滑動')).toHaveProp('horizontal', true);
-  expect(screen.getAllByRole('button', { name: '停止這個需求' })).toHaveLength(2);
+  expect(screen.getAllByRole('button', { name: /^停止需求：/ })).toHaveLength(2);
+  expect(screen.queryByText('停止這個需求')).toBeNull();
   expect(screen.queryByText('這次幫你找')).toBeNull();
 });
 
