@@ -38,6 +38,7 @@ export function CloudBlockButton({ id, name }: { id: string; name?: string }) {
           </Text>
           <PrimaryButton
             disabled={mutation.isPending || !blocked.data}
+            loading={mutation.isPending}
             onPress={() => mutation.mutate()}
           >
             {mine ? '確認解除封鎖' : '確認封鎖使用者'}

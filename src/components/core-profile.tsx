@@ -1,3 +1,4 @@
+import { ProfileLikes } from './profile-likes';
 import { PageLoading } from '@/components/page-loading';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -52,7 +53,7 @@ export function CoreProfileScreen() {
           onPress={() => router.push('/edit-profile')}
           style={styles.identity}
         >
-          <Avatar name={user.display_name} badge={user.badge ?? '🍱'} size={76} />
+          <Avatar name={user.display_name} badge={user.badge ?? '🍱'} userId={user.id} size={76} />
           <View style={styles.identityText}>
             <Text style={styles.username}>{user.display_name}</Text>
             <Text style={styles.joined}>
@@ -72,6 +73,7 @@ export function CoreProfileScreen() {
           </View>
           <MaterialCommunityIcons name="pencil-outline" size={17} color={colors.subtle} />
         </Pressable>
+        <ProfileLikes id={user.id} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="熟度等級說明"
@@ -159,7 +161,7 @@ export function CoreProfileScreen() {
           <View style={styles.help}>
             <Text style={styles.username}>一起把漢堡疊高</Text>
             <Text style={styles.bio}>
-              每筆拼單在所有團員確認完成面交後累積 10 分，上限 100
+              全員確認完成後，主揪 +5 分、團員 +3 分；每收到 10 個讚再 +1 分，上限 100
               分。尚未完成、取消與示範拼單不計分。
             </Text>
             <Text style={styles.bio}>熟度反映已確認的參與紀錄，不是付款保證。</Text>
@@ -179,7 +181,7 @@ export function HistoryRow({ post, completed }: { post: CorePost; completed?: bo
       onPress={() => router.push(`/order/${post.id}`)}
       style={styles.historyRow}
     >
-      <PostThumbnail post={post} />
+      <PostThumbnail post={post} size={88} />
       <View style={styles.historyText}>
         <Text numberOfLines={2} style={styles.historyTitle}>
           {post.content.split('\n')[0]}
@@ -189,7 +191,11 @@ export function HistoryRow({ post, completed }: { post: CorePost; completed?: bo
         </Text>
       </View>
       <Pill tone={completed ? 'success' : 'plain'}>{status}</Pill>
-      <MaterialCommunityIcons name="chevron-right" size={17} color={colors.muted} />
+      <View
+        style={{ width: 38, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
+      </View>
     </Pressable>
   );
 }
@@ -255,7 +261,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2E5CC',
   },
   historyEmoji: { fontSize: 33 },
-  historyText: { flex: 1, minWidth: 0, paddingHorizontal: 12 },
+  historyText: { flex: 1, minWidth: 0, paddingHorizontal: 9 },
   historyTitle: {
     color: colors.ink,
     fontFamily: typography.rounded,

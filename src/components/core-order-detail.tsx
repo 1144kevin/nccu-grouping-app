@@ -162,7 +162,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
             onPress={() => router.push(`/user/${member.id}`)}
             style={styles.member}
           >
-            <Avatar name={member.name} badge={member.badge} size={42} />
+            <Avatar name={member.name} badge={member.badge} userId={member.id} size={42} />
             <View style={{ flex: 1 }}>
               <Text style={styles.memberName}>{member.name}</Text>
               <ReputationBadge level={member.level} />
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 11,
     backgroundColor: colors.background,

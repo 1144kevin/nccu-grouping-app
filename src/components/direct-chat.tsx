@@ -154,7 +154,15 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                 <View style={[styles.message, item.sender_id === actor && styles.mine]}>
                   {item.sender_id !== actor ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Avatar name={item.sender_name} badge={item.sender_badge} size={26} />
+                      <Avatar
+                        name={item.sender_name}
+                        badge={item.sender_badge}
+                        userId={item.sender_id ?? undefined}
+                        onPress={
+                          item.sender_id ? () => router.push(`/user/${item.sender_id}`) : undefined
+                        }
+                        size={26}
+                      />
                       <Text style={styles.sender}>{item.sender_name}</Text>
                       <ReputationBadge level={item.sender_level} />
                     </View>
@@ -169,7 +177,14 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                     {item.image_id ? (
                       <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                     ) : (
-                      <Text style={styles.body}>{item.content}</Text>
+                      <Text
+                        style={[
+                          styles.body,
+                          item.sender_id === actor && { color: colors.onYellow },
+                        ]}
+                      >
+                        {item.content}
+                      </Text>
                     )}
                   </View>
                   {item.delivery ? (

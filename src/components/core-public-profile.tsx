@@ -2,7 +2,8 @@ import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
 import { AppText as Text } from '@/components/app-text';
 import {
   Avatar,
@@ -11,16 +12,19 @@ import {
   PrimaryButton,
   Screen,
   SectionTitle,
+  IconButton,
 } from '@/components/primitives';
-import { coreApi, coreError } from '@/lib/core-api';
+import { coreApi, coreError, toFeedPost } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
-import { CorePostRow } from '@/components/list-ui';
+import { FeedPostCard } from '@/components/feed-post-card';
+import { ProfileLikes } from './profile-likes';
 import { ReportButton } from '@/components/core-reports';
 import { CloudBlockButton } from '@/components/core-user-blocks';
 
 export function CorePublicProfile({ id }: { id: string }) {
+  const [options, setOptions] = useState(false);
   const viewer = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
   const valid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id);
@@ -40,12 +44,41 @@ export function CorePublicProfile({ id }: { id: string }) {
   const user = profile.error ? undefined : profile.data;
   return (
     <Screen>
-      <DetailHeader title="公開個人資料" />
-      {valid && viewer?.id !== id ? (
-        <View style={{ padding: 16 }}>
-          <CloudBlockButton id={id} name={profile.data?.display_name} />
+      <DetailHeader
+        title="個人資料"
+        right={
+          valid && viewer?.id !== id ? (
+            <IconButton
+              icon="dots-horizontal"
+              label="使用者選項"
+              onPress={() => setOptions(true)}
+            />
+          ) : undefined
+        }
+      />
+      <Modal
+        transparent
+        visible={options}
+        animationType="fade"
+        onRequestClose={() => setOptions(false)}
+      >
+        <View style={styles.overlay}>
+          <Pressable
+            accessibilityLabel="關閉使用者選項"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setOptions(false)}
+          />
+          <View style={styles.menu}>
+            <View style={{ alignItems: 'flex-end' }}>
+              <IconButton icon="close" label="關閉選項" onPress={() => setOptions(false)} />
+            </View>
+            <ScrollView>
+              <CloudBlockButton id={id} name={profile.data?.display_name} />
+              <ReportButton kind="user" targetId={id} />
+            </ScrollView>
+          </View>
         </View>
-      ) : null}
+      </Modal>
       {!valid ? (
         <EmptyState icon="account-question-outline" title="找不到這位使用者" />
       ) : !user ? (
@@ -73,7 +106,7 @@ export function CorePublicProfile({ id }: { id: string }) {
           contentContainerStyle={styles.content}
           ListHeaderComponent={
             <View style={styles.header}>
-              <Avatar name={user.display_name} badge={user.badge} size={72} />
+              <Avatar name={user.display_name} badge={user.badge} userId={id} size={72} />
               <Text style={styles.name}>{user.display_name}</Text>
               <ReputationBadge level={user.level} />
               <Text style={styles.body}>{user.bio || '尚未填寫個人介紹'}</Text>
@@ -88,7 +121,7 @@ export function CorePublicProfile({ id }: { id: string }) {
               ) : (
                 <Text style={styles.hint}></Text>
               )}
-              {viewer?.id !== id ? <ReportButton kind="user" targetId={id} /> : null}
+              <ProfileLikes id={id} />
               <SectionTitle>公開拼單</SectionTitle>
               {posts.error ? (
                 <Text accessibilityRole="alert" style={styles.error}>
@@ -128,7 +161,9 @@ export function CorePublicProfile({ id }: { id: string }) {
               </PrimaryButton>
             ) : null
           }
-          renderItem={({ item }) => <CorePostRow post={item} />}
+          renderItem={({ item }) => (
+            <FeedPostCard post={toFeedPost(item)} corePost={item} respectHidden={false} />
+          )}
         />
       )}
     </Screen>
@@ -136,8 +171,24 @@ export function CorePublicProfile({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: spacing.lg, paddingBottom: 100, gap: spacing.md },
-  header: { gap: spacing.md, marginBottom: spacing.md },
+  content: { paddingBottom: 100 },
+  header: { padding: spacing.lg, gap: spacing.md, marginBottom: spacing.md },
+  overlay: {
+    flex: 1,
+    backgroundColor: '#00000055',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  menu: {
+    width: '100%',
+    maxWidth: 480,
+    maxHeight: '85%',
+    backgroundColor: colors.background,
+    padding: 16,
+    borderRadius: 22,
+    gap: 12,
+  },
   name: { color: colors.ink, fontSize: 22, fontWeight: '700' },
   body: { color: colors.ink, fontSize: 16, lineHeight: 24 },
   hint: { color: colors.muted, fontSize: 13, lineHeight: 21 },

@@ -14,6 +14,11 @@ import { useAuthStore } from '@/store/auth-store';
 import { queryClient } from '@/lib/query-client';
 import { CoreConnectionStatus } from '@/components/core-connection-status';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { pickPersonalImage } from '@/lib/pick-personal-image';
+import type { PickedPostImage } from '@/lib/pick-post-images';
+import { profileSocial } from '@/lib/profile-social';
+import { Image } from 'expo-image';
+import { PersonalImage } from './personal-image';
 
 const reasons: [ReportInput['reason'], string][] = [
   ['spam', '垃圾訊息'],
@@ -32,12 +37,38 @@ export function ReportComposer({
   const actor = useAuthStore((state) => state.user?.id);
   const [detail, setDetail] = useState('');
   const [reason, setReason] = useState<ReportInput['reason']>('other');
+  const [photo, setPhoto] = useState<PickedPostImage | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const upload = useRef<{ key: string; id?: string }>({ key: newRequestKey() });
+  async function pick(camera: boolean) {
+    setPicking(true);
+    setPhotoError('');
+    try {
+      const selected = await pickPersonalImage(camera);
+      if (selected) {
+        setPhoto(selected);
+        upload.current = { key: newRequestKey() };
+      }
+    } catch (error) {
+      setPhotoError(coreError(error));
+    } finally {
+      setPicking(false);
+    }
+  }
   const frozen = useRef<{ signature: string; key: string } | null>(null);
   const send = useMutation({
     gcTime: 0,
     retry: false,
-    mutationFn: () => {
+    mutationFn: async () => {
+      if (!photo?.base64) throw new Error('report_image_required');
+      if (!upload.current.id)
+        upload.current.id = (
+          await profileSocial.upload('evidence', photo.base64, upload.current.key)
+        ).id;
+      if (useAuthStore.getState().user?.id !== actor) throw new Error('invalid_or_expired_session');
       const value: ReportInput = {
+        evidence_image_id: upload.current.id,
         kind,
         target_id: targetId,
         reason,
@@ -73,6 +104,8 @@ export function ReportComposer({
               frozen.current = null;
               send.reset();
               setDetail('');
+              setPhoto(null);
+              upload.current = { key: newRequestKey() };
             }}
           >
             再寫一筆
@@ -111,8 +144,42 @@ export function ReportComposer({
             style={styles.input}
           />
           <Text style={styles.hint}>{detail.length}/1000</Text>
+          <Text style={styles.hint}>請附上一張相關截圖或照片</Text>
+          {photo ? (
+            <Image
+              accessibilityLabel="已選擇的佐證圖片"
+              source={{ uri: photo.uri }}
+              contentFit="contain"
+              style={{ width: '100%', height: 170, borderRadius: 12 }}
+            />
+          ) : null}
+          <View style={styles.row}>
+            <PrimaryButton
+              secondary
+              disabled={send.isPending || picking}
+              onPress={() => {
+                void pick(false);
+              }}
+            >
+              {photo ? '更換圖片' : '上傳圖片'}
+            </PrimaryButton>
+            <PrimaryButton
+              secondary
+              disabled={send.isPending || picking}
+              onPress={() => {
+                void pick(true);
+              }}
+            >
+              拍照
+            </PrimaryButton>
+          </View>
+          {photoError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {photoError}
+            </Text>
+          ) : null}
           <PrimaryButton
-            disabled={detail.trim().length < 10 || send.isPending}
+            disabled={detail.trim().length < 10 || !photo || send.isPending || picking}
             onPress={() => send.mutate()}
             loading={send.isPending}
           >
@@ -206,6 +273,7 @@ export function CoreHelpScreen() {
         {query.data?.items.length === 0 ? <Text style={styles.hint}>還沒有回報紀錄。</Text> : null}
         {query.data?.items.map((item) => (
           <View key={item.id} style={styles.card}>
+            {item.evidence_image_id ? <PersonalImage id={item.evidence_image_id} /> : null}
             <Text style={styles.body}>
               {item.kind === 'feedback' ? '問題回報' : '內容檢舉'} ·{' '}
               {

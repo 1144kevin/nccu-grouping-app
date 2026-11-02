@@ -54,7 +54,12 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
         {mode === 'settings' && user ? (
           <>
             <View style={styles.row}>
-              <Avatar name={user.display_name} badge={user.badge ?? '🍱'} size={48} />
+              <Avatar
+                name={user.display_name}
+                badge={user.badge ?? '🍱'}
+                userId={user.id}
+                size={48}
+              />
               <View>
                 <Text style={styles.title}>{user.display_name}</Text>
                 <Text style={styles.hint}>{user.email}</Text>

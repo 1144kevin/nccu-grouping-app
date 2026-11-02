@@ -11,6 +11,8 @@ import { coreError, newRequestKey } from '@/lib/core-api';
 import type { Report, ReportInput } from '@/lib/engagement-api';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
+import { PersonalImage } from './personal-image';
+import { colors } from '@/theme/tokens';
 
 type OperatorReport = Pick<
   Report,
@@ -78,7 +80,7 @@ function ReviewCard({
   });
   const valid = response.trim().length >= 5 && !mutation.isPending && !stale;
   return (
-    <View style={{ padding: 16, gap: 10, borderWidth: 1, borderColor: '#ddd' }}>
+    <View style={{ padding: 16, gap: 10, borderWidth: 1, borderColor: colors.border }}>
       <Text>
         {report.id} · {report.status} · 第 {report.review_version ?? 1} 版
       </Text>
@@ -86,6 +88,9 @@ function ReviewCard({
         {report.payload.kind} · {report.payload.reason}
       </Text>
       <Text>{report.payload.detail}</Text>
+      {report.payload.evidence_image_id ? (
+        <PersonalImage id={report.payload.evidence_image_id} />
+      ) : null}
       {['post', 'message'].includes(report.payload.kind) ? (
         <PrimaryButton secondary disabled={context.isPending} onPress={() => context.mutate()}>
           查核被檢舉原文

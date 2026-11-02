@@ -102,7 +102,7 @@ export function FeedPostCard({
           accessibilityLabel={`查看 ${post.name} 的公開資料`}
           onPress={() => router.push(authorPath)}
         >
-          <Avatar name={post.name} badge={post.badge} size={44} />
+          <Avatar name={post.name} badge={post.badge} userId={corePost?.author_id} size={44} />
         </Pressable>
         <Pressable onPress={() => router.push(authorPath)} style={styles.authorText}>
           <View style={styles.nameRow}>

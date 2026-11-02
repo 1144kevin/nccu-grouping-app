@@ -29,6 +29,7 @@ export type SavedPostPreference = {
   status: 'scheduled' | 'due' | 'expired' | 'cancelled';
 };
 export type ReportInput = {
+  evidence_image_id: string;
   kind: 'feedback' | 'post' | 'message' | 'user';
   target_id: string | null;
   reason: 'other' | 'spam' | 'harassment' | 'inappropriate' | 'fraud';
@@ -36,7 +37,8 @@ export type ReportInput = {
   platform: 'web' | 'ios' | 'android' | 'unknown';
   app_version: string;
 };
-export type Report = ReportInput & {
+export type Report = Omit<ReportInput, 'evidence_image_id'> & {
+  evidence_image_id?: string | null;
   id: string;
   status: 'received' | 'reviewing' | 'resolved' | 'dismissed';
   created_at: string;

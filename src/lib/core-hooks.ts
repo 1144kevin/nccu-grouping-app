@@ -13,8 +13,9 @@ export async function invalidateCore() {
     predicate: (query) => {
       const kind = query.queryKey[2];
       return (
-        !['image-link', 'chat-photo', 'recommendations'].includes(String(kind)) &&
-        !(kind === 'posts' && query.queryKey[3] === 'feed')
+        !['image-link', 'chat-photo', 'avatar', 'personal-image', 'recommendations'].includes(
+          String(kind),
+        ) && !(kind === 'posts' && query.queryKey[3] === 'feed')
       );
     },
   });

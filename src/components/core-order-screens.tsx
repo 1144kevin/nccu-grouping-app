@@ -158,7 +158,12 @@ export function ParticipatingOrderRow({ post }: { post: CorePost }) {
         accessibilityLabel={`查看 ${post.author_name} 的公開資料`}
         onPress={() => router.push(`/user/${post.author_id}`)}
       >
-        <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={46} />
+        <Avatar
+          name={post.author_name}
+          badge={post.author_badge ?? '🍱'}
+          userId={post.author_id}
+          size={46}
+        />
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -319,7 +324,12 @@ export function RequestCard({
         accessibilityLabel={`查看 ${request.requester_name} 的公開資料`}
         onPress={() => router.push(`/user/${request.requester_id}`)}
       >
-        <Avatar name={request.requester_name} badge={request.requester_badge ?? '🍱'} size={42} />
+        <Avatar
+          name={request.requester_name}
+          badge={request.requester_badge ?? '🍱'}
+          userId={request.requester_id}
+          size={42}
+        />
       </Pressable>
       <View style={{ flex: 1 }}>
         <Pressable
@@ -378,7 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     paddingVertical: 18,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   orderTabs: { flexDirection: 'row', paddingHorizontal: 18, gap: 12, paddingVertical: 10 },
@@ -430,7 +440,7 @@ const styles = StyleSheet.create({
   tabs: { padding: spacing.sm, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   attention: {
     padding: spacing.lg,
-    backgroundColor: '#FFF9DF',
+    backgroundColor: colors.yellowSoft,
     gap: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -440,8 +450,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EADCA8',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   link: { color: colors.brown, fontSize: 13, fontWeight: '700', paddingVertical: 8 },
   requestName: {
@@ -457,8 +467,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
   pendingMember: { paddingVertical: 16 },
   card: {

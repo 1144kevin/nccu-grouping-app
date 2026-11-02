@@ -198,7 +198,13 @@ function GroupChat({ id }: { id: string }) {
                     <View style={[styles.message, item.sender_id === user?.id && styles.mine]}>
                       {item.sender_id !== user?.id ? (
                         <View style={styles.sender}>
-                          <Avatar name={item.sender_name} badge={item.sender_badge} size={28} />
+                          <Avatar
+                            name={item.sender_name}
+                            badge={item.sender_badge}
+                            userId={item.sender_id}
+                            onPress={() => router.push(`/user/${item.sender_id}`)}
+                            size={28}
+                          />
                           <Text style={styles.muted}>{item.sender_name}</Text>
                           <ReputationBadge level={item.sender_level} />
                         </View>
@@ -213,7 +219,14 @@ function GroupChat({ id }: { id: string }) {
                         {item.image_id ? (
                           <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                         ) : (
-                          <Text style={styles.body}>{item.content}</Text>
+                          <Text
+                            style={[
+                              styles.body,
+                              item.sender_id === user?.id && { color: colors.onYellow },
+                            ]}
+                          >
+                            {item.content}
+                          </Text>
                         )}
                       </View>
                       {item.delivery ? (
@@ -300,7 +313,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   conversation: {

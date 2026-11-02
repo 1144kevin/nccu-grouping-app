@@ -12,6 +12,7 @@ jest.mock('@/lib/core-hooks', () => ({ useCorePosts: () => ({ posts: [], isPendi
 jest.mock('@/lib/social-api', () => ({
   useExperience: () => ({ data: { score: mockScore, level: 1, completed_post_ids: [] } }),
 }));
+jest.mock('./profile-likes', () => ({ ProfileLikes: () => null }));
 jest.mock('@/store/auth-store', () => ({
   useAuthStore: (select: (s: unknown) => unknown) =>
     select({ user: { id: 'self', display_name: '測試同學', created_at: '2026-10-01T00:00:00Z' } }),

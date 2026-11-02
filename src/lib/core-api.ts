@@ -7,6 +7,7 @@ export const CORE_API_ENABLED = process.env.EXPO_PUBLIC_CORE_API_ENABLED === 'tr
 export const CORE_SUPABASE_MODE = process.env.EXPO_PUBLIC_CORE_DATA_MODE === 'supabase';
 
 export type CoreUser = {
+  avatar_id?: string | null;
   profile_setup_required?: boolean;
   deletion_pending?: boolean;
   id: string;
@@ -31,6 +32,7 @@ export type ConfirmationRequired = {
 };
 export type GoogleStart = { authorize_url: string; flow_id: string; expires_in: number };
 export type CoreProfileInput = {
+  avatar_id?: string | null;
   display_name: string;
   bio: string;
   badge: NonNullable<CoreUser['badge']>;

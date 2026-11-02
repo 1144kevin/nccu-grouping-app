@@ -9,13 +9,21 @@ import { colors } from '@/theme/tokens';
 export function PostThumbnail({ post, size = 56 }: { post: CorePost; size?: number }) {
   const actor = useAuthStore((s) => s.user?.id);
   const image = post.images?.[0]?.id ?? post.image_id;
-  const avatar = <Avatar name={post.author_name} badge={post.author_badge ?? '🍱'} size={size} />;
+  const avatar = (
+    <Avatar
+      name={post.author_name}
+      badge={post.author_badge ?? '🍱'}
+      userId={post.author_id}
+      square
+      size={size}
+    />
+  );
   return (
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: 14,
+        borderRadius: 0,
         overflow: 'hidden',
         backgroundColor: colors.surface,
       }}
@@ -34,13 +42,13 @@ export function PostThumbnail({ post, size = 56 }: { post: CorePost; size?: numb
             left: -22,
             width: 78,
             height: 18,
-            backgroundColor: colors.ink,
+            backgroundColor: colors.yellow,
             transform: [{ rotate: '-45deg' }],
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text fixedSize style={{ fontSize: 10, fontWeight: '700', color: colors.background }}>
+          <Text fixedSize style={{ fontSize: 10, fontWeight: '700', color: colors.onYellow }}>
             主揪
           </Text>
         </View>

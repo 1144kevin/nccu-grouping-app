@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -9,6 +9,11 @@ import { coreApi, coreError, type CoreUser } from '@/lib/core-api';
 import { invalidateCore } from '@/lib/core-hooks';
 import { applyProfileUpdate, useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { pickPersonalImage } from '@/lib/pick-personal-image';
+import type { PickedPostImage } from '@/lib/pick-post-images';
+import { profileSocial } from '@/lib/profile-social';
+import { newRequestKey } from '@/lib/core-api';
+import { queryClient } from '@/lib/query-client';
 
 const badges: NonNullable<CoreUser['badge']>[] = ['🍜', '🥐', '🍕', '🧋', '🍱', '🍍'];
 
@@ -29,16 +34,45 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
   const [bio, setBio] = useState(user.bio ?? '');
   const [badge, setBadge] = useState<NonNullable<CoreUser['badge']>>(user.badge ?? '🍱');
   const [version, setVersion] = useState(user.version ?? 1);
+  const [photo, setPhoto] = useState<PickedPostImage | null>(null);
+  const [photoError, setPhotoError] = useState('');
+  const [picking, setPicking] = useState(false);
+  const avatarDraft = useRef<{ key: string; id?: string }>({ key: newRequestKey() });
+  async function pick(camera: boolean) {
+    setPhotoError('');
+    setPicking(true);
+    try {
+      const selected = await pickPersonalImage(camera);
+      if (selected) {
+        setPhoto(selected);
+        avatarDraft.current = { key: newRequestKey() };
+      }
+    } catch (error) {
+      setPhotoError(coreError(error));
+    } finally {
+      setPicking(false);
+    }
+  }
   const mutation = useMutation({
-    mutationFn: () =>
-      coreApi.updateProfile({
+    mutationFn: async () => {
+      if (photo?.base64 && !avatarDraft.current.id)
+        avatarDraft.current.id = (
+          await profileSocial.upload('avatar', photo.base64, avatarDraft.current.key)
+        ).id;
+      if (useAuthStore.getState().user?.id !== user.id)
+        throw new Error('invalid_or_expired_session');
+      return coreApi.updateProfile({
+        ...(photo && avatarDraft.current.id ? { avatar_id: avatarDraft.current.id } : {}),
         display_name: name.trim(),
         bio: bio.trim(),
         badge,
         expected_version: version,
-      }),
+      });
+    },
     onSuccess: async (updated) => {
       if (!applyProfileUpdate(updated)) return;
+      if (photo)
+        void queryClient.invalidateQueries({ queryKey: ['core', user.id, 'avatar', user.id] });
       await invalidateCore();
       if (useAuthStore.getState().user?.id === updated.id) {
         if (onboarding) router.replace('/');
@@ -55,10 +89,12 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
       setBio(updated.bio ?? '');
       setBadge(updated.badge ?? '🍱');
       setVersion(updated.version ?? 1);
+      setPhoto(null);
+      avatarDraft.current = { key: newRequestKey() };
       mutation.reset();
     },
   });
-  const busy = mutation.isPending || reload.isPending;
+  const busy = mutation.isPending || reload.isPending || picking;
   return (
     <Screen>
       {onboarding ? (
@@ -68,7 +104,38 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
       )}
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.preview}>
-          <Avatar name={name || user.display_name} badge={badge} size={78} />
+          <Avatar
+            name={name || user.display_name}
+            badge={badge}
+            userId={user.id}
+            uri={photo?.uri}
+            size={88}
+          />
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
+            <PrimaryButton
+              secondary
+              disabled={busy}
+              onPress={() => {
+                void pick(true);
+              }}
+            >
+              拍照
+            </PrimaryButton>
+            <PrimaryButton
+              secondary
+              disabled={busy}
+              onPress={() => {
+                void pick(false);
+              }}
+            >
+              上傳照片
+            </PrimaryButton>
+          </View>
+          {photoError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {photoError}
+            </Text>
+          ) : null}
         </View>
         <Text style={styles.hint}>顯示名稱、圖示與介紹會出現在公開個人資料；信箱不會公開。</Text>
         <Text style={styles.label}>圖示</Text>
