@@ -3,20 +3,44 @@ import { coreApi, type CoreSession } from '@/lib/core-api';
 import { beginGoogleSignIn, clearGoogleCallback, finishGoogleSignIn } from './google-login.web';
 import { GOOGLE_CALLBACK } from './google-oauth';
 
-jest.mock('@/lib/core-api', () => ({ coreApi: { googleStart: jest.fn(), googleFinish: jest.fn() } }));
+jest.mock('@/lib/core-api', () => ({
+  coreApi: { googleStart: jest.fn(), googleFinish: jest.fn() },
+}));
 
 const key = 'nccu-grouping.google-web.flow';
 const flowId = 'f'.repeat(43);
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
 let storage: Map<string, string>;
-let browser: { location: { origin: string; href: string; assign: ReturnType<typeof jest.fn> }; history: { replaceState: ReturnType<typeof jest.fn> }; sessionStorage: { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void; removeItem: (key: string) => void } };
+let browser: {
+  location: { origin: string; href: string; assign: ReturnType<typeof jest.fn> };
+  history: { state: object; replaceState: ReturnType<typeof jest.fn> };
+  sessionStorage: {
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+    removeItem: (key: string) => void;
+  };
+};
 
 beforeEach(() => {
-  jest.resetAllMocks(); clearGoogleCallback(); storage = new Map();
+  jest.resetAllMocks();
+  clearGoogleCallback();
+  storage = new Map();
   browser = {
-    location: { origin: 'http://localhost:8081', href: GOOGLE_CALLBACK + '?code=synthetic-code', assign: jest.fn() },
-    history: { replaceState: jest.fn() },
-    sessionStorage: { getItem: (key) => storage.get(key) ?? null, setItem: (key, value) => { storage.set(key, value); }, removeItem: (key) => { storage.delete(key); } },
+    location: {
+      origin: 'http://localhost:8081',
+      href: GOOGLE_CALLBACK + '?code=synthetic-code',
+      assign: jest.fn(),
+    },
+    history: { state: { key: 'router-history-entry', index: 2 }, replaceState: jest.fn() },
+    sessionStorage: {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => {
+        storage.set(key, value);
+      },
+      removeItem: (key) => {
+        storage.delete(key);
+      },
+    },
   };
   Object.defineProperty(globalThis, 'window', { configurable: true, value: browser });
 });
@@ -45,7 +69,11 @@ it('shares code exchange across effect replays and deletes browser proof and que
   expect(coreApi.googleFinish).toHaveBeenCalledTimes(1);
   expect(coreApi.googleFinish).toHaveBeenCalledWith(flowId, 'synthetic-code');
   expect(storage.has(key)).toBe(false);
-  expect(browser.history.replaceState).toHaveBeenCalledWith(null, '', GOOGLE_CALLBACK);
+  expect(browser.history.replaceState).toHaveBeenCalledWith(
+    browser.history.state,
+    '',
+    GOOGLE_CALLBACK,
+  );
 });
 
 it('rejects a missing proof without exchanging a supplied code', async () => {
@@ -77,11 +105,15 @@ it('starts and completes public HTTPS login with same-tab proof and the public c
     });
     const authorize = new URL('https://axdwbfhrkbovgrbngrrh.supabase.co/auth/v1/authorize');
     authorize.search = new URLSearchParams({
-      provider: 'google', redirect_to: callback,
-      code_challenge_method: 's256', code_challenge: 'c'.repeat(43),
+      provider: 'google',
+      redirect_to: callback,
+      code_challenge_method: 's256',
+      code_challenge: 'c'.repeat(43),
     }).toString();
     jest.mocked(publicApi.googleStart).mockResolvedValue({
-      authorize_url: authorize.href, flow_id: flowId, expires_in: 600,
+      authorize_url: authorize.href,
+      flow_id: flowId,
+      expires_in: 600,
     });
     const session = { access_token: 'synthetic-token' } as CoreSession;
     jest.mocked(publicApi.googleFinish).mockResolvedValue(session);
@@ -92,7 +124,7 @@ it('starts and completes public HTTPS login with same-tab proof and the public c
     await expect(publicLogin.finishGoogleSignIn()).resolves.toEqual(session);
     expect(publicApi.googleFinish).toHaveBeenCalledWith(flowId, 'synthetic-public-code');
     expect(storage.has(key)).toBe(false);
-    expect(browser.history.replaceState).toHaveBeenCalledWith(null, '', callback);
+    expect(browser.history.replaceState).toHaveBeenCalledWith(browser.history.state, '', callback);
   } finally {
     if (previous === undefined) delete process.env.EXPO_PUBLIC_APP_PROFILE;
     else process.env.EXPO_PUBLIC_APP_PROFILE = previous;
