@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Platform, type TextInput, type TextInputProps } from 'react-native';
 import { AppTextInput } from '@/components/app-text';
-import { colors } from '@/theme/tokens';
+import { colors, neutralSurface } from '@/theme/tokens';
 
 const clamp = (height: number) => Math.min(120, Math.max(40, Math.ceil(height)));
 export function ChatTextInput({
@@ -37,15 +37,18 @@ export function ChatTextInput({
       style={[
         style,
         {
+          ...neutralSurface,
           minHeight: 40,
           backgroundColor: colors.chatInput,
           color: colors.chatInputText,
           borderRadius: 18,
+          borderWidth: 0,
+          includeFontPadding: false,
           maxHeight: 120,
           height: value ? height : 40,
-          paddingVertical: 7,
+          paddingVertical: 8,
           lineHeight: 24,
-          textAlignVertical: emptyCentered && !value ? 'center' : 'top',
+          textAlignVertical: 'center',
           textAlign: emptyCentered && !value ? 'center' : 'left',
         },
       ]}

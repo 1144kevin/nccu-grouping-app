@@ -15,7 +15,7 @@ export const lightColors = {
   dangerSoft: '#FFF0F0',
   success: '#327A51',
   successSoft: '#EDF8F1',
-  chatInput: '#FFFFFF',
+  chatInput: '#F6F6F4',
   chatInputText: '#171717',
   chatPlaceholder: '#A8A59D',
 } as const;
@@ -34,9 +34,9 @@ export const darkColors: Record<keyof typeof lightColors, string> = {
   dangerSoft: '#452929',
   success: '#84CBA1',
   successSoft: '#171817',
-  chatInput: '#FFD700',
-  chatInputText: '#171717',
-  chatPlaceholder: '#555044',
+  chatInput: '#242623',
+  chatInputText: '#F3F3EF',
+  chatPlaceholder: '#96958E',
 };
 
 // Scope text tokens to the actual yellow surface; nested labels/icons stay legible.
