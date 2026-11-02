@@ -1,4 +1,5 @@
 import { PageLoading } from '@/components/page-loading';
+import { WebPushSettings } from '@/components/web-push-settings';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -88,6 +89,7 @@ export function CoreAccountPreferences({ mode }: { mode: 'settings' | 'recommend
         </PrimaryButton>
         {mode === 'settings' ? (
           <>
+            <WebPushSettings />
             <DraftImageManager />
             <PrimaryButton secondary onPress={() => router.push('/app-password')}>
               設定 App 密碼
