@@ -17,7 +17,7 @@ self.addEventListener('push', (event) => {
         body: data.body || '你有新的拼單通知',
         tag: data.tag || 'grouping',
         data: { url },
-        icon: '/app-icon.svg',
+        icon: '/app-icon-192.png?v=596cd9fba0ab',
       }),
       self.navigator.setAppBadge?.(Math.max(0, Number(data.badge) || 0)) ?? Promise.resolve(),
     ]),
