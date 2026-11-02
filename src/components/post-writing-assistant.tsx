@@ -35,7 +35,7 @@ type Preview = {
   text: string;
   sourceText: string;
   mode: 'image' | 'voice';
-  draftMethod?: 'model' | 'recognized_facts';
+  draftMethod?: 'model' | 'recognized_facts' | 'spoken_facts';
 };
 const draftLength = (text: string) => [...text.replace(/\s/g, '')].length;
 
@@ -424,11 +424,13 @@ function WritingSession({
         >
           <Text style={styles.title}>確認貼文草稿</Text>
           <Text style={styles.hint}>
-            {preview?.draftMethod === 'recognized_facts'
-              ? '文案修正後仍未通過檢查，已保留照片辨識原文整理成草稿，請核對後編輯。'
-              : preview?.mode === 'image'
-                ? '照片辨識資訊，請核對優惠與限制條件'
-                : '語音辨識內容'}
+            {preview?.draftMethod === 'spoken_facts'
+              ? '已依你的口述原文整理成草稿，請核對後編輯採用。'
+              : preview?.draftMethod === 'recognized_facts'
+                ? '文案修正後仍未通過檢查，已保留照片辨識原文整理成草稿，請核對後編輯。'
+                : preview?.mode === 'image'
+                  ? '照片辨識資訊，請核對優惠與限制條件'
+                  : '語音辨識內容'}
           </Text>
           <Text style={styles.body}>{preview?.sourceText}</Text>
           <Text style={styles.hint}>文案草稿 · 可編輯</Text>

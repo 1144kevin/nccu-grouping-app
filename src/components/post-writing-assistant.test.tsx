@@ -46,10 +46,12 @@ it('offers exactly the two new actions and enables image recognition only with a
 });
 
 it('shows the current queue position and aborts the pending job when the screen closes', async () => {
-  jest.mocked(socialApi.writePost).mockImplementation(async (_mode, _text, _context, _image, options) => {
-    options?.onProgress?.({ status: 'queued', queue_position: 4 });
-    return new Promise(() => undefined);
-  });
+  jest
+    .mocked(socialApi.writePost)
+    .mockImplementation(async (_mode, _text, _context, _image, options) => {
+      options?.onProgress?.({ status: 'queued', queue_position: 4 });
+      return new Promise(() => undefined);
+    });
   const screen = await render(<PostWritingAssistant {...props} imageBase64="photo" />);
   await fireEvent.press(screen.getByRole('button', { name: '圖片辨識生成文案' }));
   await waitFor(() => expect(screen.getByText(/AI 排隊中，目前第 4 位/)).toBeTruthy());
@@ -125,6 +127,30 @@ it('automatically polishes the speech transcript after recording ends', async ()
     undefined,
     expect.any(Object),
   );
+});
+
+it('shows the original-voice fallback as an editable preview and only applies it after confirmation', async () => {
+  let events!: SpeechCallbacks;
+  const source = '我想要吃一堆麥當勞薯條 有人要一起吃嗎';
+  const draft = `${source}。想找有相同需求的朋友一起討論，有興趣可以留言或私訊，一起確認餐點內容與安排，再決定是否參加。`;
+  const onApply = jest.fn();
+  jest.mocked(startPostSpeech).mockImplementation(async (callbacks) => {
+    events = callbacks;
+    return { stop: jest.fn(), cancel: jest.fn() };
+  });
+  jest
+    .mocked(socialApi.writePost)
+    .mockResolvedValue({ text: draft, source_text: source, draft_method: 'spoken_facts' });
+  const screen = await render(<PostWritingAssistant {...props} onApply={onApply} />);
+  await fireEvent.press(screen.getByRole('button', { name: '語音潤稿' }));
+  await act(async () => events.onEnd(source));
+  expect(screen.getByText('已依你的口述原文整理成草稿，請核對後編輯採用。')).toBeTruthy();
+  expect(screen.getByLabelText('AI 貼文草稿').props.value).toBe(draft);
+  expect(onApply).not.toHaveBeenCalled();
+  const edited = draft + '可以先討論。';
+  await fireEvent.changeText(screen.getByLabelText('AI 貼文草稿'), edited);
+  await fireEvent.press(screen.getByRole('button', { name: '採用草稿' }));
+  expect(onApply).toHaveBeenCalledWith(edited);
 });
 it('cancels speech and ignores subsequent recognition callbacks', async () => {
   let events!: SpeechCallbacks;

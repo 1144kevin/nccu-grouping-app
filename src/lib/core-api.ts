@@ -272,6 +272,7 @@ const messages: Record<string, string> = {
   direct_message_rate_limit: '訊息操作過於頻繁，請稍後重試。',
   handoff_not_ready: '尚未符合面交確認條件，請重新整理拼單。',
   post_writing_invalid_output: '這次草稿未通過檢查，原文已保留，請重新生成。',
+  post_voice_too_long: '這段口述無法完整放入500字貼文，請保留主要需求、縮短文字後再潤稿；原文仍已保留。',
   local_post_writing_not_configured: '本地 AI 尚未啟動，原文已保留。',
   post_writing_rate_limit: '生成次數較多，請稍等再試。',
   post_writing_already_pending: '你已有一份文案正在處理，請稍候完成。',

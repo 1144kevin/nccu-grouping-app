@@ -3,7 +3,11 @@ import { api } from '@/lib/api';
 import { newRequestKey } from '@/lib/core-api';
 
 export type WritingProgress = { status: 'queued' | 'running'; queue_position: number };
-type Draft = { text: string; source_text?: string; draft_method?: 'model' | 'recognized_facts' };
+type Draft = {
+  text: string;
+  source_text?: string;
+  draft_method?: 'model' | 'recognized_facts' | 'spoken_facts';
+};
 type Job = {
   id: string;
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
