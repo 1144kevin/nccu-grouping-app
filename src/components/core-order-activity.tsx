@@ -1,7 +1,9 @@
 import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { queryClient } from '@/lib/query-client';
 import { router } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
@@ -14,6 +16,17 @@ import { colors, radius, spacing } from '@/theme/tokens';
 import { useSavedPostPreferences } from '@/lib/engagement-api';
 
 export function CoreOrderActivityScreen() {
+  useEffect(() => {
+    void api
+      .post('/notifications/read', {})
+      .then(() =>
+        queryClient.invalidateQueries({
+          queryKey: ['core'],
+          predicate: (q) => q.queryKey[2] === 'chat-activity',
+        }),
+      )
+      .catch(() => undefined);
+  }, []);
   const [reminders, setReminders] = useState(false);
   return (
     <Screen>

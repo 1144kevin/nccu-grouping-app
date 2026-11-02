@@ -2,6 +2,9 @@ import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { api } from '@/lib/api';
+import { queryClient } from '@/lib/query-client';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -33,6 +36,13 @@ import { colors, radius, spacing, typography } from '@/theme/tokens';
 export function CoreOrderDetail({ id }: { id: string }) {
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
+  useEffect(() => {
+    if (actor && focused)
+      void api
+        .post('/notifications/read', { post_id: id })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['core', actor, 'chat-activity'] }))
+        .catch(() => undefined);
+  }, [actor, focused, id]);
   const postQuery = useCorePost(id);
   const post = postQuery.data;
   const summary = useQuery({
@@ -137,7 +147,7 @@ export function CoreOrderDetail({ id }: { id: string }) {
         <View style={styles.timeline}>
           <Step done label="已建立拼單" />
           <Step done={formed} label={formed ? '已確認成團' : '等待成團'} />
-          <Step done={completed} label="完成面交" last />
+          <Step done={completed} label="完成訂單" last />
         </View>
         <SectionTitle
           action={
@@ -182,14 +192,15 @@ export function CoreOrderDetail({ id }: { id: string }) {
           <View style={{ gap: 8 }}>
             <Text style={styles.detail}>
               {summary.data.my_confirmed
-                ? `你已確認面交 · ${summary.data.confirmed_count}/${post.joined} 人已確認`
-                : '實際完成面交後，請確認紀錄。'}
+                ? `你已確認完成 · ${summary.data.confirmed_count}/${post.joined} 人已確認`
+                : '餐點已交付、雙方完成約定後，請各自確認完成訂單。全員確認後計入信譽積分。'}
             </Text>
             <PrimaryButton
               disabled={handoff.isPending || summary.data.my_confirmed}
               onPress={() => handoff.mutate()}
+              loading={handoff.isPending}
             >
-              {summary.data.my_confirmed ? '已確認完成面交' : '確認完成面交'}
+              {summary.data.my_confirmed ? '已確認完成訂單' : '確認完成訂單'}
             </PrimaryButton>
           </View>
         ) : null}
