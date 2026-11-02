@@ -372,9 +372,9 @@ function WritingSession({
           {listening ? (
             <PrimaryButton
               onPress={() => {
-                capture.current?.stop();
                 setListening(false);
                 setBusy(true);
+                capture.current?.stop();
               }}
             >
               結束說話並潤稿

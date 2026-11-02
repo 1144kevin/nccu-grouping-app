@@ -27,6 +27,34 @@ afterEach(() => {
   jest.useRealTimers();
 });
 const callbacks = () => ({ onText: jest.fn(), onEnd: jest.fn(), onError: jest.fn() });
+it('finishes safely when Safari throws while stopping, and allows another recording', async () => {
+  const first = callbacks();
+  const capture = await startPostSpeech(first);
+  instance.onresult?.({ results: [[{ transcript: '保留這次的文字' }]] });
+  instance.stop.mockImplementation(() => {
+    throw new Error('InvalidStateError');
+  });
+  capture.stop();
+  expect(first.onEnd).toHaveBeenCalledWith('保留這次的文字');
+  const second = callbacks();
+  await startPostSpeech(second);
+  instance.onresult?.({ results: [[{ transcript: '第二次錄音' }]] });
+  instance.onend?.();
+  expect(second.onEnd).toHaveBeenCalledWith('第二次錄音');
+});
+it('reports a timeout even when Safari also throws during abort, then permits retry', async () => {
+  const first = callbacks();
+  await startPostSpeech(first);
+  instance.abort.mockImplementation(() => {
+    throw new Error('already stopped');
+  });
+  jest.advanceTimersByTime(15_000);
+  expect(first.onError).toHaveBeenCalledWith('post_speech_start_timeout');
+  const second = callbacks();
+  await startPostSpeech(second);
+  instance.onend?.();
+  expect(second.onEnd).toHaveBeenCalledTimes(1);
+});
 it('accumulates browser transcripts and ends only after recognition finishes', async () => {
   const events = callbacks();
   const session = await startPostSpeech(events);

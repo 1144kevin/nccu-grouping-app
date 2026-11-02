@@ -33,9 +33,16 @@ export async function startPostSpeech(
   let finishing: ReturnType<typeof setTimeout> | undefined;
   let stopping = false;
   let startup: ReturnType<typeof setTimeout> | undefined;
+  const abortRecognition = () => {
+    try {
+      recognition.abort();
+    } catch {
+      /* Safari may already have ended it. */
+    }
+  };
   const cancel = () => {
     cleanup();
-    recognition.abort();
+    abortRecognition();
   };
   const cleanup = () => {
     active = false;
@@ -58,7 +65,7 @@ export async function startPostSpeech(
   recognition.onerror = (event) => {
     if (!active) return;
     cleanup();
-    recognition.abort();
+    abortRecognition();
     const errors: Record<string, string> = {
       'not-allowed': 'post_speech_permission_denied',
       'service-not-allowed': 'post_speech_permission_denied',
@@ -80,20 +87,29 @@ export async function startPostSpeech(
   const stop = () => {
     if (!active || stopping) return;
     stopping = true;
-    recognition.stop();
     // Some browsers never emit end after a connection interruption.
     finishing = setTimeout(() => {
       if (!active) return;
       cleanup();
-      recognition.abort();
+      abortRecognition();
       callbacks.onEnd(text);
     }, 5000);
+    try {
+      recognition.stop();
+    } catch {
+      // Stopping an already-ended Safari recognizer must still release the UI.
+      if (active) {
+        cleanup();
+        abortRecognition();
+        callbacks.onEnd(text);
+      }
+    }
   };
   try {
     startup = setTimeout(() => {
       if (!active) return;
       cleanup();
-      recognition.abort();
+      abortRecognition();
       callbacks.onError('post_speech_start_timeout');
     }, 15_000);
     recognition.start();
