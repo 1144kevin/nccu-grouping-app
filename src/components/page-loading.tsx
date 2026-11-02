@@ -5,6 +5,9 @@ export function PageLoading(props: ActivityIndicatorProps) {
   return (
     <View
       style={{
+        flex: 1,
+        alignSelf: 'stretch',
+        minHeight: 80,
         paddingHorizontal: 24,
         paddingVertical: 28,
         alignItems: 'center',

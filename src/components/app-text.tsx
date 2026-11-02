@@ -9,6 +9,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { fontSizes, useFontSizeStore } from '@/store/font-size-store';
+import { colors } from '@/theme/tokens';
 
 const InsideText = createContext(false);
 
@@ -45,7 +46,13 @@ export function AppTextInput({
   ...props
 }: TextInputProps & { ref?: Ref<NativeTextInput> }) {
   const size = useFontSizeStore((state) => state.fontSize);
-  const scaled = scaledStyle(StyleSheet.flatten(style), fontSizes[size].scale, 16);
+  const inputStyle = StyleSheet.flatten(style);
+  const scaled = scaledStyle(
+    { ...inputStyle, fontSize: Math.min(inputStyle?.fontSize ?? 14, 14) },
+    fontSizes[size].scale,
+    14,
+  );
+  scaled.color = colors.muted;
   // Safari zooms focused inputs below 16px, including sizes reduced by the user's
   // font preference. Keep the input stable without restricting page/pinch zoom.
   if (Platform.OS === 'web') {
@@ -56,6 +63,7 @@ export function AppTextInput({
   return (
     <NativeTextInput
       {...props}
+      placeholderTextColor={props.placeholderTextColor ?? colors.subtle}
       selectTextOnFocus={Platform.OS === 'web' ? false : props.selectTextOnFocus}
       ref={ref}
       style={[style, scaled]}

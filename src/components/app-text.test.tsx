@@ -43,7 +43,7 @@ it('scales input text but leaves decorative fixed-size text unchanged', async ()
     </>,
   );
   expect(StyleSheet.flatten(screen.getByTestId('icon').props.style).fontSize).toBe(24);
-  expect(StyleSheet.flatten(screen.getByTestId('input').props.style).fontSize).toBe(18);
+  expect(StyleSheet.flatten(screen.getByTestId('input').props.style).fontSize).toBe(12.6);
 });
 
 it('restores a saved preference and falls back safely for invalid stored values', async () => {
@@ -77,7 +77,7 @@ it('keeps web input fonts at least 16px across preferences without auto-selectin
     });
     expect(screen.getByTestId('input').props.selectTextOnFocus).toBe(false);
     await screen.rerender(<AppTextInput testID="input" style={{ fontSize: 24, lineHeight: 32 }} />);
-    expect(StyleSheet.flatten(screen.getByTestId('input').props.style).fontSize).toBeCloseTo(19.68);
+    expect(StyleSheet.flatten(screen.getByTestId('input').props.style).fontSize).toBe(16);
   } finally {
     os.restore();
   }
