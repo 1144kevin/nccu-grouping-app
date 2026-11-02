@@ -6,6 +6,8 @@ import { coreApi } from '@/lib/core-api';
 import { router } from 'expo-router';
 import { AppState } from 'react-native';
 import { queryClient } from '@/lib/query-client';
+import { PostComposer } from './post-composer';
+import type { CorePost } from '@/lib/core-api';
 
 let mockActor = 'synthetic-actor';
 let mockAssets = [{ uri: 'synthetic://image', base64: 'YQ==', width: 480, height: 320 }];
@@ -20,7 +22,7 @@ jest.mock('@/store/app-store', () => ({
   useAppStore: (select: (s: unknown) => unknown) => select({ publishPost: jest.fn() }),
 }));
 jest.mock('expo-router', () => ({
-  router: { replace: jest.fn() },
+  router: { replace: jest.fn(), canGoBack: () => false },
   useFocusEffect: (callback: () => () => void) => {
     jest.requireActual<typeof import('react')>('react').useEffect(callback, [callback]);
   },
@@ -72,14 +74,105 @@ jest.mock('@/lib/font-size-storage', () => ({
 jest.mock('@/lib/core-api', () => ({
   CORE_API_ENABLED: true,
   CORE_SUPABASE_MODE: true,
-  coreApi: { create: jest.fn() },
+  coreApi: { create: jest.fn(), edit: jest.fn() },
   coreError: () => '暫時失敗，保留草稿',
   newRequestKey: () => 'test-request-' + Math.random(),
 }));
 jest.mock('@/lib/media-api', () => ({
-  mediaApi: { upload: jest.fn(), publish: jest.fn(), remove: jest.fn() },
+  mediaApi: {
+    upload: jest.fn(),
+    publish: jest.fn(),
+    remove: jest.fn(),
+    edit: jest.fn(),
+    content: jest.fn(),
+  },
   validPickedImage: (v: string) => v,
 }));
+jest.mock('./core-post-image', () => ({ CorePostImage: () => null }));
+
+const editingPost = () =>
+  ({
+    id: 'existing-post',
+    author_id: mockActor,
+    content: '這是既有的拼單，編輯時要保留原本資料。',
+    tags: ['午餐'],
+    capacity: 3,
+    price_per_person: '80',
+    location: { name: '既有地點', latitude: 24.98, longitude: 121.57 },
+    deadline_at: new Date(1_800_000_000_000 + 7200000).toISOString(),
+    can_edit: true,
+    my_status: 'host',
+    version: 4,
+    images: [{ id: 'original-image', width: 600, height: 800 }],
+  }) as CorePost;
+
+it('keeps the existing text edit API when the gallery is unchanged', async () => {
+  const post = editingPost();
+  jest.mocked(coreApi.edit).mockResolvedValue({ ...post, version: 5 });
+  const screen = await render(<PostComposer post={post} now={() => 1_800_000_000_000} />);
+  await fireEvent.changeText(
+    screen.getByLabelText('拼單內容'),
+    '只修改文字，其他拼單條件與圖片維持原樣。',
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '儲存拼單變更' }));
+  await waitFor(() =>
+    expect(coreApi.edit).toHaveBeenCalledWith(
+      post.id,
+      expect.objectContaining({ expected_version: 4 }),
+    ),
+  );
+  expect(mediaApi.edit).not.toHaveBeenCalled();
+});
+
+it('uses the same composer for editing and atomically saves original plus newly selected photos', async () => {
+  const post = editingPost();
+  jest.mocked(mediaApi.edit).mockResolvedValue({ ...post, version: 5 });
+  const screen = await render(<PostComposer post={post} now={() => 1_800_000_000_000} />);
+  expect(screen.getByLabelText('拼單內容').props.value).toBe(post.content);
+  expect(screen.getByText('主題標籤')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '語音潤稿' })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '新增圖片' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '移除第 2 張圖片' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '儲存拼單變更' }));
+  await waitFor(() =>
+    expect(mediaApi.edit).toHaveBeenCalledWith(
+      post.id,
+      expect.objectContaining({ content: post.content, tags: ['午餐'], capacity: 3 }),
+      ['original-image', 'image-id'],
+      4,
+    ),
+  );
+  expect(mediaApi.publish).not.toHaveBeenCalled();
+  expect(router.replace).toHaveBeenCalledWith('/order/existing-post');
+});
+
+it('removes existing images only when saving and leaves a failed edit available for retry', async () => {
+  const post = editingPost();
+  jest
+    .mocked(mediaApi.edit)
+    .mockRejectedValueOnce(new Error('offline'))
+    .mockResolvedValueOnce({ ...post, images: [], version: 5 });
+  const screen = await render(<PostComposer post={post} now={() => 1_800_000_000_000} />);
+  await fireEvent.press(screen.getByRole('button', { name: '移除第 1 張圖片' }));
+  expect(mediaApi.remove).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '儲存拼單變更' }));
+  await waitFor(() => expect(screen.getByText('暫時失敗，保留草稿')).toBeTruthy());
+  expect(router.replace).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '儲存拼單變更' }));
+  await waitFor(() => expect(mediaApi.edit).toHaveBeenCalledTimes(2));
+  expect(jest.mocked(mediaApi.edit).mock.calls[0]).toEqual(
+    jest.mocked(mediaApi.edit).mock.calls[1],
+  );
+});
+
+it('locks shared edit controls while there are active applications or members', async () => {
+  const screen = await render(
+    <PostComposer post={{ ...editingPost(), can_edit: false }} now={() => 1_800_000_000_000} />,
+  );
+  expect(screen.getByRole('button', { name: '儲存拼單變更' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: '新增圖片' })).toBeDisabled();
+  expect(screen.getByLabelText('拼單內容').props.editable).toBe(false);
+});
 
 beforeEach(() => {
   jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });

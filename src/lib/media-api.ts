@@ -11,6 +11,25 @@ export type ImageLink = {
   height: number;
 };
 export const mediaApi = {
+  edit: async (
+    postId: string,
+    value: CorePostInput,
+    image_ids: string[],
+    expected_version: number,
+  ) =>
+    (
+      await api.put<CorePost>(
+        `/uploads/posts/${encodeURIComponent(postId)}`,
+        { value, image_ids, expected_version },
+        { timeout: 60_000 },
+      )
+    ).data,
+  content: async (id: string) =>
+    (
+      await api.get<{ content_base64: string; width: number; height: number }>(
+        `/uploads/images/${encodeURIComponent(id)}/content`,
+      )
+    ).data,
   upload: async (content_base64: string, key: string) =>
     (
       await api.post<ImageAsset>(

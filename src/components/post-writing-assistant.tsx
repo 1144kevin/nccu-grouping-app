@@ -12,9 +12,11 @@ import { coreError } from '@/lib/core-api';
 import { startPostSpeech } from '@/lib/post-speech';
 import type { SpeechCapture } from '@/lib/post-speech.types';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius } from '@/theme/tokens';
+import { colors, radius, yellowSurface } from '@/theme/tokens';
 
 type WritingProps = {
+  imageKey?: string;
+  getImageBase64s?: () => Promise<string[]>;
   content: string;
   context: string;
   imageBase64?: string;
@@ -24,6 +26,7 @@ type WritingProps = {
   onBusyChange?: (busy: boolean) => void;
 };
 type Source = {
+  imageKey?: string;
   content: string;
   context: string;
   imageBase64?: string;
@@ -44,6 +47,8 @@ export function PostWritingAssistant(props: WritingProps) {
   return <WritingSession key={actor} {...props} actor={actor} />;
 }
 function WritingSession({
+  imageKey,
+  getImageBase64s,
   content,
   context,
   imageBase64,
@@ -53,10 +58,10 @@ function WritingSession({
   onBusyChange,
   actor,
 }: WritingProps & { actor?: string }) {
-  const current = useRef<Source>({ content, context, imageBase64, imageBase64s, actor });
+  const current = useRef<Source>({ content, context, imageBase64, imageBase64s, imageKey, actor });
   useEffect(() => {
-    current.current = { content, context, imageBase64, imageBase64s, actor };
-  }, [content, context, imageBase64, imageBase64s, actor]);
+    current.current = { content, context, imageBase64, imageBase64s, imageKey, actor };
+  }, [content, context, imageBase64, imageBase64s, imageKey, actor]);
   const mounted = useRef(true);
   const generation = useRef(0);
   const capture = useRef<SpeechCapture | null>(null);
@@ -118,6 +123,7 @@ function WritingSession({
     mounted.current && generation.current === id && useAuthStore.getState().user?.id === actor;
   const sourceMatches = (source: Source) =>
     source.actor === actor &&
+    source.imageKey === current.current.imageKey &&
     source.content === current.current.content &&
     source.context === current.current.context &&
     source.imageBase64 === current.current.imageBase64 &&
@@ -142,15 +148,18 @@ function WritingSession({
     const controller = new AbortController();
     pendingDraft.current = controller;
     try {
+      const images =
+        mode === 'image' && getImageBase64s
+          ? await getImageBase64s()
+          : source.imageBase64s?.length
+            ? source.imageBase64s
+            : source.imageBase64;
+      if (!alive(id) || !sourceMatches(source)) return;
       const result = await socialApi.writePost(
         mode,
         mode === 'voice' ? spoken : source.content,
         source.context,
-        mode === 'image'
-          ? source.imageBase64s?.length
-            ? source.imageBase64s
-            : source.imageBase64
-          : undefined,
+        mode === 'image' ? images : undefined,
         {
           signal: controller.signal,
           canAccess: () => useAuthStore.getState().user?.id === actor,
@@ -267,13 +276,21 @@ function WritingSession({
           accessibilityRole="button"
           accessibilityLabel="圖片辨識生成文案"
           accessibilityState={{ busy: busy && activeMode === 'image' }}
-          disabled={disabled || locked || !actor || !(imageBase64s?.length || imageBase64)}
+          disabled={
+            disabled ||
+            locked ||
+            !actor ||
+            !(getImageBase64s || imageBase64s?.length || imageBase64)
+          }
           onPress={() => {
             if (!running.current) void generate('image', { ...current.current });
           }}
           style={[
             styles.button,
-            (disabled || locked || !actor || !(imageBase64s?.length || imageBase64)) &&
+            (disabled ||
+              locked ||
+              !actor ||
+              !(getImageBase64s || imageBase64s?.length || imageBase64)) &&
               styles.disabled,
           ]}
         >
@@ -306,7 +323,7 @@ function WritingSession({
           <Text style={styles.buttonText}>語音潤稿</Text>
         </Pressable>
       </View>
-      {!(imageBase64s?.length || imageBase64) ? (
+      {!(getImageBase64s || imageBase64s?.length || imageBase64) ? (
         <Text style={styles.hint}>
           不用打字，選擇 1～5 張宣傳單、食物、物品或品牌照片，就能生成拼單貼文。
         </Text>
@@ -480,6 +497,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+    ...yellowSurface,
     backgroundColor: colors.yellow,
     borderRadius: radius.md,
     minHeight: 44,

@@ -27,6 +27,23 @@ jest.mock('@/lib/font-size-storage', () => ({
 const DRAFT =
   '想找也想吃披薩的朋友一起討論餐點！照片中的活動是買一送一，實際品項、費用與使用條件請先確認。有興趣可以留言，一起協調取餐方式與分工，談妥細節後再決定是否參加。';
 const props = { content: '', context: '', disabled: false, onApply: jest.fn() };
+it('loads existing post images only when image recognition is requested', async () => {
+  const load = jest.fn(async () => ['existing-server-photo', 'new-selected-photo']);
+  jest.mocked(socialApi.writePost).mockResolvedValue({ text: DRAFT });
+  const screen = await render(
+    <PostWritingAssistant {...props} imageKey="existing,new" getImageBase64s={load} />,
+  );
+  expect(load).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '圖片辨識生成文案' }));
+  await waitFor(() => expect(screen.getByLabelText('AI 貼文草稿').props.value).toBe(DRAFT));
+  expect(socialApi.writePost).toHaveBeenCalledWith(
+    'image',
+    '',
+    '',
+    ['existing-server-photo', 'new-selected-photo'],
+    expect.any(Object),
+  );
+});
 jest.setTimeout(20_000);
 beforeEach(() => {
   jest.spyOn(AppState, 'addEventListener').mockReturnValue({ remove: jest.fn() });
