@@ -18,7 +18,9 @@ export type ThreadMessage = {
   content: string;
   created_at: string;
 };
+export type InboxAvatarMember = { id: string; name: string; badge: string };
 type ThreadBase = {
+  avatar_members?: InboxAvatarMember[];
   id: string;
   peer_id: string;
   peer_name: string;

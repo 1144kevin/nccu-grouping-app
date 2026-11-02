@@ -1,27 +1,26 @@
 import { PageLoading } from '@/components/page-loading';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
 import { useCallback, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
-import {
-  AppHeader,
-  Avatar,
-  DetailHeader,
-  EmptyState,
-  IconButton,
-  Screen,
-} from '@/components/primitives';
+import { AppHeader, DetailHeader, EmptyState, IconButton, Screen } from '@/components/primitives';
 import { ChatSwipeRow } from '@/components/chat-swipe-row';
 import type { ChatSwipeHandle } from '@/components/chat-swipe-row.types';
-import { socialApi, useInboxThreads, type InboxFilter, type InboxThread } from '@/lib/social-api';
+import {
+  socialApi,
+  useInboxThreads,
+  type InboxFilter,
+  type InboxThread,
+  type InboxPage,
+} from '@/lib/social-api';
 import { coreError } from '@/lib/core-api';
 import { invalidateCore } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, typography, yellowSurface } from '@/theme/tokens';
-import { PostThumbnail } from './post-thumbnail';
+import { InboxAvatar } from './inbox-avatar';
 import { displayTimestamp } from '@/lib/display-time';
 
 export function threadTitle(item: InboxThread) {
@@ -33,6 +32,7 @@ export function UnifiedInbox() {
   return <Inbox key={actor} />;
 }
 function Inbox() {
+  const client = useQueryClient();
   const [tab, setTab] = useState<InboxFilter>('all');
   const [deleted, setDeleted] = useState(false);
   const [selected, setSelected] = useState<InboxThread>();
@@ -63,8 +63,25 @@ function Inbox() {
       item: InboxThread;
       value: Parameters<typeof socialApi.preference>[1];
     }) => socialApi.preference(item, value),
-    onSuccess: (_, input) => {
+    onSuccess: (result, input) => {
       if (useAuthStore.getState().user?.id !== actor) return;
+      client.setQueriesData<InfiniteData<InboxPage>>(
+        { queryKey: ['core', actor, 'social-inbox'] },
+        (old) =>
+          old
+            ? {
+                ...old,
+                pages: old.pages.map((page) => ({
+                  ...page,
+                  items: page.items.map((item) =>
+                    item.kind === input.item.kind && item.id === input.item.id
+                      ? { ...item, ...result, ...input.value }
+                      : item,
+                  ),
+                })),
+              }
+            : old,
+      );
       if (input.value.deleted) setUndo(input.item);
       else if (input.value.deleted === false) setUndo(undefined);
       closeSwipe();
@@ -107,7 +124,7 @@ function Inbox() {
           ))}
         </View>
       ) : null}
-      {!deleted ? <Text style={styles.hint}>左滑分類 · 右滑釘選或刪除</Text> : null}
+      {!deleted ? <Text style={styles.hint}>左滑主要與選項 · 右滑釘選或刪除</Text> : null}
       {undo && !deleted ? (
         <View style={styles.undo}>
           <Text numberOfLines={1} style={{ flex: 1 }}>
@@ -223,16 +240,14 @@ function Inbox() {
               ) : (
                 <>
                   <MenuItem
-                    icon="star-outline"
-                    label="移至主要"
-                    disabled={change.isPending || selected.inbox === 'primary'}
-                    onPress={() => update(selected, { inbox: 'primary' })}
-                  />
-                  <MenuItem
-                    icon="inbox-outline"
-                    label="移至一般"
-                    disabled={change.isPending || selected.inbox === 'general'}
-                    onPress={() => update(selected, { inbox: 'general' })}
+                    icon={selected.inbox === 'primary' ? 'star' : 'star-outline'}
+                    label={selected.inbox === 'primary' ? '取消主要' : '移至主要'}
+                    disabled={change.isPending}
+                    onPress={() =>
+                      update(selected, {
+                        inbox: selected.inbox === 'primary' ? 'general' : 'primary',
+                      })
+                    }
                   />
                   <MenuItem
                     icon="pin-outline"
@@ -307,17 +322,20 @@ function InboxRow({
       ) : (
         <>
           <SwipeAction
-            icon="star-outline"
+            icon={item.inbox === 'primary' ? 'star' : 'star-outline'}
             label="主要"
             disabled={busy || side !== 'right'}
-            onPress={() => act({ inbox: 'primary' })}
+            onPress={() => act({ inbox: item.inbox === 'primary' ? 'general' : 'primary' })}
           />
           <SwipeAction
-            icon="inbox-outline"
-            label="一般"
+            icon="dots-horizontal"
+            label="聊天室選項"
             secondary
             disabled={busy || side !== 'right'}
-            onPress={() => act({ inbox: 'general' })}
+            onPress={() => {
+              swipe.current?.close();
+              onMore();
+            }}
           />
         </>
       )}
@@ -340,13 +358,7 @@ function InboxRow({
         }}
         style={styles.rowButton}
       >
-        <View>
-          {item.kind !== 'stealth' ? (
-            <PostThumbnail post={item.post} size={80} />
-          ) : (
-            <Avatar name={item.peer_name} badge={item.peer_badge} size={54} />
-          )}
-        </View>
+        <InboxAvatar item={item} />
         <View style={styles.body}>
           <View style={styles.nameRow}>
             <Text numberOfLines={1} style={[styles.name, item.unread_count > 0 && styles.unread]}>
@@ -362,7 +374,7 @@ function InboxRow({
               : ''}
           </Text>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 6, marginLeft: 8 }}>
+        <View style={styles.metadata}>
           <Text style={styles.time}>{displayTimestamp(item.updated_at)}</Text>
           {item.unread_count > 0 ? (
             <View
@@ -385,11 +397,13 @@ function InboxRow({
           ) : null}
         </View>
       </Pressable>
-      <IconButton
-        icon={deleted ? 'restore' : 'dots-horizontal'}
-        label={deleted ? '復原聊天室' : '聊天室選項'}
-        onPress={deleted ? () => onChange({ deleted: false }) : onMore}
-      />
+      {deleted ? (
+        <IconButton
+          icon="restore"
+          label="復原聊天室"
+          onPress={() => onChange({ deleted: false })}
+        />
+      ) : null}
     </View>
   );
   return deleted ? (
@@ -454,11 +468,18 @@ function SwipeAction({
       onPress={onPress}
       style={[
         styles.swipeAction,
-        { backgroundColor: danger ? colors.danger : secondary ? colors.border : colors.yellow },
+        !danger && !secondary && yellowSurface,
+        { backgroundColor: danger ? colors.danger : secondary ? colors.surface : colors.yellow },
       ]}
     >
-      <MaterialCommunityIcons name={icon} size={22} color={danger ? '#fff' : colors.ink} />
-      <Text style={{ color: danger ? '#fff' : colors.ink }}>{label}</Text>
+      <MaterialCommunityIcons
+        name={icon}
+        size={22}
+        color={danger ? '#fff' : secondary ? colors.ink : colors.onYellow}
+      />
+      <Text style={{ color: danger ? '#fff' : secondary ? colors.ink : colors.onYellow }}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -481,15 +502,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   row: {
-    minHeight: 80,
-    paddingHorizontal: 14,
+    minHeight: 88,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  rowButton: { flex: 1, minWidth: 0, minHeight: 80, flexDirection: 'row', alignItems: 'center' },
+  rowButton: { flex: 1, minWidth: 0, minHeight: 64, flexDirection: 'row', alignItems: 'center' },
   unreadDot: {
     position: 'absolute',
     right: 0,
@@ -511,7 +531,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   unread: { color: colors.ink, fontWeight: '800' },
-  time: { color: colors.muted, fontSize: 12 },
+  metadata: {
+    alignSelf: 'stretch',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    marginLeft: 8,
+    minWidth: 64,
+  },
+  time: { color: colors.muted, fontSize: 11 },
   preview: { marginTop: 4, color: colors.muted, fontSize: 14 },
   end: { paddingVertical: 16, textAlign: 'center', color: colors.subtle, fontSize: 14 },
   swipeActions: { flex: 1, flexDirection: 'row', width: 152 },
