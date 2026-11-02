@@ -10,6 +10,7 @@ import { DeadlinePickerModal, formatDeadline, startOfDay } from '@/components/de
 import { LocationPicker } from '@/components/location-picker';
 import { coreApi, coreError, type CorePost } from '@/lib/core-api';
 import { invalidateCore, useCorePost } from '@/lib/core-hooks';
+import { usePostCacheSync } from '@/lib/core-post-cache';
 import { useAuthStore } from '@/store/auth-store';
 import type { PostLocation } from '@/types/domain';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -115,6 +116,7 @@ function PostForm({
     tags.length <= 10 &&
     tags.every((tag) => tag.length <= 40) &&
     !!location;
+  const sync = usePostCacheSync();
   const mutation = useMutation({
     mutationFn: () =>
       coreApi.edit(post.id, {
@@ -126,7 +128,8 @@ function PostForm({
         deadline_at: deadline.toISOString(),
         expected_version: version,
       }),
-    onSuccess: async () => {
+    onSuccess: async (updated) => {
+      sync.update(updated);
       await invalidateCore();
       if (useAuthStore.getState().user?.id === post.author_id) {
         if (router.canGoBack()) router.back();
@@ -137,6 +140,7 @@ function PostForm({
   const reload = useMutation({
     mutationFn: () => coreApi.post(post.id),
     onSuccess: async (updated) => {
+      sync.update(updated);
       setContent(updated.content);
       setTagText(updated.tags.join('、'));
       setCapacity(String(updated.capacity));

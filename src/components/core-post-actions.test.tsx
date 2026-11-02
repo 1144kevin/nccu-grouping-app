@@ -1,17 +1,29 @@
-import { afterEach, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+  skipToken,
+  type InfiniteData,
+} from '@tanstack/react-query';
 import { CorePostActions } from './core-post-actions';
-import { coreApi, type CorePost } from '@/lib/core-api';
+import { coreApi, type CorePost, type CorePostPage } from '@/lib/core-api';
 import { router } from 'expo-router';
 
 jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 
 jest.mock('@/lib/core-api', () => ({
-  coreApi: { requestJoin: jest.fn(), withdraw: jest.fn() },
+  coreApi: { requestJoin: jest.fn(), withdraw: jest.fn(), post: jest.fn() },
   coreError: () => '操作失敗',
 }));
 jest.mock('@/lib/core-hooks', () => ({ invalidateCore: jest.fn(async () => undefined) }));
+jest.mock('@/store/auth-store', () => ({
+  useAuthStore: Object.assign(
+    (select: (s: { user: { id: string } }) => unknown) => select({ user: { id: 'viewer' } }),
+    { getState: () => ({ user: { id: 'viewer' } }) },
+  ),
+}));
 jest.mock('@/lib/font-size-storage', () => ({
   fontSizeStorage: { getItem: jest.fn(() => null), setItem: jest.fn(), removeItem: jest.fn() },
 }));
@@ -35,6 +47,21 @@ const post: CorePost = {
   created_at: '2026-10-16T08:00:00Z',
 };
 
+const feedKey = ['core', 'viewer', 'recommendations', 1];
+function CachedFeedActions() {
+  const { data } = useQuery<InfiniteData<CorePostPage>>({ queryKey: feedKey, queryFn: skipToken });
+  return <CorePostActions post={data!.pages[0].items[0]} />;
+}
+function seedFeed(value = post) {
+  queryClient.setQueryData(feedKey, {
+    pages: [{ items: [value], next_cursor: null }],
+    pageParams: [undefined],
+  });
+}
+beforeEach(() => {
+  jest.mocked(coreApi.post).mockRejectedValue(new Error('follow-up read unavailable'));
+});
+
 afterEach(async () => {
   await act(async () => {
     queryClient.clear();
@@ -57,47 +84,67 @@ it('lets the host open management even after a post has closed', async () => {
 });
 
 it('submits an application instead of pretending a pending user already occupies a seat', async () => {
-  jest.mocked(coreApi.requestJoin).mockResolvedValue({} as never);
+  jest.mocked(coreApi.requestJoin).mockResolvedValue({ status: 'pending' } as never);
+  seedFeed();
   const screen = await render(
     <QueryClientProvider client={queryClient}>
-      <CorePostActions post={post} />
+      <CachedFeedActions />
     </QueryClientProvider>,
   );
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '想被揪' }));
   });
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: '想被揪' }).props.accessibilityState?.disabled).toBe(
-      false,
-    ),
+    expect(
+      screen.getByRole('button', { name: '取消申請' }).props.accessibilityState?.disabled,
+    ).toBe(false),
   );
   expect(coreApi.requestJoin).toHaveBeenCalledWith('p', 1);
   expect(coreApi.withdraw).not.toHaveBeenCalled();
-  await screen.rerender(
-    <QueryClientProvider client={queryClient}>
-      <CorePostActions post={{ ...post, my_status: 'pending' }} />
-    </QueryClientProvider>,
-  );
-  expect(screen.getByRole('button', { name: '取消申請' })).toBeTruthy();
+  expect(
+    queryClient.getQueryData<InfiniteData<CorePostPage>>(feedKey)?.pages[0].items[0].joined,
+  ).toBe(1);
+  jest.mocked(coreApi.withdraw).mockResolvedValue({ ...post, my_status: 'cancelled' });
+  await fireEvent.press(screen.getByRole('button', { name: '取消申請' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '想被揪' })).toBeTruthy());
 });
 
 it('lets an accepted participant leave a full group', async () => {
   jest.mocked(coreApi.withdraw).mockResolvedValue(post);
+  seedFeed({ ...post, status: 'full', joined: 2, my_status: 'accepted' });
   const screen = await render(
     <QueryClientProvider client={queryClient}>
-      <CorePostActions post={{ ...post, status: 'full', joined: 2, my_status: 'accepted' }} />
+      <CachedFeedActions />
     </QueryClientProvider>,
   );
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '退出並釋出名額' }));
   });
   await waitFor(() =>
-    expect(
-      screen.getByRole('button', { name: '退出並釋出名額' }).props.accessibilityState?.disabled,
-    ).toBe(false),
+    expect(screen.getByRole('button', { name: '想被揪' }).props.accessibilityState?.disabled).toBe(
+      false,
+    ),
   );
   expect(coreApi.withdraw).toHaveBeenCalledWith('p');
   expect(coreApi.requestJoin).not.toHaveBeenCalled();
+});
+
+it('keeps the original button state when the application fails', async () => {
+  seedFeed();
+  jest.mocked(coreApi.requestJoin).mockRejectedValueOnce(new Error('offline'));
+  const screen = await render(
+    <QueryClientProvider client={queryClient}>
+      <CachedFeedActions />
+    </QueryClientProvider>,
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '想被揪' }));
+  await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+  expect(screen.getByRole('button', { name: '想被揪' }).props.accessibilityState?.disabled).toBe(
+    false,
+  );
+  expect(
+    queryClient.getQueryData<InfiniteData<CorePostPage>>(feedKey)?.pages[0].items[0].my_status,
+  ).toBe('none');
 });
 
 it.each(['expired', 'cancelled'] as const)(

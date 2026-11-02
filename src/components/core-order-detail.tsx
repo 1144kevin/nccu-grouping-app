@@ -30,10 +30,12 @@ import {
 } from '@/lib/core-hooks';
 import { coreError, toFeedPost } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
+import { usePostCacheSync } from '@/lib/core-post-cache';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 
 export function CoreOrderDetail({ id }: { id: string }) {
+  const sync = usePostCacheSync();
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
   useEffect(() => {
@@ -55,7 +57,10 @@ export function CoreOrderDetail({ id }: { id: string }) {
   const requests = useCoreRequests(id, post?.my_status === 'host');
   const handoff = useMutation({
     mutationFn: () => socialApi.handoff(id),
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      if (!actor || useAuthStore.getState().user?.id !== actor) return;
+      sync.update(updated.post);
+      queryClient.setQueryData(['core', actor, 'order-summary', id], updated);
       void summary.refetch();
       void invalidateCore();
     },

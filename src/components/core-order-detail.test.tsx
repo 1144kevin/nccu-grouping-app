@@ -41,8 +41,11 @@ jest.mock('@/lib/core-api', () => ({
   toFeedPost: (p: object) => ({ ...p, name: '主揪小王', time: '剛剛', tags: [] }),
 }));
 jest.mock('@/store/auth-store', () => ({
-  useAuthStore: (selector: (s: object) => unknown) =>
-    selector({ user: { id: mockStatus === 'host' ? 'owner' : 'visitor' } }),
+  useAuthStore: Object.assign(
+    (selector: (s: object) => unknown) =>
+      selector({ user: { id: mockStatus === 'host' ? 'owner' : 'visitor' } }),
+    { getState: () => ({ user: { id: mockStatus === 'host' ? 'owner' : 'visitor' } }) },
+  ),
 }));
 jest.mock('@/lib/social-api', () => ({
   socialApi: { order: jest.fn(async () => ({ members: [], formed: true })), handoff: jest.fn() },

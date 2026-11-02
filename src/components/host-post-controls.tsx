@@ -5,13 +5,19 @@ import { AppText as Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
 import { coreApi, coreError, type CorePost } from '@/lib/core-api';
 import { invalidateCore } from '@/lib/core-hooks';
+import { usePostCacheSync } from '@/lib/core-post-cache';
 import { colors } from '@/theme/tokens';
 
 export function HostPostControls({ post }: { post: CorePost }) {
+  const sync = usePostCacheSync();
   const [confirm, setConfirm] = useState(false);
   const cancel = useMutation({
     mutationFn: () => coreApi.cancel(post.id),
-    onSettled: invalidateCore,
+    onSuccess: sync.update,
+    onSettled: () => {
+      void sync.refresh(post.id);
+      void invalidateCore();
+    },
   });
   if (post.my_status !== 'host') return null;
   const closed = post.status === 'expired' || post.status === 'cancelled';

@@ -103,7 +103,10 @@ export function useCoreRecommendations(active: boolean) {
   const query = useInfiniteQuery({
     queryKey: ['core', id, 'recommendations', preferences.data?.version],
     retry: (count, error) => !(isAxiosError(error) && error.response?.status === 409) && count < 1,
-    queryFn: ({ pageParam }) => engagementApi.recommendations(pageParam),
+    queryFn: async ({ pageParam }) => {
+      const page = await engagementApi.recommendations(pageParam);
+      return { ...page, items: recommendationCandidates(page.items) };
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next_cursor ?? undefined,
     enabled:
@@ -115,7 +118,9 @@ export function useCoreRecommendations(active: boolean) {
   });
   return {
     ...query,
-    posts: recommendationCandidates(query.data?.pages.flatMap((page) => page.items) ?? []),
+    // Existing cards keep their place when an action makes them full or closed.
+    // A manual refresh obtains the next eligible ranking from the server.
+    posts: query.data?.pages.flatMap((page) => page.items) ?? [],
     error: preferences.error ?? query.error,
     isPending: !preferences.error && (preferences.isPending || query.isPending),
     refetch: async () => {

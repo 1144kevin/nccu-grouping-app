@@ -20,6 +20,7 @@ import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/li
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { shortDate } from '@/components/list-ui';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
+import { usePostCacheSync } from '@/lib/core-post-cache';
 
 const statusLabels = { open: '進行中', full: '已額滿', expired: '已截止', cancelled: '已取消' };
 const decisionLabels = {
@@ -198,6 +199,7 @@ function MissingHostedGroup({ id }: { id: string }) {
   ) : null;
 }
 function HostedApplicants({ post }: { post: CorePost }) {
+  const sync = usePostCacheSync();
   const query = useCoreRequests(post.id);
   const [hidden, setHidden] = useState<string[]>([]);
   const decision = useMutation({
@@ -210,6 +212,7 @@ function HostedApplicants({ post }: { post: CorePost }) {
       setHidden((old) => old.filter((value) => value !== id));
     },
     onSettled: () => {
+      void sync.refresh(post.id);
       void invalidateCore();
     },
   });
@@ -304,9 +307,11 @@ export function RequestCard({
   closed: boolean;
   onDecision?: (status: 'accepted' | 'rejected') => void;
 }) {
+  const sync = usePostCacheSync();
   const mutation = useMutation({
     mutationFn: (status: 'accepted' | 'rejected') => coreApi.decide(request.id, status),
     onSettled: () => {
+      void sync.refresh(request.post_id);
       void invalidateCore();
     },
   });
