@@ -18,7 +18,7 @@ import {
 } from '@/components/primitives';
 import { coreApi, coreError, type CoreJoin, type CorePost } from '@/lib/core-api';
 import { invalidateCore, useCorePost, useCorePosts, useCoreRequests } from '@/lib/core-hooks';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { shortDate } from '@/components/list-ui';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
 import { usePostCacheSync } from '@/lib/core-post-cache';
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     justifyContent: 'center',
   },
-  orderTabActive: { backgroundColor: colors.yellow },
+  orderTabActive: { ...yellowSurface, backgroundColor: colors.yellow },
   tabLabel: { color: colors.muted, fontSize: 16 },
   tabLabelActive: { color: colors.ink, fontWeight: '700' },
   applicationGroup: { marginBottom: 28, gap: 8 },
@@ -440,6 +440,7 @@ const styles = StyleSheet.create({
   tabs: { padding: spacing.sm, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   attention: {
     padding: spacing.lg,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
     gap: spacing.md,
     borderBottomWidth: 1,

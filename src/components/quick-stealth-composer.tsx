@@ -18,7 +18,7 @@ import { createReplyVoice, type ReplyVoice } from '@/lib/reply-voice';
 import type { SpeechCapture } from '@/lib/post-speech.types';
 import { useAuthStore } from '@/store/auth-store';
 import { useStealthPreferencesStore } from '@/store/stealth-preferences-store';
-import { colors } from '@/theme/tokens';
+import { colors, yellowSurface } from '@/theme/tokens';
 
 type Props = {
   viewportHeight?: number;
@@ -700,6 +700,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
+    ...yellowSurface,
     backgroundColor: colors.yellow,
     alignItems: 'center',
     justifyContent: 'center',
@@ -742,6 +743,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
     alignItems: 'center',
     justifyContent: 'center',

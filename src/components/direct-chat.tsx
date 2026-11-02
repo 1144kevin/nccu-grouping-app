@@ -16,7 +16,7 @@ import { socialApi } from '@/lib/social-api';
 import { useChatOutbox } from '@/lib/chat-outbox';
 import type { ThreadMessage } from '@/lib/social-api';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius } from '@/theme/tokens';
+import { colors, radius, yellowSurface } from '@/theme/tokens';
 import { ChatSendButton } from './chat-controls';
 import { useChatDateIndicator } from './chat-date-indicator';
 import { displayTime } from '@/lib/display-time';
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: colors.surface,
   },
-  mineBubble: { backgroundColor: colors.yellow },
+  mineBubble: { ...yellowSurface, backgroundColor: colors.yellow },
   photoBubble: { backgroundColor: 'transparent', padding: 0, borderRadius: 0 },
   body: { color: colors.ink, fontSize: 16, lineHeight: 23 },
   time: { color: colors.muted, fontSize: 11 },

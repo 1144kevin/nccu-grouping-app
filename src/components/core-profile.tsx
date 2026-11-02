@@ -19,7 +19,7 @@ import { useCorePosts } from '@/lib/core-hooks';
 import { useExperience } from '@/lib/social-api';
 import { coreError, type CorePost } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { PostThumbnail } from './post-thumbnail';
 import { orderStateLabel } from '@/lib/order-state';
 import { displayTimestamp } from '@/lib/display-time';
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.surface,
   },
-  progress: { height: '100%', borderRadius: 4, backgroundColor: colors.yellow },
+  progress: { height: '100%', borderRadius: 4, ...yellowSurface, backgroundColor: colors.yellow },
   score: { color: colors.ink, fontSize: 13 },
   levels: { marginTop: 15, flexDirection: 'row', justifyContent: 'space-between' },
   levelItem: { alignItems: 'center', gap: 3 },

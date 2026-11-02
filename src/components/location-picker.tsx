@@ -14,7 +14,7 @@ import { searchPlaces, type PlaceResult } from '@/lib/place-search';
 import { useLocationStore } from '@/store/location-store';
 import { useAuthStore } from '@/store/auth-store';
 import type { Coordinates, PostLocation } from '@/types/domain';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 type Props = { value?: PostLocation; onChange: (value?: PostLocation) => void; disabled?: boolean };
 export function LocationPicker(props: Props) {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: colors.background,
   },
-  activeChip: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
+  activeChip: { borderColor: colors.yellow, ...yellowSurface, backgroundColor: colors.yellowSoft },
   chipLabel: { color: colors.ink, fontSize: 13 },
   smallButton: { minWidth: 36, minHeight: 34, alignItems: 'center', justifyContent: 'center' },
   toolButton: { minHeight: 38, paddingHorizontal: 12 },

@@ -8,7 +8,7 @@ import { Avatar, DetailHeader, PrimaryButton, Screen } from '@/components/primit
 import { coreApi, coreError, type CoreUser } from '@/lib/core-api';
 import { invalidateCore } from '@/lib/core-hooks';
 import { applyProfileUpdate, useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 import { pickPersonalImage } from '@/lib/pick-personal-image';
 import type { PickedPostImage } from '@/lib/pick-post-images';
 import { profileSocial } from '@/lib/profile-social';
@@ -229,6 +229,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  selected: { backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
+  selected: { ...yellowSurface, backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
   error: { color: colors.danger, fontSize: 14 },
 });

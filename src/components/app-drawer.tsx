@@ -4,7 +4,7 @@ import { AppText as Text } from '@/components/app-text';
 import { Avatar } from '@/components/primitives';
 import { selectUnreadNotificationCount, useAppStore } from '@/store/app-store';
 import { useNavigationStore } from '@/store/navigation-store';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
+    ...yellowSurface,
     backgroundColor: colors.yellow,
   },
   badgeText: { color: colors.ink, fontSize: 11, fontWeight: '700' },

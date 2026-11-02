@@ -20,7 +20,7 @@ import { socialApi, useInboxThreads, type InboxFilter, type InboxThread } from '
 import { coreError } from '@/lib/core-api';
 import { invalidateCore } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, typography } from '@/theme/tokens';
+import { colors, radius, typography, yellowSurface } from '@/theme/tokens';
 import { PostThumbnail } from './post-thumbnail';
 import { displayTimestamp } from '@/lib/display-time';
 
@@ -372,6 +372,7 @@ function InboxRow({
                 height: 22,
                 borderRadius: 11,
                 paddingHorizontal: 6,
+                ...yellowSurface,
                 backgroundColor: colors.yellow,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -470,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activeTab: { backgroundColor: colors.yellow },
+  activeTab: { ...yellowSurface, backgroundColor: colors.yellow },
   tabText: { color: colors.ink, fontSize: 16 },
   hint: {
     paddingHorizontal: 16,

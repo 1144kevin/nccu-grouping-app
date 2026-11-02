@@ -28,7 +28,7 @@ import {
   type StealthSemanticItem,
 } from '@/lib/stealth-api';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 const categories: [StealthCategory, string][] = [
   ['meal', '正餐'],
@@ -958,6 +958,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     padding: spacing.md,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
     borderRadius: radius.md,
     gap: spacing.sm,
@@ -982,7 +983,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
   },
-  selected: { backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
+  selected: { ...yellowSurface, backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
   field: { gap: 5 },
   input: {
     minHeight: 45,

@@ -9,7 +9,7 @@ import { AppHeader, Avatar, EmptyState, IconButton, Screen } from '@/components/
 import { sortedConversations } from '@/lib/conversations';
 import { useAppStore } from '@/store/app-store';
 import type { Conversation, InboxType } from '@/types/domain';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { CoreInbox } from '@/components/core-chat';
 
@@ -363,7 +363,7 @@ function MenuButton({
 const styles = StyleSheet.create({
   tabs: { height: 52, paddingHorizontal: 34, flexDirection: 'row', alignItems: 'center', gap: 9 },
   tab: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 17 },
-  activeTab: { backgroundColor: colors.yellow },
+  activeTab: { ...yellowSurface, backgroundColor: colors.yellow },
   tabText: { color: colors.ink, fontFamily: typography.regular, fontSize: 15 },
   hint: { paddingHorizontal: 20, paddingBottom: 10, color: colors.muted, fontSize: 13 },
   row: {

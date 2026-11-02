@@ -3,7 +3,7 @@ import { AppText as Text, AppTextInput as TextInput } from '@/components/app-tex
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
 import { IconButton, PrimaryButton } from '@/components/primitives';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 
 export { createInitialDeadline, startOfDay, formatDeadline } from '@/lib/deadline-time';
 
@@ -257,7 +257,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.background,
   },
-  dateOptionSelected: { borderColor: colors.yellow, backgroundColor: colors.yellow },
+  dateOptionSelected: {
+    borderColor: colors.yellow,
+    ...yellowSurface,
+    backgroundColor: colors.yellow,
+  },
   dateWeekday: { color: colors.muted, fontFamily: typography.regular, fontSize: 13 },
   dateNumber: {
     color: colors.ink,

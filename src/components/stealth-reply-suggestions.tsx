@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { stealthApi } from '@/lib/stealth-api';
-import { colors, spacing } from '@/theme/tokens';
+import { colors, spacing, yellowSurface } from '@/theme/tokens';
 
 export function StealthReplySuggestions({
   id,
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
   },
   reply: { color: colors.ink, fontSize: 14, lineHeight: 21 },

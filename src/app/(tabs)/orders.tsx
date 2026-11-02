@@ -7,7 +7,7 @@ import { useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { CoreOrdersScreen } from '@/components/core-order-screens';
 import type { JoinRequest } from '@/types/domain';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 
 type OrderTab = 'hosted' | 'interested';
 
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '700',
   },
-  acceptButton: { backgroundColor: colors.yellow },
+  acceptButton: { ...yellowSurface, backgroundColor: colors.yellow },
   acceptText: { color: colors.ink },
   acceptedButton: { backgroundColor: '#E8F4EC' },
   acceptedText: { color: colors.success },

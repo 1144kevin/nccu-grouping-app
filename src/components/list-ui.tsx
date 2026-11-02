@@ -8,7 +8,7 @@ import { Avatar, Pill } from '@/components/primitives';
 import { CorePostGallery } from '@/components/post-photo-carousel';
 import type { CorePost } from '@/lib/core-api';
 import { formatPrice } from '@/lib/price';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { orderStateLabel } from '@/lib/order-state';
 import { displayTimestamp } from '@/lib/display-time';
 
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  attention: { backgroundColor: colors.yellowSoft },
+  attention: { ...yellowSurface, backgroundColor: colors.yellowSoft },
   author: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   identity: { flex: 1, minWidth: 0, gap: 3 },
   name: { color: colors.ink, fontSize: 15, fontFamily: typography.rounded, fontWeight: '700' },

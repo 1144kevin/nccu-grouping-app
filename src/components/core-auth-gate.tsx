@@ -9,7 +9,7 @@ import { beginGoogleSignIn, clearGoogleCallback } from '@/lib/google-login';
 import { onUnauthorized } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppStore } from '@/store/app-store';
-import { colors, spacing } from '@/theme/tokens';
+import { colors, spacing, yellowSurface } from '@/theme/tokens';
 import { AccountDeletionRecovery } from '@/components/core-account-deletion';
 import { APPLE_INTAKE_TRIAL } from '@/lib/apple-intake';
 import { AppleIntakeTrialScreen } from '@/components/apple-intake-trial';
@@ -259,6 +259,7 @@ const styles = StyleSheet.create({
     width: 86,
     height: 86,
     borderRadius: 28,
+    ...yellowSurface,
     backgroundColor: colors.yellow,
     alignItems: 'center',
     justifyContent: 'center',

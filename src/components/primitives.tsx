@@ -2,7 +2,7 @@ import { AppText as Text } from '@/components/app-text';
 import { BrandLogo } from '@/components/brand-logo';
 import { PageLoading } from '@/components/page-loading';
 import { useNavigationStore } from '@/store/navigation-store';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface, neutralSurface } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
 import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
@@ -231,7 +231,9 @@ export function Pill({
           color={tone === 'plain' ? colors.yellow : colors.ink}
         />
       )}
-      <Text style={styles.pillText}>{children}</Text>
+      <Text style={[styles.pillText, tone === 'success' && { color: colors.success }]}>
+        {children}
+      </Text>
     </View>
   );
 }
@@ -265,6 +267,7 @@ export function PrimaryButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.primaryButton,
+        !secondary && yellowSurface,
         secondary && styles.secondaryButton,
         (disabled || loading) && styles.disabledButton,
         style,
@@ -288,6 +291,7 @@ export function PrimaryButton({
           style={[
             styles.primaryButtonText,
             { color: secondary ? colors.ink : colors.onYellow },
+            (disabled || loading) && { color: colors.muted },
             textColor ? { color: textColor } : undefined,
           ]}
         >
@@ -375,7 +379,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.background,
   },
-  pillYellow: { borderColor: colors.yellow, backgroundColor: colors.yellowSoft },
+  pillYellow: { borderColor: colors.yellow, ...yellowSurface, backgroundColor: colors.yellowSoft },
   pillDanger: { borderColor: colors.danger, backgroundColor: colors.dangerSoft },
   pillSuccess: { borderColor: colors.success, backgroundColor: colors.successSoft },
   pillText: { fontFamily: typography.regular, fontSize: 14, color: colors.ink },
@@ -387,8 +391,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.yellow,
   },
-  secondaryButton: { backgroundColor: colors.surface },
-  disabledButton: { backgroundColor: colors.surface },
+  secondaryButton: { ...neutralSurface, backgroundColor: colors.surface },
+  disabledButton: { ...neutralSurface, backgroundColor: colors.surface },
   primaryButtonText: {
     fontFamily: typography.rounded,
     fontSize: 16,

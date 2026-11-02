@@ -2,7 +2,7 @@ import { AppText as Text } from '@/components/app-text';
 import type { ComponentProps, PropsWithChildren } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 export function SettingField({
   icon,
@@ -36,6 +36,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.sm,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
     alignItems: 'center',
     justifyContent: 'center',

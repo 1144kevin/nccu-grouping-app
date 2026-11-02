@@ -15,6 +15,9 @@ export const lightColors = {
   dangerSoft: '#FFF0F0',
   success: '#327A51',
   successSoft: '#EDF8F1',
+  chatInput: '#FFFFFF',
+  chatInputText: '#171717',
+  chatPlaceholder: '#A8A59D',
 } as const;
 
 export const darkColors: Record<keyof typeof lightColors, string> = {
@@ -25,13 +28,39 @@ export const darkColors: Record<keyof typeof lightColors, string> = {
   subtle: '#96958E',
   surface: '#242623',
   border: '#383A35',
-  yellowSoft: '#49421D',
+  yellowSoft: '#FFF1A8',
   brown: '#D3B18A',
   danger: '#FF8484',
   dangerSoft: '#452929',
   success: '#84CBA1',
-  successSoft: '#203C2B',
+  successSoft: '#171817',
+  chatInput: '#FFD700',
+  chatInputText: '#171717',
+  chatPlaceholder: '#555044',
 };
+
+// Scope text tokens to the actual yellow surface; nested labels/icons stay legible.
+export const yellowSurface = (
+  Platform.OS === 'web'
+    ? {
+        '--app-ink': '#171717',
+        '--app-muted': '#171717',
+        '--app-subtle': '#171717',
+        '--app-brown': '#171717',
+      }
+    : {}
+) as Record<never, never>;
+
+export const neutralSurface = (
+  Platform.OS === 'web'
+    ? {
+        '--app-ink': 'var(--app-base-ink, #171717)',
+        '--app-muted': 'var(--app-base-muted, #77756F)',
+        '--app-subtle': 'var(--app-base-subtle, #A8A59D)',
+        '--app-brown': 'var(--app-base-brown, #8B6847)',
+      }
+    : {}
+) as Record<never, never>;
 
 // React Native Web preserves CSS variables, so existing StyleSheets follow theme changes.
 export const colors = Object.fromEntries(

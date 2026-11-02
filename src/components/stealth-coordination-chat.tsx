@@ -21,7 +21,7 @@ import type { StealthRoomMessage } from '@/lib/stealth-api';
 import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, spacing } from '@/theme/tokens';
+import { colors, spacing, yellowSurface } from '@/theme/tokens';
 
 export function StealthCoordinationChat({ id }: { id: string }) {
   const actor = useAuthStore((s) => s.user?.id);
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: '90%',
   },
-  mine: { backgroundColor: colors.yellowSoft, alignSelf: 'flex-end' },
+  mine: { ...yellowSurface, backgroundColor: colors.yellowSoft, alignSelf: 'flex-end' },
   photoMessage: { backgroundColor: 'transparent', padding: 0 },
   body: { fontSize: 16, color: colors.ink, lineHeight: 24 },
   hint: { color: colors.muted, fontSize: 12 },

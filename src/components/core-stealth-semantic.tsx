@@ -17,7 +17,7 @@ import {
   semanticReasonLabels,
 } from '@/lib/stealth-semantic';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 function StealthSemanticSession({
   matches,
@@ -272,6 +272,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
     borderRadius: radius.md,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
   },
   title: { fontSize: 17, fontWeight: '700', color: colors.ink, lineHeight: 25 },

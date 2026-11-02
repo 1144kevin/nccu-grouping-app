@@ -20,7 +20,7 @@ import { QuickStealthComposer } from '@/components/quick-stealth-composer';
 import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
-import { colors } from '@/theme/tokens';
+import { colors, yellowSurface } from '@/theme/tokens';
 import { displayTimestamp } from '@/lib/display-time';
 
 export function QuickStealthScreen() {
@@ -421,6 +421,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -475,7 +476,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  partner: { backgroundColor: colors.yellowSoft, marginLeft: -12 },
+  partner: { ...yellowSurface, backgroundColor: colors.yellowSoft, marginLeft: -12 },
   footnote: {
     fontSize: 12,
     lineHeight: 21,

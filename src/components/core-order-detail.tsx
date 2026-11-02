@@ -33,7 +33,7 @@ import { socialApi } from '@/lib/social-api';
 import { usePostCacheSync } from '@/lib/core-post-cache';
 import { orderStateLabel } from '@/lib/order-state';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 
 export function CoreOrderDetail({ id }: { id: string }) {
   const sync = usePostCacheSync();
@@ -233,7 +233,11 @@ function Step({ done, label, last = false }: { done: boolean; label: string; las
         <View style={[styles.dot, done && styles.dotDone]}>
           {done ? <MaterialCommunityIcons name="check" size={11} color={colors.ink} /> : null}
         </View>
-        {!last ? <View style={[styles.line, done && { backgroundColor: colors.yellow }]} /> : null}
+        {!last ? (
+          <View
+            style={[styles.line, done && { ...yellowSurface, backgroundColor: colors.yellow }]}
+          />
+        ) : null}
       </View>
       <Text style={[styles.stepText, done && { color: colors.ink, fontWeight: '600' }]}>
         {label}
@@ -281,7 +285,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     backgroundColor: colors.background,
   },
-  dotDone: { borderColor: colors.yellow, backgroundColor: colors.yellow },
+  dotDone: { borderColor: colors.yellow, ...yellowSurface, backgroundColor: colors.yellow },
   line: {
     position: 'absolute',
     top: 10,

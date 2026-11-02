@@ -13,7 +13,7 @@ import { CoreSemanticFeed } from '@/components/core-semantic-feed';
 import { coreApi, coreError, toFeedPost, type CorePost, type CoreSearchItem } from '@/lib/core-api';
 import { useCorePosts, useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 
 type Scope = 'all' | 'posts' | 'semantic' | 'users' | 'messages' | 'history';
 const scopes: [Scope, string][] = [
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
   },
-  filterActive: { backgroundColor: colors.yellow },
+  filterActive: { ...yellowSurface, backgroundColor: colors.yellow },
   filterText: { color: colors.muted, fontSize: 14 },
   filterTextActive: { color: colors.ink, fontWeight: '700' },
   toggle: {

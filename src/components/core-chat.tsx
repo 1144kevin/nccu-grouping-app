@@ -18,7 +18,7 @@ import { useChatOutbox } from '@/lib/chat-outbox';
 import type { CoreMessage } from '@/lib/core-api';
 import { chatMessagesNewestFirst } from '@/lib/chat-message-pages';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 import { ChatSendButton } from './chat-controls';
 import { useChatDateIndicator } from './chat-date-indicator';
 import { displayTime } from '@/lib/display-time';
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: 22,
   },
-  mineBubble: { backgroundColor: colors.yellow },
+  mineBubble: { ...yellowSurface, backgroundColor: colors.yellow },
   photoBubble: { backgroundColor: 'transparent', padding: 0, borderRadius: 0 },
   body: { color: colors.ink, fontSize: 16, lineHeight: 24 },
   composer: {

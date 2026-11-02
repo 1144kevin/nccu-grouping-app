@@ -19,7 +19,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { DraftImageManager } from '@/components/core-post-image';
 import { AccountDeletionPanel } from '@/components/core-account-deletion';
 import { CloudBlockList } from '@/components/core-user-blocks';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 const options: [keyof NotificationPreferences, string, string][] = [
   ['joinRequests', '拼單申請提示', '顯示待審申請數'],
@@ -174,7 +174,10 @@ export function PreferencesForm({
                 onPress={() => toggle(tag)}
                 style={[
                   styles.choice,
-                  selected.includes(tag) && { backgroundColor: colors.yellowSoft },
+                  selected.includes(tag) && {
+                    ...yellowSurface,
+                    backgroundColor: colors.yellowSoft,
+                  },
                 ]}
               >
                 <Text style={styles.body}>

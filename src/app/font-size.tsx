@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { DetailHeader, Screen } from '@/components/primitives';
 import { fontSizes, useFontSizeStore, type FontSize } from '@/store/font-size-store';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 import { useAppearanceStore, type ColorMode } from '@/store/appearance-store';
 
 export default function FontSizeScreen() {
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   optionText: { color: colors.ink, fontSize: 16, fontWeight: '600' },
-  selected: { backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
+  selected: { ...yellowSurface, backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
   pressed: { opacity: 0.6 },
   heading: {
     marginTop: spacing.xl,

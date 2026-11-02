@@ -12,9 +12,10 @@ export function AppearanceController() {
     if (Platform.OS !== 'web') return;
     const palette = dark ? darkColors : lightColors;
     const root = document.documentElement;
-    Object.entries(palette).forEach(([key, value]) =>
-      root.style.setProperty(`--app-${key}`, value),
-    );
+    Object.entries(palette).forEach(([key, value]) => {
+      root.style.setProperty(`--app-${key}`, value);
+      root.style.setProperty(`--app-base-${key}`, value);
+    });
     root.style.colorScheme = dark ? 'dark' : 'light';
     root.style.setProperty('--app-logo-filter', dark ? 'invert(1)' : 'none');
     document.body.style.backgroundColor = palette.background;

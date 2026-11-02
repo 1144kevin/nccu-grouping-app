@@ -4,7 +4,7 @@ import { CorePostImage } from './core-post-image';
 import { AppText as Text } from './app-text';
 import { useAuthStore } from '@/store/auth-store';
 import type { CorePost } from '@/lib/core-api';
-import { colors } from '@/theme/tokens';
+import { colors, yellowSurface } from '@/theme/tokens';
 
 export function PostThumbnail({ post, size = 56 }: { post: CorePost; size?: number }) {
   const actor = useAuthStore((s) => s.user?.id);
@@ -42,6 +42,7 @@ export function PostThumbnail({ post, size = 56 }: { post: CorePost; size?: numb
             left: -22,
             width: 78,
             height: 18,
+            ...yellowSurface,
             backgroundColor: colors.yellow,
             transform: [{ rotate: '-45deg' }],
             alignItems: 'center',

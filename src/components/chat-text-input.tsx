@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Platform, type TextInput, type TextInputProps } from 'react-native';
 import { AppTextInput } from '@/components/app-text';
+import { colors } from '@/theme/tokens';
 
 const clamp = (height: number) => Math.min(120, Math.max(40, Math.ceil(height)));
 export function ChatTextInput({
@@ -25,6 +26,7 @@ export function ChatTextInput({
       {...props}
       ref={input}
       value={value}
+      placeholderTextColor={colors.chatPlaceholder}
       multiline
       numberOfLines={1}
       onContentSizeChange={(event) => {
@@ -36,6 +38,9 @@ export function ChatTextInput({
         style,
         {
           minHeight: 40,
+          backgroundColor: colors.chatInput,
+          color: colors.chatInputText,
+          borderRadius: 18,
           maxHeight: 120,
           height: value ? height : 40,
           paddingVertical: 7,

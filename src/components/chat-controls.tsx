@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, View } from 'react-native';
-import { colors } from '@/theme/tokens';
+import { colors, yellowSurface } from '@/theme/tokens';
 
 export function ChatSendButton({
   onPress,
@@ -22,6 +22,7 @@ export function ChatSendButton({
         width: 42,
         height: 42,
         borderRadius: 21,
+        ...yellowSurface,
         backgroundColor: colors.yellow,
         alignItems: 'center',
         justifyContent: 'center',

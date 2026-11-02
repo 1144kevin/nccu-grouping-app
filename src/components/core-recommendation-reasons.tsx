@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import type { CorePost } from '@/lib/core-api';
-import { colors, radius, spacing } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 export function CoreRecommendationReasons({ post }: { post: CorePost }) {
   const info = post.recommendation;
@@ -34,6 +34,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    ...yellowSurface,
     backgroundColor: colors.yellowSoft,
     borderRadius: radius.pill,
   },

@@ -7,7 +7,7 @@ import { KeyboardViewport } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar, IconButton } from '@/components/primitives';
 import { useAppStore } from '@/store/app-store';
-import { colors, radius, spacing, typography } from '@/theme/tokens';
+import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { CoreGroupChat } from '@/components/core-chat';
 
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.surface,
   },
-  mineBubble: { backgroundColor: colors.yellow },
+  mineBubble: { ...yellowSurface, backgroundColor: colors.yellow },
   messageText: { color: colors.ink, fontFamily: typography.regular, fontSize: 16, lineHeight: 23 },
   sentAt: { marginTop: 3, color: colors.subtle, fontSize: 12 },
   composer: {
