@@ -73,7 +73,7 @@ export function BurgerShowerProvider({ children }: PropsWithChildren) {
       animations.current.forEach((animation) => animation.stop());
       animations.current.clear();
       setParticles([]);
-    }, 10000);
+    }, 5000);
   }, [height, width]);
   const onLogoPress = useCallback(() => {
     const now = Date.now();
