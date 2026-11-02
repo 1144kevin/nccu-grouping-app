@@ -342,7 +342,7 @@ function InboxRow({
       >
         <View>
           {item.kind !== 'stealth' ? (
-            <PostThumbnail post={item.post} size={54} />
+            <PostThumbnail post={item.post} size={80} />
           ) : (
             <Avatar name={item.peer_name} badge={item.peer_badge} size={54} />
           )}
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   row: {
-    minHeight: 96,
+    minHeight: 80,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  rowButton: { flex: 1, minWidth: 0, minHeight: 96, flexDirection: 'row', alignItems: 'center' },
+  rowButton: { flex: 1, minWidth: 0, minHeight: 80, flexDirection: 'row', alignItems: 'center' },
   unreadDot: {
     position: 'absolute',
     right: 0,
