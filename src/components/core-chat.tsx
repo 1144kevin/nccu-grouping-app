@@ -19,6 +19,10 @@ import type { CoreMessage } from '@/lib/core-api';
 import { chatMessagesNewestFirst } from '@/lib/chat-message-pages';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { ChatSendButton } from './chat-controls';
+import { useChatDateIndicator } from './chat-date-indicator';
+import { displayTime } from '@/lib/display-time';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export { UnifiedInbox as CoreInbox } from '@/components/unified-inbox';
 
@@ -28,6 +32,7 @@ export function CoreGroupChat({ id }: { id: string }) {
 }
 
 function GroupChat({ id }: { id: string }) {
+  const dates = useChatDateIndicator();
   const user = useAuthStore((state) => state.user);
   const focused = useCoreScreenFocused();
   const [text, setText] = useState('');
@@ -107,28 +112,17 @@ function GroupChat({ id }: { id: string }) {
   return (
     <Screen>
       <DetailHeader
-        sideWidth={80}
         title={
           query.data?.pages[0]?.post
             ? `【群組】${query.data.pages[0].post.content.split('\n')[0]}`
             : '拼單聊天室'
         }
         right={
-          <View style={{ flexDirection: 'row' }}>
-            <IconButton
-              icon="clipboard-check-outline"
-              label="拼單詳情與完成訂單"
-              onPress={() => router.push(`/order/${id}`)}
-            />
-            <IconButton
-              icon="refresh"
-              label="重新整理訊息"
-              disabled={query.isFetching}
-              onPress={() => {
-                void query.refetch();
-              }}
-            />
-          </View>
+          <IconButton
+            icon="file-document-outline"
+            label="查看拼單詳情"
+            onPress={() => router.push(`/order/${id}`)}
+          />
         }
       />
       {!current || denied ? (
@@ -154,16 +148,6 @@ function GroupChat({ id }: { id: string }) {
       ) : (
         <View style={{ flex: 1 }}>
           <KeyboardViewport>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="查看這筆拼單"
-              style={styles.topic}
-              onPress={() => router.push(`/order/${id}`)}
-            >
-              <Text numberOfLines={2} style={styles.title}>
-                {current.post.content.split('\n')[0]}
-              </Text>
-            </Pressable>
             {current.post.is_demo ? (
               <Text style={styles.note}>
                 示範聊天室：訊息會存入開發資料庫，沒有真實訂購。示範人物不會自動回覆。
@@ -174,87 +158,96 @@ function GroupChat({ id }: { id: string }) {
                 {coreError(query.error)}
               </Text>
             ) : null}
-            <FlatList
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              inverted
-              data={messages}
-              keyExtractor={(message) => message.id}
-              contentContainerStyle={styles.list}
-              ListEmptyComponent={<Text style={styles.muted}>還沒有訊息，開始協調取餐吧。</Text>}
-              ListFooterComponent={
-                query.hasNextPage ? (
-                  <PrimaryButton
-                    secondary
-                    disabled={query.isFetchingNextPage}
-                    onPress={() => {
-                      void query.fetchNextPage();
-                    }}
-                  >
-                    載入較早訊息
-                  </PrimaryButton>
-                ) : null
-              }
-              renderItem={({ item }) =>
-                item.event_kind ? (
-                  <Text
-                    style={{
-                      textAlign: 'center',
-                      color: colors.muted,
-                      fontSize: 12,
-                      paddingVertical: 8,
-                    }}
-                  >
-                    {item.content}
-                  </Text>
-                ) : (
-                  <View style={[styles.message, item.sender_id === user?.id && styles.mine]}>
-                    <View style={styles.sender}>
-                      <Avatar name={item.sender_name} badge={item.sender_badge} size={28} />
-                      <Text style={styles.muted}>{item.sender_name}</Text>
-                      <ReputationBadge level={item.sender_level} />
-                    </View>
-                    <View
-                      style={[
-                        styles.bubble,
-                        item.sender_id === user?.id && styles.mineBubble,
-                        item.image_id && styles.photoBubble,
-                      ]}
+            <View style={{ flex: 1 }}>
+              <FlatList
+                onViewableItemsChanged={dates.onViewableItemsChanged}
+                onScroll={dates.onScroll}
+                scrollEventThrottle={100}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                inverted
+                data={messages}
+                keyExtractor={(message) => message.id}
+                contentContainerStyle={styles.list}
+                ListFooterComponent={
+                  query.hasNextPage ? (
+                    <PrimaryButton
+                      secondary
+                      disabled={query.isFetchingNextPage}
+                      onPress={() => {
+                        void query.fetchNextPage();
+                      }}
                     >
-                      {item.image_id ? (
-                        <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
-                      ) : (
-                        <Text style={styles.body}>{item.content}</Text>
-                      )}
-                    </View>
-                    {item.delivery ? (
-                      item.delivery === 'sending' ? (
-                        <InlineLoading label="傳送中" textStyle={styles.muted} />
-                      ) : (
-                        <Text style={styles.muted}>尚未送出，請重試</Text>
-                      )
-                    ) : null}
-                    <Text style={styles.muted}>
-                      {new Date(item.created_at).toLocaleString('zh-TW')}
+                      載入較早訊息
+                    </PrimaryButton>
+                  ) : null
+                }
+                renderItem={({ item }) =>
+                  item.event_kind ? (
+                    <Text
+                      style={{
+                        textAlign: 'center',
+                        color: colors.muted,
+                        fontSize: 12,
+                        paddingVertical: 8,
+                      }}
+                    >
+                      {item.content}
                     </Text>
-                    {item.sender_id !== user?.id ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="檢舉這則訊息"
-                        onPress={() =>
-                          router.push({
-                            pathname: '/report',
-                            params: { kind: 'message', targetId: item.id },
-                          })
-                        }
+                  ) : (
+                    <View style={[styles.message, item.sender_id === user?.id && styles.mine]}>
+                      {item.sender_id !== user?.id ? (
+                        <View style={styles.sender}>
+                          <Avatar name={item.sender_name} badge={item.sender_badge} size={28} />
+                          <Text style={styles.muted}>{item.sender_name}</Text>
+                          <ReputationBadge level={item.sender_level} />
+                        </View>
+                      ) : null}
+                      <View
+                        style={[
+                          styles.bubble,
+                          item.sender_id === user?.id && styles.mineBubble,
+                          item.image_id && styles.photoBubble,
+                        ]}
                       >
-                        <Text style={styles.muted}>檢舉這則訊息</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                )
-              }
-            />
+                        {item.image_id ? (
+                          <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
+                        ) : (
+                          <Text style={styles.body}>{item.content}</Text>
+                        )}
+                      </View>
+                      {item.delivery ? (
+                        item.delivery === 'sending' ? (
+                          <InlineLoading label="傳送中" textStyle={styles.muted} />
+                        ) : (
+                          <Text style={styles.muted}>尚未送出，請重試</Text>
+                        )
+                      ) : null}
+                      <Text style={styles.muted}>{displayTime(item.created_at)}</Text>
+                      {item.sender_id !== user?.id ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="檢舉這則訊息"
+                          onPress={() =>
+                            router.push({
+                              pathname: '/report',
+                              params: { kind: 'message', targetId: item.id },
+                            })
+                          }
+                        >
+                          <MaterialCommunityIcons
+                            name="flag-outline"
+                            size={14}
+                            color={colors.subtle}
+                          />
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  )
+                }
+              />
+              {dates.indicator}
+            </View>
             {mutation.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 {coreError(mutation.error)} 內容已保留，可重試。
@@ -285,13 +278,11 @@ function GroupChat({ id }: { id: string }) {
                   editable={!mutation.isPending}
                   style={styles.input}
                 />
-                <PrimaryButton
+                <ChatSendButton
                   disabled={!text.trim() || mutation.isPending}
                   onPress={send}
                   loading={mutation.isPending}
-                >
-                  {mutation.isPending ? '傳送中' : '傳送'}
-                </PrimaryButton>
+                />
               </ChatComposer>
             ) : (
               <Text style={styles.note}>拼單已取消，聊天室只供查看紀錄。</Text>
@@ -383,7 +374,7 @@ const styles = StyleSheet.create({
     maxWidth: '88%',
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: 22,
   },
   mineBubble: { backgroundColor: colors.yellow },
   photoBubble: { backgroundColor: 'transparent', padding: 0, borderRadius: 0 },

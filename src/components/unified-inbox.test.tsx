@@ -75,6 +75,8 @@ it('uses post titles for DMs and separates group and private tabs', async () => 
   const screen = await render(ui());
   expect(screen.getByText('【私訊】活動剩餘便當')).toBeTruthy();
   expect(screen.getByText('小安：請問可以少飯嗎？')).toBeTruthy();
+  expect(screen.getByLabelText('未讀 1 則')).toBeTruthy();
+  expect(screen.queryByText('還沒有訊息')).toBeNull();
   expect(screen.getByRole('tab', { name: '主要' })).toBeTruthy();
   expect(screen.queryByText('一般 · 主揪名字')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: '開啟 【私訊】活動剩餘便當' }));

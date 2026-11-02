@@ -17,12 +17,16 @@ import { useChatOutbox } from '@/lib/chat-outbox';
 import type { ThreadMessage } from '@/lib/social-api';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius } from '@/theme/tokens';
+import { ChatSendButton } from './chat-controls';
+import { useChatDateIndicator } from './chat-date-indicator';
+import { displayTime } from '@/lib/display-time';
 
 export function DirectChat({ id }: { id: string }) {
   const actor = useAuthStore((s) => s.user?.id);
   return <Chat key={`${actor}:${id}`} id={id} actor={actor} />;
 }
 function Chat({ id, actor }: { id: string; actor?: string }) {
+  const dates = useChatDateIndicator();
   const focused = useCoreScreenFocused();
   const [text, setText] = useState('');
   const draft = useRef<{ content: string; key: string } | null>(null);
@@ -93,11 +97,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   return (
     <Screen>
       <DetailHeader
-        title={page ? `【私訊】${page.thread.post.content.split('\n')[0]}` : '私訊'}
+        title={page?.thread.peer_name ?? '私訊'}
         right={
           page ? (
             <IconButton
-              icon="text-box-outline"
+              icon="file-document-outline"
               label="查看拼單詳情"
               onPress={() => router.push(`/order/${page.thread.post.id}`)}
             />
@@ -105,13 +109,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         }
       />
       <KeyboardViewport>
-        {page ? (
-          <View style={styles.peer}>
-            <Avatar name={page.thread.peer_name} badge={page.thread.peer_badge} size={34} />
-            <Text style={styles.peerName}>{page.thread.peer_name}</Text>
-            <ReputationBadge level={page.thread.peer_level} />
-          </View>
-        ) : null}
         {query.error ? (
           <View>
             <Text accessibilityRole="alert" style={styles.error}>
@@ -130,61 +127,64 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         {query.isPending ? (
           <PageLoading />
         ) : (
-          <FlatList
-            inverted
-            data={query.error ? [] : messages}
-            keyExtractor={(m) => m.id}
-            contentContainerStyle={styles.messages}
-            keyboardShouldPersistTaps="handled"
-            ListFooterComponent={
-              query.hasNextPage ? (
-                <PrimaryButton
-                  secondary
-                  disabled={query.isFetchingNextPage}
-                  onPress={() => {
-                    void query.fetchNextPage();
-                  }}
-                >
-                  較早訊息
-                </PrimaryButton>
-              ) : null
-            }
-            renderItem={({ item }) => (
-              <View style={[styles.message, item.sender_id === actor && styles.mine]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Avatar name={item.sender_name} badge={item.sender_badge} size={26} />
-                  <Text style={styles.sender}>{item.sender_name}</Text>
-                  <ReputationBadge level={item.sender_level} />
+          <View style={{ flex: 1 }}>
+            <FlatList
+              onViewableItemsChanged={dates.onViewableItemsChanged}
+              onScroll={dates.onScroll}
+              scrollEventThrottle={100}
+              inverted
+              data={query.error ? [] : messages}
+              keyExtractor={(m) => m.id}
+              contentContainerStyle={styles.messages}
+              keyboardShouldPersistTaps="handled"
+              ListFooterComponent={
+                query.hasNextPage ? (
+                  <PrimaryButton
+                    secondary
+                    disabled={query.isFetchingNextPage}
+                    onPress={() => {
+                      void query.fetchNextPage();
+                    }}
+                  >
+                    較早訊息
+                  </PrimaryButton>
+                ) : null
+              }
+              renderItem={({ item }) => (
+                <View style={[styles.message, item.sender_id === actor && styles.mine]}>
+                  {item.sender_id !== actor ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Avatar name={item.sender_name} badge={item.sender_badge} size={26} />
+                      <Text style={styles.sender}>{item.sender_name}</Text>
+                      <ReputationBadge level={item.sender_level} />
+                    </View>
+                  ) : null}
+                  <View
+                    style={[
+                      styles.bubble,
+                      item.sender_id === actor && styles.mineBubble,
+                      item.image_id && styles.photoBubble,
+                    ]}
+                  >
+                    {item.image_id ? (
+                      <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
+                    ) : (
+                      <Text style={styles.body}>{item.content}</Text>
+                    )}
+                  </View>
+                  {item.delivery ? (
+                    item.delivery === 'sending' ? (
+                      <InlineLoading label="傳送中" textStyle={styles.time} />
+                    ) : (
+                      <Text style={styles.time}>尚未送出，請重試</Text>
+                    )
+                  ) : null}
+                  <Text style={styles.time}>{displayTime(item.created_at)}</Text>
                 </View>
-                <View
-                  style={[
-                    styles.bubble,
-                    item.sender_id === actor && styles.mineBubble,
-                    item.image_id && styles.photoBubble,
-                  ]}
-                >
-                  {item.image_id ? (
-                    <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
-                  ) : (
-                    <Text style={styles.body}>{item.content}</Text>
-                  )}
-                </View>
-                {item.delivery ? (
-                  item.delivery === 'sending' ? (
-                    <InlineLoading label="傳送中" textStyle={styles.time} />
-                  ) : (
-                    <Text style={styles.time}>尚未送出，請重試</Text>
-                  )
-                ) : null}
-                <Text style={styles.time}>
-                  {new Date(item.created_at).toLocaleTimeString('zh-TW', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-            )}
-          />
+              )}
+            />
+            {dates.indicator}
+          </View>
         )}
         {send.error ? (
           <Text accessibilityRole="alert" style={styles.error}>
@@ -216,13 +216,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               onChangeText={setText}
               style={styles.input}
             />
-            <PrimaryButton
+            <ChatSendButton
               disabled={!text.trim() || send.isPending}
               onPress={() => send.mutate()}
               loading={send.isPending}
-            >
-              {send.isPending ? '傳送中' : '傳送'}
-            </PrimaryButton>
+            />
           </ChatComposer>
         ) : null}
       </KeyboardViewport>
@@ -246,7 +244,7 @@ const styles = StyleSheet.create({
   bubble: {
     maxWidth: '85%',
     padding: 12,
-    borderRadius: radius.md,
+    borderRadius: 22,
     backgroundColor: colors.surface,
   },
   mineBubble: { backgroundColor: colors.yellow },

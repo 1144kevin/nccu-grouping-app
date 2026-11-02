@@ -21,6 +21,8 @@ import { coreError } from '@/lib/core-api';
 import { invalidateCore } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, typography } from '@/theme/tokens';
+import { PostThumbnail } from './post-thumbnail';
+import { displayTimestamp } from '@/lib/display-time';
 
 export function threadTitle(item: InboxThread) {
   if (item.kind === 'stealth') return `【偷揪】${item.title}`;
@@ -137,12 +139,12 @@ function Inbox() {
         ListEmptyComponent={
           query.isPending ? (
             <PageLoading />
-          ) : (
+          ) : deleted ? (
             <EmptyState
               icon="message-outline"
               title={deleted ? '沒有已刪除的聊天室' : '目前沒有訊息'}
             />
-          )
+          ) : null
         }
         ListFooterComponent={
           <View>
@@ -161,8 +163,6 @@ function Inbox() {
                   <Text style={styles.end}>載入更多</Text>
                 )}
               </Pressable>
-            ) : items.length ? (
-              <Text style={styles.end}>已經到底了喔！</Text>
             ) : null}
             {!deleted ? (
               <Pressable
@@ -341,12 +341,11 @@ function InboxRow({
         style={styles.rowButton}
       >
         <View>
-          <Avatar
-            name={item.kind === 'stealth' ? item.peer_name : item.post.author_name}
-            badge={item.kind === 'stealth' ? item.peer_badge : (item.post.author_badge ?? '🍱')}
-            size={54}
-          />
-          {item.unread_count > 0 ? <View style={styles.unreadDot} /> : null}
+          {item.kind !== 'stealth' ? (
+            <PostThumbnail post={item.post} size={54} />
+          ) : (
+            <Avatar name={item.peer_name} badge={item.peer_badge} size={54} />
+          )}
         </View>
         <View style={styles.body}>
           <View style={styles.nameRow}>
@@ -356,15 +355,33 @@ function InboxRow({
             {item.pinned ? (
               <MaterialCommunityIcons name="pin" size={15} color={colors.brown} />
             ) : null}
-            <Text style={styles.time}>{relativeTime(item.updated_at)}</Text>
           </View>
           <Text numberOfLines={1} style={[styles.preview, item.unread_count > 0 && styles.unread]}>
             {item.last_message
               ? `${item.last_message.sender_name}：${item.last_message.content}`
-              : item.kind === 'stealth'
-                ? item.preview
-                : '還沒有訊息'}
+              : ''}
           </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end', gap: 6, marginLeft: 8 }}>
+          <Text style={styles.time}>{displayTimestamp(item.updated_at)}</Text>
+          {item.unread_count > 0 ? (
+            <View
+              accessibilityLabel={`未讀 ${item.unread_count} 則`}
+              style={{
+                minWidth: 22,
+                height: 22,
+                borderRadius: 11,
+                paddingHorizontal: 6,
+                backgroundColor: colors.yellow,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text fixedSize style={{ fontSize: 12, fontWeight: '700', color: colors.ink }}>
+                {item.unread_count > 99 ? '99+' : item.unread_count}
+              </Text>
+            </View>
+          ) : null}
         </View>
       </Pressable>
       <IconButton
@@ -391,16 +408,6 @@ function InboxRow({
       {row}
     </ChatSwipeRow>
   );
-}
-function relativeTime(value: string) {
-  const m = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60000));
-  return m < 1
-    ? '剛剛'
-    : m < 60
-      ? `${m}分鐘`
-      : m < 1440
-        ? `${Math.floor(m / 60)}小時`
-        : `${Math.floor(m / 1440)}天`;
 }
 function MenuItem({
   icon,

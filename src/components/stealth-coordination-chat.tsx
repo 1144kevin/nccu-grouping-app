@@ -3,9 +3,14 @@ import { InlineLoading } from '@/components/inline-loading';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { AppText as Text } from '@/components/app-text';
+import { ChatTextInput as TextInput } from '@/components/chat-text-input';
 import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
-import { DetailHeader, PrimaryButton, Screen } from '@/components/primitives';
+import { DetailHeader, PrimaryButton, Screen, IconButton } from '@/components/primitives';
+import { ChatSendButton } from './chat-controls';
+import { useChatDateIndicator } from './chat-date-indicator';
+import { displayTime } from '@/lib/display-time';
+import { router } from 'expo-router';
 import { StealthFormation } from '@/components/core-stealth-formation';
 import { StealthReplySuggestions } from '@/components/stealth-reply-suggestions';
 import { coreError, newRequestKey } from '@/lib/core-api';
@@ -24,6 +29,7 @@ export function StealthCoordinationChat({ id }: { id: string }) {
 }
 
 function Chat({ id, actor }: { id: string; actor?: string }) {
+  const dates = useChatDateIndicator(false);
   const focused = useCoreScreenFocused();
   const clock = useCoreClock();
   const key = ['core', actor, 'stealth'];
@@ -113,7 +119,18 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   });
   return (
     <Screen>
-      <DetailHeader title="偷揪 · 聊聊細節" />
+      <DetailHeader
+        title="偷揪 · 聊聊細節"
+        right={
+          match?.formed_post_id ? (
+            <IconButton
+              icon="file-document-outline"
+              label="查看拼單詳情"
+              onPress={() => router.push(`/order/${match.formed_post_id}`)}
+            />
+          ) : undefined
+        }
+      />
       <KeyboardViewport>
         <Text style={styles.note}>先聊品項與取餐分工，談好後再確認成團。</Text>
         {query.error ? (
@@ -146,36 +163,45 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             />
           </KeyboardScrollView>
         ) : (
-          <FlatList
-            data={outbox.items}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messages}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="interactive"
-            renderItem={({ item }) => (
-              <View
-                style={[
-                  styles.message,
-                  item.is_me && styles.mine,
-                  item.image_id && styles.photoMessage,
-                ]}
-              >
-                <Text style={styles.hint}>{item.is_me ? '你' : `夥伴 ${item.member_number}`}</Text>
-                {item.image_id ? (
-                  <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
-                ) : (
-                  <Text style={styles.body}>{item.content}</Text>
-                )}
-                {item.delivery ? (
-                  item.delivery === 'sending' ? (
-                    <InlineLoading label="傳送中" textStyle={styles.hint} />
+          <View style={{ flex: 1 }}>
+            <FlatList
+              onViewableItemsChanged={dates.onViewableItemsChanged}
+              onScroll={dates.onScroll}
+              scrollEventThrottle={100}
+              data={outbox.items}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.messages}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="interactive"
+              renderItem={({ item }) => (
+                <View
+                  style={[
+                    styles.message,
+                    item.is_me && styles.mine,
+                    item.image_id && styles.photoMessage,
+                  ]}
+                >
+                  {!item.is_me ? (
+                    <Text style={styles.hint}>{`夥伴 ${item.member_number}`}</Text>
+                  ) : null}
+                  {item.image_id ? (
+                    <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                   ) : (
-                    <Text style={styles.hint}>尚未送出，請重試</Text>
-                  )
-                ) : null}
-              </View>
-            )}
-          />
+                    <Text style={styles.body}>{item.content}</Text>
+                  )}
+                  {item.delivery ? (
+                    item.delivery === 'sending' ? (
+                      <InlineLoading label="傳送中" textStyle={styles.hint} />
+                    ) : (
+                      <Text style={styles.hint}>尚未送出，請重試</Text>
+                    )
+                  ) : null}
+                  <Text style={styles.hint}>{displayTime(item.created_at)}</Text>
+                </View>
+              )}
+            />
+            {dates.indicator}
+          </View>
         )}
         {match && match.status !== 'unavailable' && query.data?.opened ? (
           <PrimaryButton secondary onPress={() => setFormal(!formal)}>
@@ -218,13 +244,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               editable={query.data?.can_send && !send.isPending}
               style={styles.input}
             />
-            <PrimaryButton
+            <ChatSendButton
               disabled={!focused || !query.data?.can_send || send.isPending || !text.trim()}
               onPress={() => send.mutate()}
               loading={send.isPending}
-            >
-              {send.isPending ? '送出中' : '傳送'}
-            </PrimaryButton>
+            />
           </ChatComposer>
         ) : null}
         {send.error ? (
@@ -243,7 +267,7 @@ const styles = StyleSheet.create({
   message: {
     padding: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 22,
     alignSelf: 'flex-start',
     maxWidth: '90%',
   },

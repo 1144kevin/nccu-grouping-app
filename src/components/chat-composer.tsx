@@ -12,6 +12,7 @@ import { validPickedImage } from '@/lib/media-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useAuthStore } from '@/store/auth-store';
 import { colors } from '@/theme/tokens';
+import { ChatAddButton } from '@/components/chat-controls';
 
 type Draft = { uri: string; base64: string; key: string; imageId?: string };
 export function ChatComposer({
@@ -138,9 +139,7 @@ function ComposerSession({
       ) : null}
       <View style={[styles.footer, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
         <View style={styles.row}>
-          <IconButton
-            icon="image-outline"
-            label="傳送照片"
+          <ChatAddButton
             disabled={disabled || picking || send.isPending}
             onPress={() => {
               void pick();
