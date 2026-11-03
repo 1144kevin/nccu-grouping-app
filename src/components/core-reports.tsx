@@ -12,7 +12,6 @@ import { engagementApi, type ReportInput } from '@/lib/engagement-api';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth-store';
 import { queryClient } from '@/lib/query-client';
-import { CoreConnectionStatus } from '@/components/core-connection-status';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { pickPersonalImage } from '@/lib/pick-personal-image';
 import type { PickedPostImage } from '@/lib/pick-post-images';
@@ -163,15 +162,17 @@ export function ReportComposer({
             >
               {photo ? '更換圖片' : '上傳圖片'}
             </PrimaryButton>
-            <PrimaryButton
-              secondary
-              disabled={send.isPending || picking}
-              onPress={() => {
-                void pick(true);
-              }}
-            >
-              拍照
-            </PrimaryButton>
+            {kind !== 'feedback' ? (
+              <PrimaryButton
+                secondary
+                disabled={send.isPending || picking}
+                onPress={() => {
+                  void pick(true);
+                }}
+              >
+                拍照
+              </PrimaryButton>
+            ) : null}
           </View>
           {photoError ? (
             <Text accessibilityRole="alert" style={styles.error}>
@@ -216,7 +217,6 @@ export function ReportButton({
   );
 }
 export function CoreHelpScreen() {
-  const [diagnostics, setDiagnostics] = useState(false);
   const actor = useAuthStore((state) => state.user?.id);
   const access = useQuery({
     queryKey: ['core', actor, 'moderation-access'],
@@ -237,16 +237,9 @@ export function CoreHelpScreen() {
         <Text style={styles.body}>
           加入申請需要主揪接受；偷揪要全員確認同一版方案才成團。遇到可疑內容可在貼文、公開個人資料或聊天室檢舉。平台不會代為訂餐或付款。
         </Text>
-        <PrimaryButton secondary onPress={() => setDiagnostics(!diagnostics)}>
-          {diagnostics ? '收起連線檢查' : '連線檢查'}
-        </PrimaryButton>
-        {diagnostics ? <CoreConnectionStatus /> : null}
         <ReportComposer key={actor} kind="feedback" />
         <PrimaryButton secondary onPress={() => router.push('/appeals')}>
           申訴與覆核
-        </PrimaryButton>
-        <PrimaryButton secondary onPress={() => router.push('/data-notice')}>
-          資料與使用說明
         </PrimaryButton>
         {access.data?.can_review ? (
           <PrimaryButton secondary onPress={() => router.push('/moderation')}>

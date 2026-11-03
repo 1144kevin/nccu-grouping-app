@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Screen } from '@/components/primitives';
 import { PostLoginReturn } from '@/components/post-login-return';
 import { WebInputNavigation } from '@/components/web-input-navigation';
+import { WebPushOnboarding } from '@/components/web-push-settings';
 import { BurgerShowerProvider } from '@/components/burger-shower';
 
 export default function RootLayout() {
@@ -27,6 +28,9 @@ export default function RootLayout() {
             <CoreAuthGate>
               <RootNavigator />
               {CORE_API_ENABLED ? <PostLoginReturn /> : null}
+              {CORE_API_ENABLED && user && !user.profile_setup_required ? (
+                <WebPushOnboarding key={user.id} />
+              ) : null}
               {!CORE_API_ENABLED || (user && !user.profile_setup_required) ? <AppDrawer /> : null}
             </CoreAuthGate>
           </BurgerShowerProvider>

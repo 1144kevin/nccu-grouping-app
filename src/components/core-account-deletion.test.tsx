@@ -53,13 +53,12 @@ it('requires preview and exact typed confirmation before deleting', async () => 
   );
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: '先查看刪除影響並取得確認' }).props.accessibilityState
-        ?.disabled,
+      screen.getByRole('button', { name: '刪除我的帳號' }).props.accessibilityState?.disabled,
     ).toBe(false),
   );
   expect(accountDeletionApi.delete).not.toHaveBeenCalled();
   await act(async () => {
-    await fireEvent.press(screen.getByRole('button', { name: '先查看刪除影響並取得確認' }));
+    await fireEvent.press(screen.getByRole('button', { name: '刪除我的帳號' }));
   });
   await waitFor(() => expect(screen.getByLabelText('輸入 DELETE 確認刪除帳號')).toBeTruthy());
   await act(async () => {
@@ -77,7 +76,12 @@ it('requires preview and exact typed confirmation before deleting', async () => 
   });
   await waitFor(() => expect(accountDeletionApi.delete).toHaveBeenCalledWith('x'.repeat(43)));
   await waitFor(() => expect(completeAccountDeletion).toHaveBeenCalledWith('owner'));
-  await waitFor(() => expect(screen.getByRole('button', { name: '永久刪除我的 App 帳號' }).props.accessibilityState?.disabled).toBe(false));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: '永久刪除我的 App 帳號' }).props.accessibilityState
+        ?.disabled,
+    ).toBe(false),
+  );
 });
 
 it('resumes confirmed cleanup without requiring a lost preview challenge', async () => {
@@ -90,6 +94,12 @@ it('resumes confirmed cleanup without requiring a lost preview challenge', async
       <AccountDeletionRecovery />
     </QueryClientProvider>,
   );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: '刪除我的帳號' }).props.accessibilityState?.disabled,
+    ).toBe(false),
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '刪除我的帳號' }));
   await waitFor(() => expect(screen.getByLabelText('輸入 DELETE 確認刪除帳號')).toBeTruthy());
   await act(async () => {
     await fireEvent.changeText(screen.getByLabelText('輸入 DELETE 確認刪除帳號'), 'DELETE');
@@ -98,7 +108,11 @@ it('resumes confirmed cleanup without requiring a lost preview challenge', async
     await fireEvent.press(screen.getByRole('button', { name: '繼續刪除我的帳號' }));
   });
   await waitFor(() => expect(accountDeletionApi.delete).toHaveBeenCalledWith(undefined));
-  await waitFor(() => expect(screen.getByRole('button', { name: '繼續刪除我的帳號' }).props.accessibilityState?.disabled).toBe(false));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: '繼續刪除我的帳號' }).props.accessibilityState?.disabled,
+    ).toBe(false),
+  );
   expect(accountDeletionApi.preview).not.toHaveBeenCalled();
 });
 
@@ -112,11 +126,14 @@ it('cannot start deletion from an old session', async () => {
     </QueryClientProvider>,
   );
   await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: '刪除我的帳號' }).props.accessibilityState?.disabled,
+    ).toBe(false),
+  );
+  await fireEvent.press(screen.getByRole('button', { name: '刪除我的帳號' }));
+  await waitFor(() =>
     expect(screen.getByText('刪除前需在15分鐘內重新登入；續期不算重新登入。')).toBeTruthy(),
   );
-  expect(
-    screen.getByRole('button', { name: '先查看刪除影響並取得確認' }).props.accessibilityState
-      ?.disabled,
-  ).toBe(true);
+  expect(accountDeletionApi.preview).not.toHaveBeenCalled();
   expect(accountDeletionApi.delete).not.toHaveBeenCalled();
 });

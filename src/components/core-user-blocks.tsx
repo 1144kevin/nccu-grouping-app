@@ -67,7 +67,7 @@ export function CloudBlockList() {
   const query = useBlockedUsers();
   return (
     <View style={{ gap: 12 }}>
-      <Text style={{ fontWeight: '700' }}>雲端封鎖名單</Text>
+      <Text style={{ fontWeight: '700' }}>封鎖名單</Text>
       {query.data?.items.length === 0 ? <Text>目前沒有封鎖使用者。</Text> : null}
       {query.data?.items.map((item) => (
         <View key={item.user_id} style={{ gap: 6 }}>

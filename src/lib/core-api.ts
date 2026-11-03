@@ -18,6 +18,7 @@ export type CoreUser = {
   badge?: '🍜' | '🥐' | '🍕' | '🧋' | '🍱' | '🍍';
   version?: number;
   auth_mode: 'local_development' | 'supabase';
+  auth_provider?: 'email' | 'google' | 'unknown';
   email_verified: boolean;
 };
 export type CoreSession = {

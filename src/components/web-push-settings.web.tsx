@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Modal, View } from 'react-native';
+import { useAuthStore } from '@/store/auth-store';
 import { AppText as Text } from './app-text';
 import { PrimaryButton } from './primitives';
 import { coreError } from '@/lib/core-api';
@@ -12,7 +13,15 @@ import {
 } from '@/lib/web-push.web';
 import { colors } from '@/theme/tokens';
 
-export function WebPushSettings() {
+export async function sendPushConfirmation() {
+  await sendTestPush();
+}
+
+export function WebPushSettings({
+  onEnabledChange,
+}: {
+  onEnabledChange?: (enabled: boolean) => void;
+}) {
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
@@ -26,7 +35,9 @@ export function WebPushSettings() {
     setMessage('');
     try {
       await work();
-      setEnabled(await hasWebPush());
+      const active = await hasWebPush();
+      setEnabled(active);
+      onEnabledChange?.(active);
       setMessage(success);
     } catch (error) {
       setMessage(coreError(error));
@@ -50,24 +61,64 @@ export function WebPushSettings() {
             onPress={() =>
               void run(
                 enabled ? disablePushForLogout : enableWebPush,
-                enabled ? '已關閉手機推播' : '已開啟手機推播，可傳送測試通知。',
+                enabled ? '已關閉手機推播' : '已開啟手機推播，儲存後會傳送通知。',
               )
             }
           >
             {enabled ? '關閉手機推播' : '開啟手機推播'}
           </PrimaryButton>
-          {enabled ? (
-            <PrimaryButton
-              secondary
-              disabled={busy}
-              onPress={() => void run(sendTestPush, '測試通知已送出，請查看通知中心。')}
-            >
-              傳送測試通知
-            </PrimaryButton>
-          ) : null}
         </>
       )}
       {message ? <Text accessibilityRole="alert">{message}</Text> : null}
     </View>
+  );
+}
+
+export function WebPushOnboarding() {
+  const actor = useAuthStore((state) => state.user?.id);
+  const [visible, setVisible] = useState(
+    () =>
+      !!actor &&
+      supportsWebPush() &&
+      Notification.permission === 'default' &&
+      !localStorage.getItem(`nccu-grouping.push-prompt.${actor}`),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  function close() {
+    if (actor) localStorage.setItem(`nccu-grouping.push-prompt.${actor}`, 'seen');
+    setVisible(false);
+  }
+  async function enable() {
+    setBusy(true);
+    setError('');
+    try {
+      await enableWebPush();
+      await sendTestPush();
+      close();
+    } catch (e) {
+      setError(coreError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
+      <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#0009' }}>
+        <View
+          style={{ backgroundColor: colors.background, borderRadius: 18, padding: 20, gap: 14 }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: '700' }}>開啟手機推播</Text>
+          <Text>收到新訊息或申請獲接受時，讓手機通知你。</Text>
+          {error ? <Text accessibilityRole="alert">{error}</Text> : null}
+          <PrimaryButton loading={busy} disabled={busy} onPress={() => void enable()}>
+            開啟通知
+          </PrimaryButton>
+          <PrimaryButton secondary disabled={busy} onPress={close}>
+            稍後再說
+          </PrimaryButton>
+        </View>
+      </View>
+    </Modal>
   );
 }
