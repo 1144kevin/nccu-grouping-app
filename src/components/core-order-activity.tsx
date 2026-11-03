@@ -125,7 +125,12 @@ function CoreRequestActivity() {
             }
           >
             <View style={styles.row}>
-              <Avatar name={item.requester_name} badge={item.requester_badge ?? '🍱'} size={42} />
+              <Avatar
+                name={item.requester_name}
+                badge={item.requester_badge ?? '🍱'}
+                userId={item.requester_id}
+                size={42}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{activityTitle(item)}</Text>
                 <ReputationBadge level={item.requester_level} />

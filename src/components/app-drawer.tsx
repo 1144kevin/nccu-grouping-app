@@ -26,6 +26,7 @@ export function AppDrawer() {
   const close = useNavigationStore((state) => state.closeDrawer);
   const unreadNotifications = useAppStore(selectUnreadNotificationCount);
   const { logout, busy, error } = useAuthStore();
+  const account = useAuthStore((state) => state.user);
   const currentUser = useAppStore((state) => state.currentUser);
 
   function navigate(href: string) {
@@ -60,9 +61,14 @@ export function AppDrawer() {
             </Pressable>
           </View>
           <View style={styles.account}>
-            <Avatar name={currentUser.name} badge={currentUser.badge} size={52} />
+            <Avatar
+              name={account?.display_name ?? currentUser.name}
+              badge={account?.badge ?? currentUser.badge}
+              userId={account?.id}
+              size={52}
+            />
             <View style={styles.accountText}>
-              <Text style={styles.name}>{currentUser.name}</Text>
+              <Text style={styles.name}>{account?.display_name ?? currentUser.name}</Text>
             </View>
           </View>
           <ScrollView contentContainerStyle={styles.items}>
