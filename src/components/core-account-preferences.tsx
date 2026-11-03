@@ -106,26 +106,24 @@ export function PreferencesForm({
   const [selected, setSelected] = useState(initial.preferred_tags);
   const [custom, setCustom] = useState('');
   const [saved, setSaved] = useState(false);
-  const [pushChanged, setPushChanged] = useState(false);
   const [pushError, setPushError] = useState(false);
   const save = useMutation({
-    mutationFn: () =>
+    mutationFn: (next?: NotificationPreferences) =>
       engagementApi.savePreferences(
-        { notifications, preferred_tags: selected },
+        { notifications: next ?? notifications, preferred_tags: selected },
         queryClient.getQueryData<AccountPreferences>(['core', actor, 'preferences'])?.version ??
           initial.version,
       ),
+    onError: () => {
+      if (mode === 'settings')
+        setNotifications(
+          queryClient.getQueryData<AccountPreferences>(['core', actor, 'preferences'])
+            ?.notifications ?? initial.notifications,
+        );
+    },
     onSuccess: (value) => {
       if (useAuthStore.getState().user?.id !== actor) return;
       setSaved(true);
-      if (mode === 'settings' && pushChanged) {
-        void sendPushConfirmation()
-          .then(() => {
-            setPushChanged(false);
-            setPushError(false);
-          })
-          .catch(() => setPushError(true));
-      }
       queryClient.setQueryData(['core', actor, 'preferences'], value);
       void queryClient.invalidateQueries({ queryKey: ['core', actor, 'chat-activity'] });
     },
@@ -155,20 +153,20 @@ export function PreferencesForm({
                 value={notifications[key]}
                 disabled={save.isPending}
                 onValueChange={(value) => {
-                  setSaved(false);
-                  setNotifications((old) => ({
-                    ...old,
+                  const next = {
+                    ...notifications,
                     [key]: value,
                     ...(key === 'recommendations' ? { deadlineReminders: value } : {}),
-                  }));
+                  };
+                  setNotifications(next);
+                  save.mutate(next);
                 }}
               />
             </View>
           ))}
           <WebPushSettings
             onEnabledChange={(enabled) => {
-              setPushChanged(enabled);
-              setSaved(false);
+              if (enabled) void sendPushConfirmation().catch(() => setPushError(true));
             }}
           />
         </>
@@ -249,14 +247,16 @@ export function PreferencesForm({
           </PrimaryButton>
         </>
       )}
-      <PrimaryButton
-        disabled={save.isPending}
-        onPress={() => save.mutate()}
-        loading={save.isPending}
-      >
-        {save.isPending ? '儲存中' : '儲存'}
-      </PrimaryButton>
-      {saved ? (
+      {mode === 'recommendations' ? (
+        <PrimaryButton
+          disabled={save.isPending}
+          onPress={() => save.mutate(undefined)}
+          loading={save.isPending}
+        >
+          {save.isPending ? '儲存中' : '儲存'}
+        </PrimaryButton>
+      ) : null}
+      {saved && mode === 'recommendations' ? (
         <Text accessibilityRole="alert" style={{ color: colors.success }}>
           ✓ 已儲存
         </Text>
@@ -268,7 +268,8 @@ export function PreferencesForm({
       ) : null}
       {save.error ? (
         <Text accessibilityRole="alert" style={styles.error}>
-          {coreError(save.error)} 未儲存內容仍保留。
+          {coreError(save.error)}{' '}
+          {mode === 'settings' ? '設定未變更，請再試一次。' : '未儲存內容仍保留。'}
         </Text>
       ) : null}
     </View>

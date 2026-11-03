@@ -157,6 +157,7 @@ function AccountAvatar(props: AvatarProps) {
     queryFn: () => profileSocial.avatar(props.userId!),
     enabled: !!actor,
     staleTime: 300_000,
+    gcTime: 60 * 60_000,
     retry: false,
   });
   return (

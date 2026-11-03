@@ -233,10 +233,6 @@ export function CoreHelpScreen() {
     <Screen>
       <DetailHeader title="幫助與回報" />
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <Text style={styles.title}>需要協助時</Text>
-        <Text style={styles.body}>
-          加入申請需要主揪接受；偷揪要全員確認同一版方案才成團。遇到可疑內容可在貼文、公開個人資料或聊天室檢舉。平台不會代為訂餐或付款。
-        </Text>
         <ReportComposer key={actor} kind="feedback" />
         <PrimaryButton secondary onPress={() => router.push('/appeals')}>
           申訴與覆核

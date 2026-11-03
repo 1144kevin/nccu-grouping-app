@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -205,7 +205,7 @@ export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: s
     queryFn: () => chatPhotos.read(imageId),
     enabled: !!actor && focused,
     retry: false,
-    gcTime: 5 * 60_000,
+    gcTime: 60 * 60_000,
     staleTime: Infinity,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
@@ -239,6 +239,10 @@ export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: s
             }}
           />
         </Pressable>
+      ) : photo.isFetching ? (
+        <View style={{ height: 80, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: 12 }}>
+          <ActivityIndicator accessibilityLabel="照片載入中" color={colors.muted} />
+        </View>
       ) : (
         <PrimaryButton
           secondary

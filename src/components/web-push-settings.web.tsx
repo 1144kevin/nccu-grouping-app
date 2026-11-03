@@ -61,7 +61,7 @@ export function WebPushSettings({
             onPress={() =>
               void run(
                 enabled ? disablePushForLogout : enableWebPush,
-                enabled ? '已關閉手機推播' : '已開啟手機推播，儲存後會傳送通知。',
+                enabled ? '已關閉手機推播' : '已開啟手機推播。',
               )
             }
           >
