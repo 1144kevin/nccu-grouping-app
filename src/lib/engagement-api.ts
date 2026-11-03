@@ -16,6 +16,7 @@ export type NotificationPreferences = {
 export type AccountPreferences = {
   notifications: NotificationPreferences;
   preferred_tags: string[];
+  custom_locations?: string[];
   version: number;
 };
 export type InboxPreference = { post_id: string; muted: boolean; archived: boolean };

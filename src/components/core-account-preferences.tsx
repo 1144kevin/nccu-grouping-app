@@ -105,12 +105,18 @@ export function PreferencesForm({
   const [notifications, setNotifications] = useState(initial.notifications);
   const [selected, setSelected] = useState(initial.preferred_tags);
   const [custom, setCustom] = useState('');
+  const [customKind, setCustomKind] = useState<'thing' | 'location'>('thing');
+  const [customLocations, setCustomLocations] = useState(initial.custom_locations ?? []);
   const [saved, setSaved] = useState(false);
   const [pushError, setPushError] = useState(false);
   const save = useMutation({
     mutationFn: (next?: NotificationPreferences) =>
       engagementApi.savePreferences(
-        { notifications: next ?? notifications, preferred_tags: selected },
+        {
+          notifications: next ?? notifications,
+          preferred_tags: selected,
+          custom_locations: customLocations.filter((tag) => selected.includes(tag)),
+        },
         queryClient.getQueryData<AccountPreferences>(['core', actor, 'preferences'])?.version ??
           initial.version,
       ),
@@ -178,7 +184,9 @@ export function PreferencesForm({
             {[
               ...new Set([
                 ...tags.slice(0, 7),
-                ...selected.filter((tag) => !tags.slice(7).includes(tag)),
+                ...selected.filter(
+                  (tag) => !tags.slice(7).includes(tag) && !customLocations.includes(tag),
+                ),
               ]),
             ].map((tag) => (
               <Pressable
@@ -205,7 +213,12 @@ export function PreferencesForm({
           </View>
           <Text style={styles.title}>地點</Text>
           <View style={styles.wrap}>
-            {tags.slice(7).map((tag) => (
+            {[
+              ...new Set([
+                ...tags.slice(7),
+                ...customLocations.filter((tag) => selected.includes(tag)),
+              ]),
+            ].map((tag) => (
               <Pressable
                 key={tag}
                 accessibilityRole="checkbox"
@@ -227,6 +240,23 @@ export function PreferencesForm({
               </Pressable>
             ))}
           </View>
+          <View style={styles.wrap}>
+            {(['thing', 'location'] as const).map((kind) => (
+              <Pressable
+                key={kind}
+                accessibilityRole="radio"
+                accessibilityLabel={kind === 'thing' ? '新增想拼的東西' : '新增地點'}
+                accessibilityState={{ checked: customKind === kind }}
+                onPress={() => setCustomKind(kind)}
+                style={[
+                  styles.choice,
+                  customKind === kind && { ...yellowSurface, backgroundColor: colors.yellowSoft },
+                ]}
+              >
+                <Text style={styles.body}>{kind === 'thing' ? '想拼的東西' : '地點'}</Text>
+              </Pressable>
+            ))}
+          </View>
           <TextInput
             accessibilityLabel="自訂推薦標籤"
             value={custom}
@@ -239,7 +269,14 @@ export function PreferencesForm({
             secondary
             disabled={!custom.trim() || selected.length >= 24 || save.isPending}
             onPress={() => {
-              if (!selected.includes(custom.trim())) setSelected((old) => [...old, custom.trim()]);
+              const value = custom.trim();
+              if (!selected.includes(value)) setSelected((old) => [...old, value]);
+              setCustomLocations((old) =>
+                customKind === 'location'
+                  ? [...new Set([...old, value])]
+                  : old.filter((item) => item !== value),
+              );
+              setSaved(false);
               setCustom('');
             }}
           >
