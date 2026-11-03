@@ -3,7 +3,7 @@ import { PageLoading } from '@/components/page-loading';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { PrimaryButton } from '@/components/primitives';
 import { coreError } from '@/lib/core-api';
@@ -88,7 +88,13 @@ function SignedPostImage({
       ]}
     >
       {!query.data && query.isPending ? (
-        <PageLoading accessibilityLabel="正在載入拼單圖片" />
+        frameHeight || intrinsicHeight ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={colors.muted} accessibilityLabel="正在載入拼單圖片" />
+          </View>
+        ) : (
+          <PageLoading accessibilityLabel="正在載入拼單圖片" />
+        )
       ) : query.data && !failed ? (
         <Image
           key={attempt}
