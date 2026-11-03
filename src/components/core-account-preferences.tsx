@@ -240,7 +240,8 @@ export function PreferencesForm({
               </Pressable>
             ))}
           </View>
-          <View style={styles.wrap}>
+          <Text style={styles.customLabel}>新增標籤的分類</Text>
+          <View style={styles.categorySelector}>
             {(['thing', 'location'] as const).map((kind) => (
               <Pressable
                 key={kind}
@@ -248,12 +249,13 @@ export function PreferencesForm({
                 accessibilityLabel={kind === 'thing' ? '新增想拼的東西' : '新增地點'}
                 accessibilityState={{ checked: customKind === kind }}
                 onPress={() => setCustomKind(kind)}
-                style={[
-                  styles.choice,
-                  customKind === kind && { ...yellowSurface, backgroundColor: colors.yellowSoft },
-                ]}
+                style={[styles.categoryOption, customKind === kind && styles.categorySelected]}
               >
-                <Text style={styles.body}>{kind === 'thing' ? '想拼的東西' : '地點'}</Text>
+                <Text
+                  style={[styles.categoryText, customKind === kind && styles.categorySelectedText]}
+                >
+                  {kind === 'thing' ? '想拼的東西' : '地點'}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -317,6 +319,24 @@ const styles = StyleSheet.create({
   card: { gap: spacing.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  customLabel: { color: colors.muted, fontSize: 13, fontWeight: '600', marginBottom: -8 },
+  categorySelector: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.pill,
+    padding: 4,
+    gap: 4,
+  },
+  categoryOption: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.pill,
+  },
+  categorySelected: { ...yellowSurface, backgroundColor: colors.yellow },
+  categoryText: { color: colors.muted, fontSize: 14, fontWeight: '600' },
+  categorySelectedText: { color: colors.onYellow, fontWeight: '700' },
   choice: {
     padding: spacing.md,
     borderWidth: 1,
