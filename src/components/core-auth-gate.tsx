@@ -1,5 +1,6 @@
 import { PageLoading } from '@/components/page-loading';
 import { BrandLogo } from '@/components/brand-logo';
+import { RegistrationTerms } from '@/components/registration-terms';
 import { useEffect, useState, type PropsWithChildren } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
@@ -77,6 +78,7 @@ export function CoreLoginScreen() {
 function LoginForm() {
   const expoGo = isExpoGo();
   const accountDeleted = useAuthStore((state) => state.accountDeleted);
+  const [agreed, setAgreed] = useState(false);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,11 +96,12 @@ function LoginForm() {
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) &&
     password.length >= 10 &&
     password.length <= 128 &&
-    (mode === 'login' || !!name.trim());
+    (mode === 'login' || (!!name.trim() && agreed));
   async function submit() {
     if (await authenticate(mode, email, password, name)) setPassword('');
   }
   async function googleLogin() {
+    if (!agreed) return;
     setGoogleBusy(true);
     setGoogleError('');
     try {
@@ -136,11 +139,14 @@ function LoginForm() {
           <Text style={styles.hint}>請使用信箱與 App 密碼登入。</Text>
         </View>
       ) : null}
+      {mode === 'register' || (CORE_SUPABASE_MODE && !expoGo) ? (
+        <RegistrationTerms agreed={agreed} onChange={setAgreed} />
+      ) : null}
       {CORE_SUPABASE_MODE && !expoGo ? (
         <View style={{ gap: spacing.sm }}>
           <PrimaryButton
             secondary
-            disabled={busy || googleBusy || !['web', 'ios'].includes(Platform.OS)}
+            disabled={busy || googleBusy || !agreed || !['web', 'ios'].includes(Platform.OS)}
             onPress={() => {
               void googleLogin();
             }}
