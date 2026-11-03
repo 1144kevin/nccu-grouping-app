@@ -116,7 +116,7 @@ it('resumes confirmed cleanup without requiring a lost preview challenge', async
   expect(accountDeletionApi.preview).not.toHaveBeenCalled();
 });
 
-it('cannot start deletion from an old session', async () => {
+it('allows a valid older session to prepare deletion', async () => {
   jest
     .mocked(accountDeletionApi.status)
     .mockResolvedValue({ phase: 'none', recent_auth: false, counts });
@@ -131,9 +131,7 @@ it('cannot start deletion from an old session', async () => {
     ).toBe(false),
   );
   await fireEvent.press(screen.getByRole('button', { name: '刪除我的帳號' }));
-  await waitFor(() =>
-    expect(screen.getByText('刪除前需在15分鐘內重新登入；續期不算重新登入。')).toBeTruthy(),
-  );
-  expect(accountDeletionApi.preview).not.toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByLabelText('輸入 DELETE 確認刪除帳號')).toBeTruthy());
+  expect(accountDeletionApi.preview).toHaveBeenCalled();
   expect(accountDeletionApi.delete).not.toHaveBeenCalled();
 });

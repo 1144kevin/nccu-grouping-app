@@ -68,7 +68,7 @@ function AccountDeletionForm({ focused }: { focused: boolean }) {
         disabled={!status.data || prepare.isPending}
         onPress={() => {
           setOpen(true);
-          if (status.data?.recent_auth && status.data.phase !== 'deleting') prepare.mutate();
+          if (status.data && status.data.phase !== 'deleting') prepare.mutate();
         }}
       >
         刪除我的帳號
@@ -84,22 +84,8 @@ function AccountDeletionForm({ focused }: { focused: boolean }) {
             </Text>
             {deleting ? (
               <Text accessibilityRole="alert">
-                清除已開始但尚未完成，帳號暫停一般操作。請輸入 DELETE
-                繼續清除；若登入已超過15分鐘，先登出再登入同一帳號。
+                清除已開始但尚未完成，帳號暫停一般操作。請輸入 DELETE 繼續清除。
               </Text>
-            ) : null}
-            {status.data && !status.data.recent_auth ? (
-              <>
-                <Text>刪除前需在15分鐘內重新登入；續期不算重新登入。</Text>
-                <PrimaryButton
-                  secondary
-                  onPress={() => {
-                    void useAuthStore.getState().logout();
-                  }}
-                >
-                  登出後重新登入
-                </PrimaryButton>
-              </>
             ) : null}
             {preview || deleting ? (
               <>
@@ -118,7 +104,7 @@ function AccountDeletionForm({ focused }: { focused: boolean }) {
                   style={{ borderWidth: 1, padding: 12 }}
                 />
                 <PrimaryButton
-                  disabled={text !== 'DELETE' || !status.data?.recent_auth || remove.isPending}
+                  disabled={text !== 'DELETE' || remove.isPending}
                   onPress={() => remove.mutate()}
                   loading={remove.isPending}
                 >
