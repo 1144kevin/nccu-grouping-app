@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { levelLabel } from '@/lib/level-label';
 import { useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -110,7 +111,7 @@ function RequestRow({ request, first }: { request: JoinRequest; first: boolean }
           {request.name}
         </Text>
         <Text style={styles.requestMeta}>
-          {request.badge} Lv.{request.level} · {request.requestedAt}
+          {request.badge} {levelLabel(request.level)} · {request.requestedAt}
         </Text>
       </Pressable>
       <View style={styles.requestActions}>
@@ -184,7 +185,7 @@ function InterestedOrders() {
                 {item.content}
               </Text>
               <Text style={styles.requestMeta}>
-                {item.badge} Lv.{item.level}
+                {item.badge} {levelLabel(item.level)}
               </Text>
             </View>
           </Pressable>

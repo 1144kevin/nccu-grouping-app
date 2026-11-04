@@ -1,4 +1,5 @@
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { levelLabel } from '@/lib/level-label';
 import { useMemo, useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router, useLocalSearchParams } from 'expo-router';
@@ -75,7 +76,7 @@ function DemoSearchScreen() {
           id: `user-${name}`,
           type: 'user',
           title: name,
-          detail: `${value.badge} Lv.${value.level}`,
+          detail: `${value.badge} ${levelLabel(value.level)}`,
           badge: value.badge,
           href: `/user/${encodeURIComponent(name)}`,
         })),

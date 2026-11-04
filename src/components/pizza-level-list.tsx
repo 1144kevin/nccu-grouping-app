@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { levelLabel } from '@/lib/level-label';
 import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { PizzaLevelIcon, pizzaLevels } from '@/components/pizza-level-icon';
@@ -21,7 +22,7 @@ export function PizzaLevelList() {
           </View>
           <View style={[styles.pill, { backgroundColor: item.pillBackground }]}>
             <Text style={[styles.pillText, { color: item.pillText }]}>
-              Lv.{item.level}
+              {levelLabel(item.level)}
             </Text>
           </View>
           <Text style={styles.title}>{item.title}</Text>

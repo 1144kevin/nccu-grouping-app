@@ -1,4 +1,5 @@
 import { ProfileLikes } from './profile-likes';
+import { levelLabel } from '@/lib/level-label';
 import { PageLoading } from '@/components/page-loading';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -85,7 +86,7 @@ export function CoreProfileScreen() {
           <View style={styles.levelTitle}>
             <Text style={styles.levelHeading}>我的熟度等級</Text>
             <Text style={styles.levelName}>
-              {experience.data ? `${labels[level - 1]} (Lv.${level})` : '待累積'}
+              {experience.data ? `${labels[level - 1]} (${levelLabel(level)})` : '待累積'}
             </Text>
             <MaterialCommunityIcons name="information-outline" size={16} color={colors.muted} />
           </View>

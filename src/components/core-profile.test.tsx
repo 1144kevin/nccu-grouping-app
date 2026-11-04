@@ -1,6 +1,7 @@
 import { expect, it, jest } from '@jest/globals';
 import { fireEvent, render } from '@testing-library/react-native';
 import { CoreProfileScreen } from './core-profile';
+import { levelLabel } from '@/lib/level-label';
 import { pizzaLevels } from './pizza-level-icon';
 import { randomShowerLevel } from './pizza-shower';
 let mockScore = 0;
@@ -39,10 +40,14 @@ it('uses the real account score, starting at zero rather than a preview score', 
   expect(screen.getByText('50/100')).toBeTruthy();
 });
 
+it('labels levels from Lv.0 to Lv.4', () => {
+  expect([1, 2, 3, 4, 5].map(levelLabel)).toEqual(['Lv.0', 'Lv.1', 'Lv.2', 'Lv.3', 'Lv.4']);
+});
+
 it('lists every pizza level with its label and title', async () => {
   const screen = await render(<CoreProfileScreen />);
   for (const item of pizzaLevels) {
-    expect(screen.getByText(`Lv.${item.level}`)).toBeTruthy();
+    expect(screen.getByText(levelLabel(item.level))).toBeTruthy();
     expect(screen.getByText(item.title)).toBeTruthy();
   }
 });
@@ -56,7 +61,7 @@ it('explains each pizza level in the info dialog below the scoring rules', async
   for (const item of pizzaLevels) expect(screen.getByText(item.description)).toBeTruthy();
 });
 
-it('only drops Lv.3 to Lv.5 pizzas in the logo easter egg', () => {
+it('only drops Lv.2 to Lv.4 pizzas in the logo easter egg', () => {
   expect(randomShowerLevel(0)).toBe(3);
   expect(randomShowerLevel(0.5)).toBe(4);
   expect(randomShowerLevel(0.999)).toBe(5);

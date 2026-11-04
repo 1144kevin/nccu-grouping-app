@@ -44,7 +44,7 @@ function DemoProfileScreen() {
         >
           <View style={styles.levelTitle}>
             <Text style={styles.levelHeading}>我的熟度等級</Text>
-            <Text style={styles.levelName}>五分熟 (Lv.5)</Text>
+            <Text style={styles.levelName}>五分熟 (Lv.4)</Text>
             <MaterialCommunityIcons name="information-outline" size={15} color={colors.muted} />
           </View>
           <View style={styles.progressRow}>

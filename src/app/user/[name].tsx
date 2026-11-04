@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { levelLabel } from '@/lib/level-label';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -35,7 +36,7 @@ function DemoUserProfileScreen() {
     <Screen>
       <DetailHeader title="個人檔案" right={<IconButton icon="dots-horizontal" label="使用者選項" onPress={() => Alert.alert('使用者選項', name, [{ text: blocked ? '解除封鎖' : '封鎖使用者', style: 'destructive', onPress: block }, { text: '檢舉使用者', style: 'destructive', onPress: () => Alert.alert('已送出檢舉', '管理員將檢視近期公開內容。') }, { text: '取消', style: 'cancel' }])} />} />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}><Avatar name={name} badge={badge} size={78} /><Text style={styles.name}>{name}</Text><Text style={styles.level}>{badge} Lv.{level} · {levelName(level)}</Text><Text style={styles.meta}>已完成 {Math.max(3, level * 4)} 次拼單</Text></View>
+        <View style={styles.hero}><Avatar name={name} badge={badge} size={78} /><Text style={styles.name}>{name}</Text><Text style={styles.level}>{badge} {levelLabel(level)} · {levelName(level)}</Text><Text style={styles.meta}>已完成 {Math.max(3, level * 4)} 次拼單</Text></View>
         {blocked ? <View style={styles.blocked}><MaterialCommunityIcons name="account-cancel-outline" size={18} color={colors.danger} /><Text style={styles.blockedText}>你已封鎖這位使用者</Text></View> : null}
         <View style={styles.actions}><PrimaryButton disabled={blocked} style={styles.action} onPress={message}>傳送訊息</PrimaryButton><PrimaryButton secondary style={styles.action} onPress={block}>{blocked ? '解除封鎖' : '封鎖'}</PrimaryButton></View>
         <View style={styles.stats}><View style={styles.stat}><Text style={styles.statValue}>{Math.max(3, level * 4)}</Text><Text style={styles.statLabel}>完成拼單</Text></View><View style={styles.stat}><Text style={styles.statValue}>98%</Text><Text style={styles.statLabel}>準時回覆</Text></View><View style={styles.stat}><Text style={styles.statValue}>{level}.0</Text><Text style={styles.statLabel}>互動評價</Text></View></View>

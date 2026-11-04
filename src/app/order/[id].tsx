@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { levelLabel } from '@/lib/level-label';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
@@ -95,7 +96,7 @@ function DemoOrderDetailScreen() {
           <Avatar name="Kevin" badge="🍜" size={42} />
           <View style={styles.memberText}>
             <Text style={styles.memberName}>Kevin</Text>
-            <Text style={styles.memberMeta}>主揪 · 🍜 Lv.5</Text>
+            <Text style={styles.memberMeta}>主揪 · 🍜 Lv.4</Text>
           </View>
           <Pill tone="yellow">主揪</Pill>
         </Pressable>
@@ -110,7 +111,7 @@ function DemoOrderDetailScreen() {
             >
               <Text style={styles.memberName}>{request.name}</Text>
               <Text style={styles.memberMeta}>
-                {request.badge} Lv.{request.level} · {request.requestedAt}
+                {request.badge} {levelLabel(request.level)} · {request.requestedAt}
               </Text>
             </Pressable>
             {request.status === 'pending' ? (

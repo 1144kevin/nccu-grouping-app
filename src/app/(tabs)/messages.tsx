@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { levelLabel } from '@/lib/level-label';
 import { useCallback, useRef, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -290,7 +291,7 @@ function ConversationRow({
               {item.preview}
             </Text>
             <Text style={styles.category}>
-              {item.inbox === 'primary' ? '主要' : '一般'} · {item.badge} Lv.{item.level}
+              {item.inbox === 'primary' ? '主要' : '一般'} · {item.badge} {levelLabel(item.level)}
             </Text>
           </View>
         </Pressable>

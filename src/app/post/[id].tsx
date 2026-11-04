@@ -1,4 +1,5 @@
 import { PhotoCarousel } from '@/components/post-photo-carousel';
+import { levelLabel } from '@/lib/level-label';
 import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -30,7 +31,7 @@ function DemoPostDetailScreen() {
     <Screen>
       <DetailHeader title="貼文內容" right={<IconButton icon="dots-horizontal" label="更多選項" onPress={() => Alert.alert('貼文選項', post.name, [{ text: reminder ? '取消截止提醒' : '設定截止提醒', onPress: () => toggleReminder(post.id) }, { text: '檢舉貼文', style: 'destructive', onPress: report }, { text: '取消', style: 'cancel' }])} />} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Pressable onPress={() => router.push(`/user/${encodeURIComponent(post.name)}`)} style={styles.author}><Avatar name={post.name} badge={post.badge} size={46} /><View style={styles.authorText}><Text style={styles.name}>{post.name}</Text><Text style={styles.level}>{post.badge} Lv.{post.level} · {post.time}</Text></View><MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} /></Pressable>
+        <Pressable onPress={() => router.push(`/user/${encodeURIComponent(post.name)}`)} style={styles.author}><Avatar name={post.name} badge={post.badge} size={46} /><View style={styles.authorText}><Text style={styles.name}>{post.name}</Text><Text style={styles.level}>{post.badge} {levelLabel(post.level)} · {post.time}</Text></View><MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} /></Pressable>
         <Text style={styles.body}>{post.content}</Text>
         {post.photos?.length ? <PhotoCarousel photos={post.photos} /> : post.imageUrl ? <Image source={post.imageUrl} contentFit="contain" style={styles.image} /> : null}
         <View style={styles.tags}>{post.tags.map((tag) => <Pressable key={tag} onPress={() => router.push({ pathname: '/search', params: { scope: 'posts', query: tag } })}><Text style={styles.tag}>#{tag}</Text></Pressable>)}</View>

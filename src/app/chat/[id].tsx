@@ -1,4 +1,5 @@
 import { AppText as Text, AppTextInput as TextInput } from '@/components/app-text';
+import { levelLabel } from '@/lib/level-label';
 import { useEffect, useMemo, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -96,7 +97,7 @@ function DemoChatScreen() {
             {muted ? '　🔕' : ''}
           </Text>
           <Text style={styles.level}>
-            {conversation.badge} Lv.{conversation.level}
+            {conversation.badge} {levelLabel(conversation.level)}
           </Text>
         </Pressable>
         <IconButton icon="dots-vertical" label="對話選項" onPress={openOptions} />

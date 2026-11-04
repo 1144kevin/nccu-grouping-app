@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { levelLabel } from '@/lib/level-label';
 
 export type PizzaLevel = 1 | 2 | 3 | 4 | 5;
 
@@ -65,7 +66,7 @@ export function PizzaLevelIcon({ level, size = 44 }: { level: PizzaLevel; size?:
   return (
     <Image
       accessible
-      accessibilityLabel={`Lv.${level}，${title}：${description}`}
+      accessibilityLabel={`${levelLabel(level)}，${title}：${description}`}
       source={sources[level]}
       contentFit="contain"
       style={{ width: size, height: size }}
