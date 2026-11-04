@@ -162,17 +162,6 @@ export function ReportComposer({
             >
               {photo ? '更換圖片' : '上傳圖片'}
             </PrimaryButton>
-            {kind !== 'feedback' ? (
-              <PrimaryButton
-                secondary
-                disabled={send.isPending || picking}
-                onPress={() => {
-                  void pick(true);
-                }}
-              >
-                拍照
-              </PrimaryButton>
-            ) : null}
           </View>
           {photoError ? (
             <Text accessibilityRole="alert" style={styles.error}>
@@ -206,10 +195,24 @@ export function ReportButton({
   const [open, setOpen] = useState(false);
   const actor = useAuthStore((state) => state.user?.id);
   return (
-    <View>
-      <PrimaryButton secondary onPress={() => setOpen(!open)}>
-        {open ? '收起檢舉表單' : '檢舉'}
-      </PrimaryButton>
+    <View style={{ gap: 12 }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={open ? '收起檢舉表單' : '檢舉'}
+        onPress={() => setOpen(!open)}
+        style={{
+          minHeight: 44,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          backgroundColor: colors.surface,
+        }}
+      >
+        <Text style={{ color: colors.ink, fontWeight: '600' }}>{open ? '檢舉內容' : '檢舉'}</Text>
+        <Text style={{ color: colors.muted, fontSize: 20 }}>{open ? '×' : '›'}</Text>
+      </Pressable>
       {open ? (
         <ReportComposer key={`${actor}:${kind}:${targetId}`} kind={kind} targetId={targetId} />
       ) : null}
