@@ -43,7 +43,7 @@ export function CoreProfileScreen() {
   const experience = useExperience();
   const [help, setHelp] = useState(false);
   if (!user) return null;
-  const level = experience.data?.level ?? 1;
+  const level = experience.data?.level ?? 2;
   const score = experience.data?.score;
   const levelTitle = pizzaLevels[level - 1].title;
   return (

@@ -258,7 +258,7 @@ export function toFeedPost(post: CorePost): FeedPost {
     id: post.id,
     name: post.author_name,
     badge: post.author_badge ?? '🍱',
-    level: post.author_level ?? 1,
+    level: post.author_level ?? 2,
     time: displayTimestamp(post.created_at),
     content: post.content,
     tags: post.tags,

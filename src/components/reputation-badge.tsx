@@ -4,7 +4,7 @@ import { AppText as Text } from '@/components/app-text';
 import { PizzaLevelIcon, type PizzaLevel } from '@/components/pizza-level-icon';
 import { colors } from '@/theme/tokens';
 
-export function ReputationBadge({ level = 1 }: { level?: number }) {
+export function ReputationBadge({ level = 2 }: { level?: number }) {
   const value = Math.max(1, Math.min(5, Math.trunc(level))) as PizzaLevel;
   return (
     <View
