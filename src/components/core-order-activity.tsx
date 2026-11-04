@@ -13,6 +13,9 @@ import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
 import { shortDate } from '@/components/list-ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '@/theme/tokens';
+import { usePenaltyNotices } from '@/lib/penalty-notices';
+import { useMutation } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/auth-store';
 
 export function CoreOrderActivityScreen() {
   useEffect(() => {
@@ -28,7 +31,7 @@ export function CoreOrderActivityScreen() {
   }, []);
   return (
     <Screen>
-      <DetailHeader title="拼單動態" />
+      <DetailHeader title="通知中心" />
       <CoreRequestActivity />
     </Screen>
   );
@@ -36,6 +39,13 @@ export function CoreOrderActivityScreen() {
 
 function CoreRequestActivity() {
   const query = useCoreOrderActivity(true);
+  const notices = usePenaltyNotices();
+  const actor = useAuthStore((state) => state.user?.id);
+  const markRead = useMutation({
+    mutationFn: (id: string) => api.post('/notifications/penalties/read', { id }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['core', actor, 'penalty-notices'] }),
+  });
   const items = [...query.items].sort(
     (a, b) =>
       Number(
@@ -65,9 +75,41 @@ function CoreRequestActivity() {
         refreshControl={
           <PullRefreshControl
             onRefresh={() => {
-              return query.refetch();
+              return Promise.all([query.refetch(), notices.refetch()]);
             }}
           />
+        }
+        ListHeaderComponent={
+          <View>
+            {notices.error ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                通知載入失敗，請下拉重試。
+              </Text>
+            ) : null}
+            {notices.data?.items.map((notice) => (
+              <View key={notice.id} style={styles.card}>
+                <Text style={styles.title}>信譽積分扣除 {notice.points} 分</Text>
+                <Text style={styles.hint}>{shortDate(notice.created_at)}</Text>
+                <Text style={styles.body}>
+                  {notice.response || '經管理員審核後，已調整你的信譽積分。'}
+                </Text>
+                {!notice.read_at ? (
+                  <PrimaryButton
+                    secondary
+                    disabled={markRead.isPending}
+                    onPress={() => markRead.mutate(notice.id)}
+                  >
+                    標為已讀
+                  </PrimaryButton>
+                ) : null}
+              </View>
+            ))}
+            {markRead.error ? (
+              <Text accessibilityRole="alert" style={styles.error}>
+                無法標記已讀，請再試一次。
+              </Text>
+            ) : null}
+          </View>
         }
         ListEmptyComponent={
           query.isPending ? (

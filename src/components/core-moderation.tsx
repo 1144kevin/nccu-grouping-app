@@ -12,15 +12,51 @@ import type { Report, ReportInput } from '@/lib/engagement-api';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { PersonalImage } from './personal-image';
-import { colors } from '@/theme/tokens';
+import { colors, radius } from '@/theme/tokens';
+import { displayTimestamp } from '@/lib/display-time';
 
 type OperatorReport = Pick<
   Report,
   'id' | 'status' | 'review_version' | 'public_response' | 'created_at'
 > & { payload: ReportInput };
+const kindLabels: Record<string, string> = {
+  post: '拼單貼文',
+  message: '聊天室訊息',
+  user: '使用者',
+  feedback: '問題回報',
+};
+const reasonLabels: Record<string, string> = {
+  spam: '垃圾訊息',
+  harassment: '騷擾',
+  fraud: '疑似詐騙',
+  inappropriate: '不當內容',
+  other: '其他',
+};
+const statusLabels: Record<string, string> = {
+  received: '待處理',
+  reviewing: '審核中',
+  resolved: '已處理',
+  dismissed: '不成立',
+};
 type Action = 'review' | 'resolve' | 'dismiss' | 'cancel_post' | 'hide_message';
 export const moderationApi = {
   reports: async () => (await api.get<{ items: OperatorReport[] }>('/moderation/reports')).data,
+  target: async (id: string) =>
+    (
+      await api.get<{ available: boolean; name?: string; score?: number }>(
+        `/moderation/reports/${id}/penalty-target`,
+      )
+    ).data,
+  penalty: async (
+    id: string,
+    value: {
+      expected_version: number;
+      points: number;
+      public_response: string;
+      internal_note: string;
+      request_key: string;
+    },
+  ) => (await api.post(`/moderation/reports/${id}/penalty`, value)).data,
   review: async (
     id: string,
     value: {
@@ -40,6 +76,7 @@ function ReviewCard({
   report: OperatorReport;
   refresh: () => Promise<unknown>;
 }) {
+  const actor = useAuthStore((state) => state.user?.id);
   const context = useMutation({
     retry: false,
     gcTime: 0,
@@ -52,6 +89,14 @@ function ReviewCard({
   });
   const [response, setResponse] = useState('');
   const [note, setNote] = useState('');
+  const [points, setPoints] = useState('0');
+  const [penaltyConfirm, setPenaltyConfirm] = useState(false);
+  const target = useQuery({
+    queryKey: ['core', actor, 'moderation-penalty-target', report.id],
+    queryFn: () => moderationApi.target(report.id),
+    enabled: report.status === 'reviewing' && report.payload.kind !== 'feedback',
+    retry: false,
+  });
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [version, setVersion] = useState(report.review_version ?? 1);
   const stale = version !== (report.review_version ?? 1);
@@ -64,14 +109,25 @@ function ReviewCard({
         action,
         public_response: response.trim(),
         internal_note: note.trim(),
+        ...(action === 'resolve' && Number(points) > 0 ? { points: Number(points) } : {}),
       };
       const signature = JSON.stringify(value);
       if (frozen.current?.signature !== signature)
         frozen.current = { signature, key: newRequestKey() };
+      if (value.points) {
+        const { action: _action, ...penalty } = value;
+        return moderationApi.penalty(report.id, {
+          ...penalty,
+          points: value.points,
+          request_key: frozen.current.key,
+        });
+      }
       return moderationApi.review(report.id, { ...value, request_key: frozen.current.key });
     },
     onSuccess: async (result) => {
       setCancelConfirm(false);
+      setPenaltyConfirm(false);
+      setPoints('0');
       setVersion(result.review_version);
       setResponse('');
       setNote('');
@@ -79,18 +135,55 @@ function ReviewCard({
     },
   });
   const valid = response.trim().length >= 5 && !mutation.isPending && !stale;
+  const pointValue = Number(points);
+  const penaltyValid =
+    /^\d{1,3}$/.test(points) &&
+    pointValue >= 0 &&
+    pointValue <= 100 &&
+    (pointValue === 0 || (!!target.data?.available && pointValue <= (target.data.score ?? -1)));
   return (
-    <View style={{ padding: 16, gap: 10, borderWidth: 1, borderColor: colors.border }}>
-      <Text>
-        {report.id} · {report.status} · 第 {report.review_version ?? 1} 版
+    <View
+      style={{
+        padding: 16,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: radius.md,
+        backgroundColor: colors.background,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <Text style={{ color: colors.ink, fontSize: 17, fontWeight: '700' }}>
+          {kindLabels[report.payload.kind] ?? '檢舉'}
+        </Text>
+        <Text style={{ color: colors.brown, fontWeight: '700' }}>
+          {statusLabels[report.status] ?? '狀態未知'}
+        </Text>
+      </View>
+      <Text style={{ color: colors.muted, fontSize: 12 }}>
+        {report.created_at ? displayTimestamp(report.created_at) : ''}
       </Text>
-      <Text>
-        {report.payload.kind} · {report.payload.reason}
-      </Text>
-      <Text>{report.payload.detail}</Text>
+      <View style={{ padding: 12, borderRadius: 12, backgroundColor: colors.surface, gap: 6 }}>
+        <Text style={{ color: colors.muted }}>檢舉類別</Text>
+        <Text style={{ color: colors.ink, fontWeight: '700' }}>
+          {reasonLabels[report.payload.reason] ?? '其他'}
+        </Text>
+        <Text style={{ color: colors.muted, marginTop: 6 }}>檢舉內容</Text>
+        <Text style={{ color: colors.ink, lineHeight: 22 }}>{report.payload.detail}</Text>
+      </View>
+      <Text style={{ color: colors.ink, fontWeight: '700' }}>圖片佐證</Text>
       {report.payload.evidence_image_id ? (
         <PersonalImage id={report.payload.evidence_image_id} />
-      ) : null}
+      ) : (
+        <Text style={{ color: colors.muted }}>此回報沒有圖片佐證</Text>
+      )}
       {['post', 'message'].includes(report.payload.kind) ? (
         <PrimaryButton secondary disabled={context.isPending} onPress={() => context.mutate()}>
           查核被檢舉原文
@@ -100,7 +193,7 @@ function ReviewCard({
         <Text>查核原文：{context.data.content ?? '內容已不存在或無法提供。'}</Text>
       ) : null}
       {context.error ? <Text accessibilityRole="alert">{coreError(context.error)}</Text> : null}
-      {report.payload.target_id ? <Text>回報目標：{report.payload.target_id}</Text> : null}
+
       {report.payload.kind === 'post' && report.payload.target_id ? (
         <PrimaryButton
           secondary
@@ -131,7 +224,7 @@ function ReviewCard({
       ) : null}
       {report.status === 'received' || report.status === 'reviewing' ? (
         <>
-          <Text>給回報者的回覆（會顯示給本人）</Text>
+          <Text>審核說明（回報者及扣分對象可見）</Text>
           <TextInput
             accessibilityLabel="給回報者的回覆"
             value={response}
@@ -155,11 +248,73 @@ function ReviewCard({
             </PrimaryButton>
           ) : (
             <>
-              <PrimaryButton disabled={!valid} onPress={() => mutation.mutate('resolve')}>
-                記錄處理結果並結案
+              {report.payload.kind !== 'feedback' ? (
+                <View
+                  style={{ gap: 8, padding: 12, borderRadius: 12, backgroundColor: colors.surface }}
+                >
+                  <Text style={{ fontWeight: '700' }}>信譽積分處置</Text>
+                  {target.isPending ? (
+                    <Text>正在確認對象與積分</Text>
+                  ) : target.data?.available ? (
+                    <Text>
+                      扣分對象：{target.data.name}・目前 {target.data.score} 分
+                    </Text>
+                  ) : (
+                    <Text>無法確認扣分對象，可選擇不扣分處理。</Text>
+                  )}
+                  <Text>扣除分數（輸入 0 代表不扣分）</Text>
+                  <TextInput
+                    accessibilityLabel="扣除信譽積分"
+                    keyboardType="number-pad"
+                    value={points}
+                    onChangeText={(value) => {
+                      setPoints(value);
+                      setPenaltyConfirm(false);
+                    }}
+                    maxLength={3}
+                    editable={!mutation.isPending}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      borderRadius: 8,
+                      padding: 10,
+                      color: colors.ink,
+                    }}
+                  />
+                  {!penaltyValid ? (
+                    <Text accessibilityRole="alert" style={{ color: colors.danger }}>
+                      請輸入 0 至對象目前積分之間的整數。
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+              <PrimaryButton
+                disabled={!valid || !penaltyValid}
+                onPress={() =>
+                  pointValue > 0 ? setPenaltyConfirm(true) : mutation.mutate('resolve')
+                }
+              >
+                檢舉成立並結案
               </PrimaryButton>
+              {penaltyConfirm && target.data?.available ? (
+                <View style={{ gap: 8 }}>
+                  <Text>
+                    確認對 {target.data.name} 扣除 {pointValue} 分？系統會發送 App 內通知。
+                  </Text>
+                  <PrimaryButton
+                    disabled={!valid || !penaltyValid}
+                    loading={mutation.isPending}
+                    onPress={() => mutation.mutate('resolve')}
+                  >
+                    確認扣分並結案
+                  </PrimaryButton>
+                  <PrimaryButton secondary onPress={() => setPenaltyConfirm(false)}>
+                    返回修改
+                  </PrimaryButton>
+                </View>
+              ) : null}
               <PrimaryButton secondary disabled={!valid} onPress={() => mutation.mutate('dismiss')}>
-                查核後不成立
+                檢舉不成立
               </PrimaryButton>
               {report.payload.kind === 'post' ? (
                 <PrimaryButton secondary disabled={!valid} onPress={() => setCancelConfirm(true)}>
@@ -227,11 +382,9 @@ export function CoreModerationScreen() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: key });
   return (
     <Screen>
-      <DetailHeader title="回報查核" />
+      <DetailHeader title="管理回報" />
       <ScrollView contentContainerStyle={{ padding: 20, gap: 16 }}>
-        <Text>
-          僅限授權管理者。先查核再處理，回覆會提供給回報者，內部備註不會公開。結案紀錄不代表已自動移除內容。
-        </Text>
+        <Text>查看檢舉內容與佐證後，選擇成立或不成立。回覆會顯示給回報者。</Text>
         <PrimaryButton
           secondary
           onPress={() => {

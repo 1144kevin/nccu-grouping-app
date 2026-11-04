@@ -11,6 +11,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
+import { usePenaltyNotices } from '@/lib/penalty-notices';
 
 const supportItems = [
   { label: '介面調整', icon: 'palette-outline', href: '/font-size' },
@@ -28,6 +29,7 @@ export function AppDrawer() {
   const { logout, busy, error } = useAuthStore();
   const account = useAuthStore((state) => state.user);
   const currentUser = useAppStore((state) => state.currentUser);
+  const notices = usePenaltyNotices();
 
   function navigate(href: string) {
     close();
@@ -82,12 +84,14 @@ export function AppDrawer() {
                 {...item}
                 label={
                   item.href === '/notifications' && CORE_API_ENABLED && CORE_SUPABASE_MODE
-                    ? '拼單動態'
+                    ? '通知中心'
                     : item.label
                 }
                 badge={
-                  item.href === '/notifications' && !CORE_API_ENABLED
-                    ? unreadNotifications
+                  item.href === '/notifications'
+                    ? CORE_API_ENABLED && CORE_SUPABASE_MODE
+                      ? notices.data?.items.filter((notice) => !notice.read_at).length
+                      : unreadNotifications
                     : undefined
                 }
                 onPress={() => navigate(item.href)}
