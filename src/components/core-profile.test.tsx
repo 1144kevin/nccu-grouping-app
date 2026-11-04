@@ -1,6 +1,7 @@
 import { expect, it, jest } from '@jest/globals';
 import { render } from '@testing-library/react-native';
 import { CoreProfileScreen } from './core-profile';
+import { randomShowerLevel } from './pizza-shower';
 let mockScore = 0;
 
 jest.mock('expo-router', () => ({
@@ -35,4 +36,10 @@ it('uses the real account score, starting at zero rather than a preview score', 
   mockScore = 50;
   await screen.rerender(<CoreProfileScreen />);
   expect(screen.getByText('50/100')).toBeTruthy();
+});
+
+it('only drops Lv.3 to Lv.5 pizzas in the logo easter egg', () => {
+  expect(randomShowerLevel(0)).toBe(3);
+  expect(randomShowerLevel(0.5)).toBe(4);
+  expect(randomShowerLevel(0.999)).toBe(5);
 });

@@ -9,7 +9,7 @@ import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useBurgerLogoPress } from '@/components/burger-shower';
+import { usePizzaLogoPress } from '@/components/pizza-shower';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { useAuthStore } from '@/store/auth-store';
@@ -46,7 +46,7 @@ export function AppHeader({
   searchScope?: 'all' | 'posts' | 'orders' | 'messages' | 'history';
 }) {
   const openDrawer = useNavigationStore((state) => state.openDrawer);
-  const onLogoPress = useBurgerLogoPress();
+  const onLogoPress = usePizzaLogoPress();
   return (
     <View style={styles.header}>
       <IconButton icon="menu" label="開啟選單" onPress={openDrawer} />

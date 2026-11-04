@@ -8,19 +8,22 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { Animated, Easing, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { BurgerLevelIcon, type BurgerLevel } from '@/components/burger-level-icon';
+import { PizzaLevelIcon, type PizzaLevel } from '@/components/pizza-level-icon';
 
 const ShowerContext = createContext<() => void>(() => undefined);
+const showerLevels: PizzaLevel[] = [3, 4, 5];
+export const randomShowerLevel = (random = Math.random()) =>
+  showerLevels[Math.floor(random * showerLevels.length)];
 type Particle = {
   id: number;
   progress: Animated.Value;
   x: number;
   y: number;
   spin: number;
-  level: BurgerLevel;
+  level: PizzaLevel;
 };
 
-export function BurgerShowerProvider({ children }: PropsWithChildren) {
+export function PizzaShowerProvider({ children }: PropsWithChildren) {
   const { width, height } = useWindowDimensions();
   const [particles, setParticles] = useState<Particle[]>([]);
   const emitter = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -48,7 +51,7 @@ export function BurgerShowerProvider({ children }: PropsWithChildren) {
         x: (Math.random() - 0.5) * Math.min(width * 1.5, 900),
         y: height * (0.55 + Math.random() * 0.5),
         spin: (Math.random() - 0.5) * 600,
-        level: (1 + Math.floor(Math.random() * 5)) as BurgerLevel,
+        level: randomShowerLevel(),
       }));
       setParticles((old) => [...old, ...batch]);
       batch.forEach((particle) => {
@@ -97,7 +100,7 @@ export function BurgerShowerProvider({ children }: PropsWithChildren) {
           <Animated.View
             pointerEvents="none"
             key={particle.id}
-            testID="burger-confetti"
+            testID="pizza-confetti"
             style={{
               position: 'absolute',
               top: 45,
@@ -128,7 +131,7 @@ export function BurgerShowerProvider({ children }: PropsWithChildren) {
               ],
             }}
           >
-            <BurgerLevelIcon level={particle.level} size={40} />
+            <PizzaLevelIcon level={particle.level} size={40} />
           </Animated.View>
         ))}
       </View>
@@ -136,6 +139,6 @@ export function BurgerShowerProvider({ children }: PropsWithChildren) {
   );
 }
 
-export function useBurgerLogoPress() {
+export function usePizzaLogoPress() {
   return useContext(ShowerContext);
 }

@@ -14,7 +14,7 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/primitives';
-import { BurgerLevelIcon, type BurgerLevel } from '@/components/burger-level-icon';
+import { PizzaLevelIcon, type PizzaLevel } from '@/components/pizza-level-icon';
 import { useCorePosts } from '@/lib/core-hooks';
 import { useExperience } from '@/lib/social-api';
 import { coreError, type CorePost } from '@/lib/core-api';
@@ -64,7 +64,7 @@ export function CoreProfileScreen() {
               加入
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <BurgerLevelIcon level={level} size={30} />
+              <PizzaLevelIcon level={level} size={30} />
               <Text style={styles.role}>
                 {experience.data ? `${labels[level - 1]}揪團夥伴` : '揪團新朋友'}
               </Text>
@@ -99,9 +99,9 @@ export function CoreProfileScreen() {
             <Text style={styles.score}>{score == null ? '—' : score}/100</Text>
           </View>
           <View style={styles.levels}>
-            {([1, 2, 3, 4, 5] as BurgerLevel[]).map((value) => (
+            {([1, 2, 3, 4, 5] as PizzaLevel[]).map((value) => (
               <View key={value} style={styles.levelItem}>
-                <BurgerLevelIcon level={value} size={48} />
+                <PizzaLevelIcon level={value} size={48} />
                 <Text style={styles.levelLabel}>Lv.{value}</Text>
               </View>
             ))}

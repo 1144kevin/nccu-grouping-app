@@ -14,7 +14,7 @@ import { Screen } from '@/components/primitives';
 import { PostLoginReturn } from '@/components/post-login-return';
 import { WebInputNavigation } from '@/components/web-input-navigation';
 import { WebPushOnboarding } from '@/components/web-push-settings';
-import { BurgerShowerProvider } from '@/components/burger-shower';
+import { PizzaShowerProvider } from '@/components/pizza-shower';
 
 export default function RootLayout() {
   const user = useAuthStore((state) => state.user);
@@ -23,7 +23,7 @@ export default function RootLayout() {
       <WebInputNavigation />
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <BurgerShowerProvider>
+          <PizzaShowerProvider>
             <AppearanceController />
             <CoreAuthGate>
               <RootNavigator />
@@ -33,7 +33,7 @@ export default function RootLayout() {
               ) : null}
               {!CORE_API_ENABLED || (user && !user.profile_setup_required) ? <AppDrawer /> : null}
             </CoreAuthGate>
-          </BurgerShowerProvider>
+          </PizzaShowerProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
