@@ -15,7 +15,7 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/primitives';
-import { PizzaLevelIcon } from '@/components/pizza-level-icon';
+import { PizzaLevelIcon, pizzaLevels } from '@/components/pizza-level-icon';
 import { PizzaLevelHelp } from '@/components/pizza-level-help';
 import { PizzaLevelList } from '@/components/pizza-level-list';
 import { useCorePosts } from '@/lib/core-hooks';
@@ -45,7 +45,7 @@ export function CoreProfileScreen() {
   if (!user) return null;
   const level = experience.data?.level ?? 1;
   const score = experience.data?.score;
-  const labels = ['一分熟', '二分熟', '三分熟', '四分熟', '五分熟'];
+  const levelTitle = pizzaLevels[level - 1].title;
   return (
     <Screen>
       <AppHeader searchScope="history" />
@@ -69,7 +69,7 @@ export function CoreProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <PizzaLevelIcon level={level} size={30} />
               <Text style={styles.role}>
-                {experience.data ? `${labels[level - 1]}揪團夥伴` : '揪團新朋友'}
+                {experience.data ? `${levelTitle}揪團夥伴` : '揪團新朋友'}
               </Text>
             </View>
             <Text style={styles.bio}>{user.bio || '寫點介紹，讓夥伴認識你'}</Text>
@@ -86,7 +86,7 @@ export function CoreProfileScreen() {
           <View style={styles.levelTitle}>
             <Text style={styles.levelHeading}>我的熟度等級</Text>
             <Text style={styles.levelName}>
-              {experience.data ? `${labels[level - 1]} (${levelLabel(level)})` : '待累積'}
+              {experience.data ? `${levelTitle} (${levelLabel(level)})` : '待累積'}
             </Text>
             <MaterialCommunityIcons name="information-outline" size={16} color={colors.muted} />
           </View>

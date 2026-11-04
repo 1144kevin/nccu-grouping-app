@@ -8,6 +8,7 @@ import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { CorePublicProfile } from '@/components/core-public-profile';
+import { pizzaLevels } from '@/components/pizza-level-icon';
 
 export default function UserProfileScreen() {
   const params = useLocalSearchParams<{ name: string }>();
@@ -47,7 +48,7 @@ function DemoUserProfileScreen() {
   );
 }
 
-function levelName(level: number) { return ['初來乍到', '三分熟', '四分熟', '熟練團員', '五分熟揪團高手'][Math.min(4, Math.max(0, level - 1))]; }
+function levelName(level: number) { return pizzaLevels[Math.min(4, Math.max(0, level - 1))].title; }
 
 const styles = StyleSheet.create({
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },

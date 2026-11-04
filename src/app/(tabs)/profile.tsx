@@ -29,7 +29,7 @@ function DemoProfileScreen() {
           <View style={styles.identityText}>
             <Text style={styles.username}>{currentUser.name}</Text>
             <Text style={styles.joined}>{currentUser.joinedAt}加入</Text>
-            <Text style={styles.role}>{currentUser.badge} 五分熟揪團高手</Text>
+            <Text style={styles.role}>{currentUser.badge} 豪華牽絲揪團高手</Text>
             <Text numberOfLines={1} style={styles.bio}>
               {currentUser.bio}
             </Text>
@@ -44,7 +44,7 @@ function DemoProfileScreen() {
         >
           <View style={styles.levelTitle}>
             <Text style={styles.levelHeading}>我的熟度等級</Text>
-            <Text style={styles.levelName}>五分熟 (Lv.4)</Text>
+            <Text style={styles.levelName}>豪華牽絲 (Lv.4)</Text>
             <MaterialCommunityIcons name="information-outline" size={15} color={colors.muted} />
           </View>
           <View style={styles.progressRow}>

@@ -33,7 +33,7 @@ it('uses the real account score, starting at zero rather than a preview score', 
     max: 100,
     now: 0,
   });
-  expect(screen.getByText('一分熟揪團夥伴')).toBeTruthy();
+  expect(screen.getByText('只剩餅皮揪團夥伴')).toBeTruthy();
   expect(screen.getByText('還沒有過往拼單')).toBeTruthy();
   mockScore = 50;
   await screen.rerender(<CoreProfileScreen />);
