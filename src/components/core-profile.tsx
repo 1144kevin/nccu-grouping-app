@@ -3,7 +3,7 @@ import { PageLoading } from '@/components/page-loading';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import {
   AppHeader,
@@ -14,7 +14,9 @@ import {
   Screen,
   SectionTitle,
 } from '@/components/primitives';
-import { PizzaLevelIcon, type PizzaLevel } from '@/components/pizza-level-icon';
+import { PizzaLevelIcon } from '@/components/pizza-level-icon';
+import { PizzaLevelHelp } from '@/components/pizza-level-help';
+import { PizzaLevelList } from '@/components/pizza-level-list';
 import { useCorePosts } from '@/lib/core-hooks';
 import { useExperience } from '@/lib/social-api';
 import { coreError, type CorePost } from '@/lib/core-api';
@@ -98,14 +100,7 @@ export function CoreProfileScreen() {
             </View>
             <Text style={styles.score}>{score == null ? '—' : score}/100</Text>
           </View>
-          <View style={styles.levels}>
-            {([1, 2, 3, 4, 5] as PizzaLevel[]).map((value) => (
-              <View key={value} style={styles.levelItem}>
-                <PizzaLevelIcon level={value} size={48} />
-                <Text style={styles.levelLabel}>Lv.{value}</Text>
-              </View>
-            ))}
-          </View>
+          <PizzaLevelList />
         </Pressable>
         <SectionTitle
           action={
@@ -156,19 +151,7 @@ export function CoreProfileScreen() {
           <MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} />
         </Pressable>
       </ScrollView>
-      <Modal transparent visible={help} animationType="fade" onRequestClose={() => setHelp(false)}>
-        <View style={styles.overlay}>
-          <View style={styles.help}>
-            <Text style={styles.username}>一起把漢堡疊高</Text>
-            <Text style={styles.bio}>
-              全員確認完成後，主揪 +5 分、團員 +3 分；每收到 10 個讚再 +1 分，上限 100
-              分。尚未完成、取消與示範拼單不計分。
-            </Text>
-            <Text style={styles.bio}>熟度反映已確認的參與紀錄，不是付款保證。</Text>
-            <PrimaryButton onPress={() => setHelp(false)}>知道了</PrimaryButton>
-          </View>
-        </View>
-      </Modal>
+      <PizzaLevelHelp visible={help} onClose={() => setHelp(false)} />
     </Screen>
   );
 }
@@ -239,9 +222,6 @@ const styles = StyleSheet.create({
   },
   progress: { height: '100%', borderRadius: 4, ...yellowSurface, backgroundColor: colors.yellow },
   score: { color: colors.ink, fontSize: 13 },
-  levels: { marginTop: 15, flexDirection: 'row', justifyContent: 'space-between' },
-  levelItem: { alignItems: 'center', gap: 3 },
-  levelLabel: { color: colors.muted, fontSize: 12 },
   count: { color: colors.muted, fontSize: 14 },
   historyRow: {
     minHeight: 88,
@@ -282,19 +262,4 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   settingsText: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: '700' },
-  overlay: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00000055',
-    padding: 24,
-  },
-  help: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    padding: 20,
-    gap: 14,
-    maxWidth: 400,
-    width: '100%',
-  },
 });

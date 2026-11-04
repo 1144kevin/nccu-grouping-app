@@ -1,16 +1,16 @@
 import { AppText as Text } from '@/components/app-text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppHeader, Avatar, Pill, Screen, SectionTitle } from '@/components/primitives';
-import { PizzaLevelIcon, type PizzaLevel } from '@/components/pizza-level-icon';
+import { PizzaLevelHelp } from '@/components/pizza-level-help';
+import { PizzaLevelList } from '@/components/pizza-level-list';
 import { useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { CoreProfileScreen } from '@/components/core-profile';
 import type { OrderHistory } from '@/types/domain';
 import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
-
-const levels: PizzaLevel[] = [1, 2, 3, 4, 5];
 
 export default function ProfileScreen() {
   return CORE_API_ENABLED ? <CoreProfileScreen /> : <DemoProfileScreen />;
@@ -19,6 +19,7 @@ export default function ProfileScreen() {
 function DemoProfileScreen() {
   const history = useAppStore((state) => state.history);
   const currentUser = useAppStore((state) => state.currentUser);
+  const [help, setHelp] = useState(false);
   return (
     <Screen>
       <AppHeader searchScope="history" />
@@ -36,7 +37,9 @@ function DemoProfileScreen() {
           <MaterialCommunityIcons name="pencil-outline" size={16} color={colors.subtle} />
         </Pressable>
         <Pressable
-          onPress={() => router.push({ pathname: '/help', params: { topic: 'level' } })}
+          accessibilityRole="button"
+          accessibilityLabel="熟度等級說明"
+          onPress={() => setHelp(true)}
           style={styles.levelCard}
         >
           <View style={styles.levelTitle}>
@@ -50,14 +53,7 @@ function DemoProfileScreen() {
             </View>
             <Text style={styles.score}>98/100</Text>
           </View>
-          <View style={styles.levels}>
-            {levels.map((level) => (
-              <View key={level} style={styles.levelItem}>
-                <PizzaLevelIcon level={level} />
-                <Text style={styles.levelLabel}>Lv.{level}</Text>
-              </View>
-            ))}
-          </View>
+          <PizzaLevelList />
         </Pressable>
         <SectionTitle action={<Text style={styles.count}>{history.length} 筆</Text>}>
           過往拼單
@@ -71,6 +67,7 @@ function DemoProfileScreen() {
           <MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} />
         </Pressable>
       </ScrollView>
+      <PizzaLevelHelp visible={help} onClose={() => setHelp(false)} />
     </Screen>
   );
 }
@@ -140,9 +137,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellow,
   },
   score: { color: colors.ink, fontSize: 13 },
-  levels: { marginTop: 15, flexDirection: 'row', justifyContent: 'space-between' },
-  levelItem: { alignItems: 'center', gap: 3 },
-  levelLabel: { color: colors.muted, fontSize: 12 },
   count: { color: colors.muted, fontSize: 14 },
   historyRow: {
     minHeight: 88,

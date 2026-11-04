@@ -1,6 +1,7 @@
 import { expect, it, jest } from '@jest/globals';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { CoreProfileScreen } from './core-profile';
+import { pizzaLevels } from './pizza-level-icon';
 import { randomShowerLevel } from './pizza-shower';
 let mockScore = 0;
 
@@ -36,6 +37,23 @@ it('uses the real account score, starting at zero rather than a preview score', 
   mockScore = 50;
   await screen.rerender(<CoreProfileScreen />);
   expect(screen.getByText('50/100')).toBeTruthy();
+});
+
+it('lists every pizza level with its label and title', async () => {
+  const screen = await render(<CoreProfileScreen />);
+  for (const item of pizzaLevels) {
+    expect(screen.getByText(`Lv.${item.level}`)).toBeTruthy();
+    expect(screen.getByText(item.title)).toBeTruthy();
+  }
+});
+
+it('explains each pizza level in the info dialog below the scoring rules', async () => {
+  const screen = await render(<CoreProfileScreen />);
+  expect(screen.queryByText('把披薩大拼起來')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('熟度等級說明'));
+  expect(screen.getByText('把披薩大拼起來')).toBeTruthy();
+  expect(screen.getByText('熟度反映已確認的參與紀錄，不是付款保證。')).toBeTruthy();
+  for (const item of pizzaLevels) expect(screen.getByText(item.description)).toBeTruthy();
 });
 
 it('only drops Lv.3 to Lv.5 pizzas in the logo easter egg', () => {
