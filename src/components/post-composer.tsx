@@ -20,6 +20,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView as NativeScrollView,
   StyleSheet,
@@ -110,7 +111,6 @@ export function PostComposer({
   now = Date.now,
   clockDrift = false,
   post,
-  onReload,
 }: {
   now?: () => number;
   clockDrift?: boolean;
@@ -164,9 +164,17 @@ export function PostComposer({
     mode: 'onChange',
     defaultValues: {
       content: post?.content ?? '',
-      price: post?.price_per_person ?? '',
+      price: post?.price_per_person == null ? '' : String(post.price_per_person),
       capacity: String(post?.capacity ?? 4),
-      ...(post ? { location: post.location } : {}),
+      ...(post
+        ? {
+            location: {
+              ...post.location,
+              address: post.location.address ?? undefined,
+              source: post.location.source ?? undefined,
+            },
+          }
+        : {}),
     },
   });
   const content = useWatch({ control, name: 'content' });
@@ -174,6 +182,8 @@ export function PostComposer({
   const capacityInput = useWatch({ control, name: 'capacity' });
   // A server error must not lock an otherwise valid draft out of retrying.
   const formReady = !locked && schema.safeParse(writingFields).success;
+  const submitDisabled =
+    (post ? locked : !formReady) || !tags.length || isSubmitting || imageBusy || writingBusy;
   const capacity = Number(capacityInput);
 
   function stepCapacity(amount: number) {
@@ -276,6 +286,10 @@ export function PostComposer({
         deadline.getTime() === new Date(post.deadline_at).getTime())
     )
       return leave();
+    if (Platform.OS === 'web') {
+      if (window.confirm('尚未儲存的內容不會被保留，確定要離開嗎？')) leave();
+      return;
+    }
     Alert.alert(post ? '捨棄這次變更？' : '捨棄這篇貼文？', '尚未儲存的內容不會被保留。', [
       { text: '繼續編輯', style: 'cancel' },
       { text: '捨棄', style: 'destructive', onPress: leave },
@@ -292,96 +306,104 @@ export function PostComposer({
   }
 
   const submit = () =>
-    handleSubmit(async (values) => {
-      if (locked || publishing.current || imageBusy || writingBusy) return;
-      if (!tags.length) return Alert.alert('請選擇標籤', '至少需要一個主題標籤。');
-      publishing.current = true;
-      const actor = useAuthStore.getState().user?.id;
-      clearErrors('root');
-      try {
-        if (CORE_API_ENABLED) {
-          const input = {
-            content: values.content.trim(),
-            location: values.location,
-            tags,
-            deadline_at: deadline.toISOString(),
-            capacity: Number(values.capacity),
-            price_per_person: values.price.trim() || null,
-          };
-          const payload = JSON.stringify({ ...input, image_keys: photos.map((photo) => photo.id) });
-          if (deadline.getTime() <= now() && publication.current?.payload !== payload)
-            throw new Error('deadline_must_be_within_14_days');
-          if (publication.current?.payload !== payload)
-            publication.current = { payload, key: newRequestKey() };
-          let created;
-          if (CORE_SUPABASE_MODE && (photos.length || post)) {
-            const ids: string[] = [];
-            for (const photo of photos) {
+    handleSubmit(
+      async (values) => {
+        if (locked || publishing.current || imageBusy || writingBusy) return;
+        if (!tags.length) return Alert.alert('請選擇標籤', '至少需要一個主題標籤。');
+        publishing.current = true;
+        const actor = useAuthStore.getState().user?.id;
+        clearErrors('root');
+        try {
+          if (CORE_API_ENABLED) {
+            const input = {
+              content: values.content.trim(),
+              location: values.location,
+              tags,
+              deadline_at: deadline.toISOString(),
+              capacity: Number(values.capacity),
+              price_per_person: values.price.trim() || null,
+            };
+            const payload = JSON.stringify({
+              ...input,
+              image_keys: photos.map((photo) => photo.id),
+            });
+            if (deadline.getTime() <= now() && publication.current?.payload !== payload)
+              throw new Error('deadline_must_be_within_14_days');
+            if (publication.current?.payload !== payload)
+              publication.current = { payload, key: newRequestKey() };
+            let created;
+            if (CORE_SUPABASE_MODE && (photos.length || post)) {
+              const ids: string[] = [];
+              for (const photo of photos) {
+                if (useAuthStore.getState().user?.id !== actor)
+                  throw new Error('invalid_or_expired_session');
+                let uploaded = photo.remote ? photo.id : uploadedImages.current.get(photo.id);
+                if (!uploaded) {
+                  const asset = await mediaApi.upload(photo.base64!, photo.id);
+                  uploaded = asset.id;
+                  uploadedImages.current.set(photo.id, uploaded);
+                }
+                ids.push(uploaded);
+              }
               if (useAuthStore.getState().user?.id !== actor)
                 throw new Error('invalid_or_expired_session');
-              let uploaded = photo.remote ? photo.id : uploadedImages.current.get(photo.id);
-              if (!uploaded) {
-                const asset = await mediaApi.upload(photo.base64!, photo.id);
-                uploaded = asset.id;
-                uploadedImages.current.set(photo.id, uploaded);
-              }
-              ids.push(uploaded);
-            }
-            if (useAuthStore.getState().user?.id !== actor)
-              throw new Error('invalid_or_expired_session');
-            const originalIds = post?.images?.length
-              ? post.images.map((image) => image.id)
-              : post?.image_id
-                ? [post.image_id]
-                : [];
-            created = post
-              ? JSON.stringify(ids) === JSON.stringify(originalIds)
+              const originalIds = post?.images?.length
+                ? post.images.map((image) => image.id)
+                : post?.image_id
+                  ? [post.image_id]
+                  : [];
+              created = post
+                ? JSON.stringify(ids) === JSON.stringify(originalIds)
+                  ? await coreApi.edit(post.id, { ...input, expected_version: version })
+                  : await mediaApi.edit(post.id, input, ids, version)
+                : await mediaApi.publish(input, ids, publication.current.key);
+            } else
+              created = post
                 ? await coreApi.edit(post.id, { ...input, expected_version: version })
-                : await mediaApi.edit(post.id, input, ids, version)
-              : await mediaApi.publish(input, ids, publication.current.key);
-          } else
-            created = post
-              ? await coreApi.edit(post.id, { ...input, expected_version: version })
-              : await coreApi.create(input, publication.current.key);
-          if (useAuthStore.getState().user?.id !== actor) return;
-          if (actor) {
-            if (post) updateCachedPost(queryClient, actor, created);
-            else showPublishedPost(actor, created);
+                : await coreApi.create(input, publication.current.key);
+            if (useAuthStore.getState().user?.id !== actor) return;
+            if (actor) {
+              if (post) updateCachedPost(queryClient, actor, created);
+              else showPublishedPost(actor, created);
+            }
+            await invalidateCore();
+            if (useAuthStore.getState().user?.id !== actor) return;
+          } else {
+            publishPost({
+              content: values.content.trim(),
+              location: values.location,
+              pricePerPerson: parsePrice(values.price),
+              tags,
+              deadline: formatDeadline(deadline),
+              capacity: Number(values.capacity),
+              imageUrl: photos[0]?.uri,
+              photos: photos.map(({ id, uri, width, height }) => ({ id, uri, width, height })),
+              voiceUri,
+            });
           }
-          await invalidateCore();
-          if (useAuthStore.getState().user?.id !== actor) return;
-        } else {
-          publishPost({
-            content: values.content.trim(),
-            location: values.location,
-            pricePerPerson: parsePrice(values.price),
-            tags,
-            deadline: formatDeadline(deadline),
-            capacity: Number(values.capacity),
-            imageUrl: photos[0]?.uri,
-            photos: photos.map(({ id, uri, width, height }) => ({ id, uri, width, height })),
-            voiceUri,
-          });
-        }
-        if (post) {
+          if (post) {
+            publication.current = null;
+            leave();
+            return;
+          }
           publication.current = null;
-          leave();
-          return;
+          reset();
+          setLocationKey((key) => key + 1);
+          setPhotos([]);
+          uploadedImages.current.clear();
+          setVoiceUri(undefined);
+          setTags(['拼單']);
+          router.replace('/');
+        } catch (error) {
+          setError('root.server', { message: coreError(error) });
+        } finally {
+          publishing.current = false;
         }
-        publication.current = null;
-        reset();
-        setLocationKey((key) => key + 1);
-        setPhotos([]);
-        uploadedImages.current.clear();
-        setVoiceUri(undefined);
-        setTags(['拼單']);
-        router.replace('/');
-      } catch (error) {
-        setError('root.server', { message: coreError(error) });
-      } finally {
-        publishing.current = false;
-      }
-    })();
+      },
+      () => {
+        setError('root.server', { message: '請檢查貼文內容、取餐地點、金額及人數後再儲存。' });
+      },
+    )();
 
   function addCustomTag() {
     const tag = customTag.trim().slice(0, 12);
@@ -413,7 +435,7 @@ export function PostComposer({
           <IconButton
             icon="close"
             label="關閉"
-            disabled={locked || isSubmitting || imageBusy}
+            disabled={isSubmitting || imageBusy}
             onPress={close}
           />
         </View>
@@ -424,13 +446,9 @@ export function PostComposer({
             post ? (isSubmitting ? '儲存中' : '儲存拼單變更') : isSubmitting ? '發布中' : '發布'
           }
           accessibilityState={{ busy: isSubmitting }}
-          disabled={!formReady || !tags.length || isSubmitting || imageBusy || writingBusy}
+          disabled={submitDisabled}
           onPress={submit}
-          style={[
-            styles.publish,
-            (!formReady || !tags.length || isSubmitting || imageBusy || writingBusy) &&
-              styles.publishDisabled,
-          ]}
+          style={[styles.publish, submitDisabled && styles.publishDisabled]}
         >
           {isSubmitting ? (
             <InlineLoading label={post ? '儲存中' : '發布中'} showLabel={false} />
@@ -441,23 +459,10 @@ export function PostComposer({
       </View>
       <View style={{ flex: 1 }}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          {post ? (
-            <View style={{ gap: 8 }}>
-              {locked ? (
-                <Text style={styles.fieldHint}>
-                  這筆拼單已截止、取消，或已有待審申請／團員，現在無法修改。
-                </Text>
-              ) : null}
-              <PrimaryButton
-                secondary
-                disabled={isSubmitting || imageBusy || writingBusy}
-                onPress={() => {
-                  void onReload?.();
-                }}
-              >
-                重新載入已儲存內容
-              </PrimaryButton>
-            </View>
+          {post && locked ? (
+            <Text style={styles.fieldHint}>
+              這筆拼單已截止、取消，或已有待審申請／團員，現在無法修改。
+            </Text>
           ) : null}
           {clockDrift ? (
             <Text style={{ color: colors.muted, fontSize: 13 }}>

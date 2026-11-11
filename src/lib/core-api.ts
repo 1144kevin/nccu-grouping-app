@@ -42,6 +42,8 @@ export type CoreProfileInput = {
 export type Membership = 'host' | 'none' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
 export type CorePost = {
   completed?: boolean;
+  workflow_stage?: 'waiting' | 'formed' | 'en_route' | 'delivering' | 'completed' | null;
+  workflow_formed_once?: boolean;
   images?: { id: string; width: number; height: number }[];
   semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {
@@ -278,6 +280,31 @@ const messages: Record<string, string> = {
   conversation_not_found: '找不到聊天室，或你目前無法存取。',
   direct_message_rate_limit: '訊息操作過於頻繁，請稍後重試。',
   handoff_not_ready: '尚未符合面交確認條件，請重新整理拼單。',
+  cloud_model_not_configured: '雲端 AI 尚未設定，請聯繫管理員。',
+  openai_not_configured: 'OpenAI 尚未設定，請聯繫管理員。',
+  openai_budget_exhausted: '已達本機 AI 預算上限，暫停新的 AI 請求。',
+  openai_budget_unavailable: '無法確認 AI 預算，已暫停請求。',
+  openai_rate_limit: 'AI 請求過於頻繁，請稍後再試。',
+  openai_quota_or_rate_limit: 'OpenAI 額度不足或請求過於頻繁，請稍後再試。',
+  openai_access_denied: 'OpenAI 模型無法使用，請檢查帳號權限。',
+  openai_timeout: 'OpenAI 回應逾時，請稍後再試。',
+  openai_unavailable: 'OpenAI 暫時無法使用，請稍後再試。',
+  openai_invalid_response: 'AI 回傳內容無法使用，請重新產生。',
+  openai_input_too_large: '內容過長，請減少文字或圖片後再試。',
+  openai_speech_unavailable: 'AI 語音暫時無法播放，文字不受影響。',
+  cloud_model_quota: '雲端 AI 目前已達使用上限，請稍後再試。',
+  cloud_model_timeout: '雲端 AI 回應逾時，請稍後再試。',
+  cloud_model_unavailable: '雲端 AI 暫時無法使用，請稍後再試。',
+  cloud_model_invalid_response: '雲端 AI 回傳內容無法使用，請重新產生。',
+  cloud_image_request_too_large: '照片總大小超過辨識限制，請減少照片數量後重試。',
+  formation_not_ready: '目前還無法成團，請確認已有團員加入。',
+  formation_host_first: '請等待主揪先提出成團。',
+  order_not_formed: '請先完成成團確認。',
+  purchase_not_ready: '請由主揪出發後確認購買。',
+  order_photo_required: '請拍攝照片作為佐證。',
+  order_workflow_required: '請從拼單詳情依序完成訂單。',
+  order_already_formed: '這筆拼單已成團，無法再加入。',
+  order_unavailable: '這筆拼單已取消或完成，請重新整理。',
   post_writing_invalid_output: '這次草稿未通過檢查，原文已保留，請重新生成。',
   order_already_completed: '這筆訂單已完成，無法再加入、退出或變更。',
   web_push_not_supported: '請從加入主畫面的 Web App 啟用通知，並確認 iOS 已更新至16.4以上。',
@@ -408,7 +435,7 @@ const messages: Record<string, string> = {
     '尚未啟用本機語義配對，請依開發文件設定並重啟後端；原配對仍可使用。',
   invalid_candidate_review: '模型未能完成候選判讀，請稍後重試；原配對與確認流程仍可使用。',
   ungrounded_candidate_review: '這次模型理由未通過資料檢查，已隱藏，請重新分析。',
-  invalid_embedding_response: '本機模型的向量格式不符，請確認模型設定後重試。',
+  invalid_embedding_response: 'AI 向量格式不符，請稍後重試。',
   embedding_space_changed: '語義模型版本已改變，請重新分析配對。',
   local_model_unavailable: '本機模型未啟動，請執行 run_local_model.py。',
   local_model_not_installed: '本機模型尚未下載，請依開發文件完成下載。',

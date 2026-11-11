@@ -70,6 +70,7 @@ function RootNavigator() {
         <Stack.Screen name="font-size" />
         <Stack.Screen name="preferences" />
         <Stack.Screen name="stealth" />
+        <Stack.Screen name="stealth-history" />
         <Stack.Screen name="stealth-preferences" />
         <Stack.Screen name="report" />
       </Stack.Protected>

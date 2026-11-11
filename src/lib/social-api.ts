@@ -60,6 +60,16 @@ export type Experience = {
   completed_post_ids: string[];
   history_count: number;
 };
+export type OrderWorkflow = {
+  stage: 'waiting' | 'formed' | 'en_route' | 'delivering' | 'completed';
+  member_count: number;
+  formation_votes: number;
+  my_vote: boolean;
+  host_vote: boolean;
+  is_host: boolean;
+  completed_count: number;
+  my_completed: boolean;
+};
 export const socialApi = {
   inbox: async (kind: InboxFilter = 'all', cursor?: string, deleted = false, limit = 30) =>
     (await api.get<InboxPage>('/inbox', { params: { kind, cursor, deleted, limit } })).data,
@@ -92,6 +102,19 @@ export const socialApi = {
     (await api.post(`/direct-messages/${encodeURIComponent(id)}/read`, { message_id })).data,
   order: async (postId: string) =>
     (await api.get<OrderSummary>(`/orders/${encodeURIComponent(postId)}/summary`)).data,
+  workflow: async (postId: string) =>
+    (await api.get<OrderWorkflow>(`/orders/${encodeURIComponent(postId)}/workflow`)).data,
+  workflowAction: async (
+    postId: string,
+    action: 'vote' | 'depart' | 'purchase' | 'complete',
+    image_id?: string,
+  ) =>
+    (
+      await api.post<OrderWorkflow>(`/orders/${encodeURIComponent(postId)}/workflow`, {
+        action,
+        ...(image_id ? { image_id } : {}),
+      })
+    ).data,
   handoff: async (postId: string) =>
     (await api.post<OrderSummary>(`/orders/${encodeURIComponent(postId)}/handoff`)).data,
   experience: async () => (await api.get<Experience>('/account/experience')).data,

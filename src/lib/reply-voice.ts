@@ -2,7 +2,7 @@ export type ReplyVoice = {
   speak: (
     text: string,
     onState: (playing: boolean) => void,
-    onError: () => void,
+    onError: (code?: string) => void,
     onPreparing?: (pending: boolean) => void,
   ) => void;
   stop: () => void;

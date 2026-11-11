@@ -154,9 +154,13 @@ export function QuickStealthComposer({
           if (!playing) setVoicePreparing(false);
         }
       },
-      () => {
+      (code) => {
         if (mounted.current && visible.current)
-          setVoiceError('朗讀未完成，可按「重聽回覆」再試一次，文字不受影響。');
+          setVoiceError(code === 'openai_budget_exhausted'
+            ? '已達本機 AI 預算上限，暫停朗讀；文字不受影響。'
+            : code === 'openai_quota_or_rate_limit'
+              ? 'OpenAI 額度不足或請求過於頻繁，暫停朗讀；文字不受影響。'
+              : '朗讀未完成，可按「重聽回覆」再試一次，文字不受影響。');
       },
       (pending) => {
         if (mounted.current && visible.current) setVoicePreparing(pending);
@@ -184,7 +188,6 @@ export function QuickStealthComposer({
     setPhase('interview');
     setError('');
     setVoiceReview(false);
-    setReviewing(false);
     setPendingAnswer(display);
     const next = [...turns, answer.trim()];
     const nextFields = [...fields, preview?.question?.field ?? null];
@@ -209,7 +212,8 @@ export function QuickStealthComposer({
         { role: 'user', text: display },
         { role: 'assistant', text: result.message },
       ]);
-      setReviewing(result.ready_for_review);
+      // A valid draft is immediately reviewable even while the conversation can continue.
+      setReviewing(!!result.signal);
       request.current = null;
       if (voiceEnabledRef.current) playReply(result.message);
     } catch (e) {
@@ -422,6 +426,7 @@ export function QuickStealthComposer({
         {!messages.length && !pendingAnswer && phase !== 'interview' ? (
           <View style={styles.greeting}>
             <Text style={styles.greetingText}>{greeting}</Text>
+            <Text style={styles.hint}>對話與配對需求會傳送至 OpenAI 處理；語音回覆由 AI 產生。</Text>
           </View>
         ) : null}
         {messages.map((message, index) => (

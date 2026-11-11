@@ -89,16 +89,16 @@ export function createStreamingReplyVoice(): ReplyVoice | null {
       preparing?.(true);
       let complete = false;
       let started = false;
-      const fail = () => {
+      const fail = (error?: unknown) => {
         if (current === epoch) {
           stop();
-          onError();
+          onError(error instanceof Error ? error.message : undefined);
         }
       };
       scheduledUntil = context.currentTime;
       const resumed = context.resume(); // Runs in the initial speaker tap on Safari.
       const signal = controller.signal;
-      timer = setTimeout(fail, 45_000);
+      timer = setTimeout(() => fail(), 45_000);
       void resumed
         .then(async () => {
           if (current !== epoch) return;
@@ -133,7 +133,7 @@ export function createStreamingReplyVoice(): ReplyVoice | null {
               started = true;
               preparing?.(false);
               clearTimeout(timer);
-              timer = setTimeout(fail, 90_000);
+              timer = setTimeout(() => fail(), 90_000);
             }
           });
           complete = true;

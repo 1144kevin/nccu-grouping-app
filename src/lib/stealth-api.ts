@@ -46,6 +46,7 @@ export type StealthSignal = StealthSignalInput & {
   version: number;
   created_at: string;
 };
+export type StealthHistoryItem = { id: string; title: string; category: StealthCategory; created_at: string; location_id: string; starts_at: string; ends_at: string; budget_max_twd: number | null; status: 'active' | 'revoked' | 'consumed' | 'expired' | 'formed'; formed_post_id: string | null };
 export type StealthTerms = {
   content: string;
   cost_per_person_twd: number;
@@ -97,6 +98,7 @@ export type StealthMatch = {
   status: 'pending' | 'ready' | 'unavailable' | 'formed';
   is_llm: false;
   is_demo: boolean;
+  semantic_proposal?: boolean;
   terms: StealthTerms | null;
   terms_revision: number;
   my_member_number: number;
@@ -139,10 +141,13 @@ export type StealthConversation = Omit<StealthQuickInterview, 'questions' | 'int
   question: { field: ConversationField; text: string } | null;
   choices: { label: string; answer: string }[];
   ready_for_review: boolean;
-  interpretation: 'local_model' | 'quick_answer' | 'keyword_fallback' | 'gemini';
+  interpretation: 'local_model' | 'quick_answer' | 'keyword_fallback' | 'gemini' | 'openai';
 };
 export type StealthRoomMessage = {
   id: string;
+  event_kind?: 'terms' | 'formed' | null;
+  terms_revision?: number | null;
+  event_terms?: StealthTerms | null;
   image_id?: string | null;
   content: string;
   created_at: string;
@@ -190,7 +195,7 @@ export type StealthDraft = {
   is_llm: false;
 };
 export type StealthIntake = {
-  provider: 'ollama_local';
+  provider: 'ollama_local' | 'gemini' | 'openai';
   is_llm: true;
   model: string;
   ready_for_review: boolean;
@@ -223,6 +228,10 @@ export type StealthIntake = {
 };
 const root = '/stealth-cloud';
 export const stealthApi = {
+  history: async (cursor?: { cursor_time: string; cursor_id: string }) =>
+    (await api.get<{ items: StealthHistoryItem[]; has_more: boolean }>(`${root}/history`, { params: cursor })).data,
+  formedRoles: async (postId: string) =>
+    (await api.get<{ buyer_id: string; pickup_id: string }>(`${root}/formed/${encodeURIComponent(postId)}/roles`)).data,
   speechStream: async (text: string, signal: AbortSignal) =>
     (
       await api.post<ReadableStream<Uint8Array>>(
@@ -248,7 +257,7 @@ export const stealthApi = {
     (
       await api.get<{
         ready: boolean;
-        conversation_provider?: 'local' | 'gemini';
+        conversation_provider?: 'local' | 'gemini' | 'openai';
         conversation_configured?: boolean;
       }>(`${root}/quick-status`)
     ).data,

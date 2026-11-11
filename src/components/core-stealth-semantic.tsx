@@ -136,7 +136,7 @@ function StealthSemanticSession({
         ) : null}
         {request.isPending ? (
           <Text accessibilityLiveRegion="polite" style={styles.hint}>
-            本機模型可能需要一些時間，原有配對與確認流程仍可使用。
+            AI 處理可能需要一些時間，原有配對與確認流程仍可使用。
           </Text>
         ) : null}
         {request.error ? (

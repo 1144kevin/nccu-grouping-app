@@ -18,6 +18,21 @@ function readImage(blob: Blob): Promise<HTMLImageElement> {
     image.src = url;
   });
 }
+async function readImageWithFallback(blob: Blob): Promise<HTMLImageElement> {
+  try {
+    return await readImage(blob);
+  } catch {
+    // Some iOS WebKit versions cannot decode a picker-provided blob URL,
+    // even though the same file is readable as a data URL.
+    const source = await asDataUrl(blob);
+    return await new Promise((resolve, reject) => {
+      const image = new window.Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('image_format_not_supported'));
+      image.src = source;
+    });
+  }
+}
 function toBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) =>
     canvas.toBlob(
@@ -38,15 +53,20 @@ function asDataUrl(blob: Blob): Promise<string> {
 export async function preparePostImage(file: File): Promise<PickedPostImage> {
   let image: HTMLImageElement;
   try {
-    image = await readImage(file);
+    image = await readImageWithFallback(file);
   } catch {
     const header = new TextDecoder('ascii').decode(await file.slice(0, 48).arrayBuffer());
-    if (!/heic|heif/i.test(file.type + file.name) && !/heic|heix|hevc|hevx|mif1|msf1/.test(header))
+    if (
+      !/heic|heif/i.test(file.type + file.name) &&
+      !/heic|heix|hevc|hevx|heis|hevm|hevs|mif1|msf1/.test(header)
+    )
       throw new Error('image_format_not_supported');
     // Loaded only when the browser cannot decode an HEIC itself. No photo leaves the device here.
     const { heicTo } = await import('heic-to/csp');
     try {
-      image = await readImage(await heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 }));
+      image = await readImageWithFallback(
+        await heicTo({ blob: file, type: 'image/jpeg', quality: 0.92 }),
+      );
     } catch {
       throw new Error('image_conversion_failed');
     }

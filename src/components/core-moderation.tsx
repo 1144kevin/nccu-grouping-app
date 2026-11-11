@@ -12,6 +12,7 @@ import type { Report, ReportInput } from '@/lib/engagement-api';
 import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { PersonalImage } from './personal-image';
+import { ModeratorOrderEvidence } from './moderator-order-evidence';
 import { colors, radius } from '@/theme/tokens';
 import { displayTimestamp } from '@/lib/display-time';
 
@@ -184,6 +185,9 @@ function ReviewCard({
       ) : (
         <Text style={{ color: colors.muted }}>此回報沒有圖片佐證</Text>
       )}
+      {report.payload.kind === 'post' && report.payload.target_id ? (
+        <ModeratorOrderEvidence postId={report.payload.target_id} />
+      ) : null}
       {['post', 'message'].includes(report.payload.kind) ? (
         <PrimaryButton secondary disabled={context.isPending} onPress={() => context.mutate()}>
           查核被檢舉原文

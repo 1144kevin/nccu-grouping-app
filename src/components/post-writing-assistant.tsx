@@ -271,6 +271,7 @@ function WritingSession({
     <View style={styles.wrap}>
       <Text style={styles.title}>AI 文案助手</Text>
       <Text style={styles.hint}>照片或口述需求都能整理成完整文案，至少 50 字，採用前可編輯。</Text>
+      <Text style={styles.hint}>使用時，所選照片或口述文字會傳送至 OpenAI 處理。</Text>
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"

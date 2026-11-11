@@ -82,12 +82,16 @@ export function CoreConnectionStatus() {
           {result.images_configured ? '已設定' : '未啟用，可先發布文字'}；自然語言
           {APPLE_INTAKE_ENABLED
             ? '由 iPhone Apple AI 提供訪談摘要，採用前請人工核對'
+            : result.ai_provider === 'openai'
+              ? '使用 OpenAI 雲端模型'
+            : result.ai_provider === 'gemini'
+              ? '使用 Google Gemini 雲端模型'
             : result.ai_provider === 'ollama_local'
               ? '使用電腦本機模型'
               : '未連接模型，請用手動需求表單'}
           ；語義配對
           {result.semantic_configured
-            ? '已設定電腦模型，仍需建立本人需求索引'
+            ? '已設定語意模型，仍需建立本人需求索引'
             : '未啟用，可先使用一般配對'}
           。此檢查不驗證登入、資料庫或 TestFlight 可用性。
         </Text>

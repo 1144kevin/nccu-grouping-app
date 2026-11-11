@@ -18,12 +18,14 @@ export function CorePostActions({
 }) {
   const sync = usePostCacheSync();
   const [confirmed, setConfirmed] = useState<{ source: CorePost; post: CorePost } | null>(null);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   // A card can be rendered from a fixed search/detail/list snapshot. Its own
   // successful action must still update the button before that parent refreshes.
   // A new parent snapshot takes precedence, including a later host acceptance.
   const post = confirmed?.source === suppliedPost ? confirmed.post : suppliedPost;
   const withdrawing = post.my_status === 'pending' || post.my_status === 'accepted';
-  const closed = !!post.completed || post.status === 'expired' || post.status === 'cancelled';
+  const closed =
+    !!post.completed || (post.status === 'expired' && !withdrawing) || post.status === 'cancelled';
   const mutation = useMutation({
     mutationFn: async () => {
       if (withdrawing) {
@@ -50,7 +52,7 @@ export function CorePostActions({
         ? '已完成'
         : post.status === 'cancelled'
           ? '已取消'
-          : post.status === 'expired'
+          : post.status === 'expired' && !withdrawing
             ? '已截止'
             : post.my_status === 'pending'
               ? '取消申請'
@@ -71,12 +73,35 @@ export function CorePostActions({
             ? onManage
               ? onManage()
               : router.push(`/order/${post.id}`)
-            : mutation.mutate()
+            : post.my_status === 'accepted'
+              ? setConfirmWithdraw(true)
+              : mutation.mutate()
         }
         loading={mutation.isPending}
       >
         {mutation.isPending ? '處理中' : label}
       </PrimaryButton>
+      {confirmWithdraw && post.my_status === 'accepted' ? (
+        <View style={{ gap: 8 }}>
+          <Text>
+            退出拼單將扣除{' '}
+            {post.workflow_stage === 'delivering' ? 10 : post.workflow_stage === 'en_route' ? 5 : 1}{' '}
+            分信譽積分，實際扣分以送出當下的狀態為準。
+          </Text>
+          <PrimaryButton
+            disabled={mutation.isPending}
+            onPress={() => {
+              setConfirmWithdraw(false);
+              mutation.mutate();
+            }}
+          >
+            確認退出拼單
+          </PrimaryButton>
+          <PrimaryButton secondary onPress={() => setConfirmWithdraw(false)}>
+            保留拼單
+          </PrimaryButton>
+        </View>
+      ) : null}
       {mutation.error ? (
         <Text accessibilityRole="alert" style={{ color: colors.danger, fontSize: 13 }}>
           {coreError(mutation.error)}

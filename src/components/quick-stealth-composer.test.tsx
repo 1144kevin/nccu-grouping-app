@@ -105,7 +105,8 @@ async function startChat() {
   return screen;
 }
 async function reviewDraft(screen: Awaited<ReturnType<typeof startChat>>) {
-  await fireEvent.press(screen.getByRole('button', { name: '先確認目前需求' }));
+  const open = screen.queryByRole('button', { name: '先確認目前需求' });
+  if (open) await fireEvent.press(open);
   await waitFor(() =>
     expect(screen.getByRole('button', { name: '確認條件，開始找人' })).toBeEnabled(),
   );
@@ -125,7 +126,6 @@ it('greets immediately, asks one question and only creates a request after expli
     [],
     undefined,
   );
-  expect(screen.queryByRole('button', { name: '確認條件，開始找人' })).toBeNull();
   await reviewDraft(screen);
   expect(screen.getByText('建議：政大正門')).toBeTruthy();
   await fireEvent.press(screen.getByRole('button', { name: '確認條件，開始找人' }));

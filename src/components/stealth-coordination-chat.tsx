@@ -10,6 +10,7 @@ import { DetailHeader, PrimaryButton, Screen, IconButton } from '@/components/pr
 import { ChatSendButton } from './chat-controls';
 import { useChatDateIndicator } from './chat-date-indicator';
 import { displayTime } from '@/lib/display-time';
+import { displayTimestamp } from '@/lib/display-time';
 import { router } from 'expo-router';
 import { StealthFormation } from '@/components/core-stealth-formation';
 import { StealthReplySuggestions } from '@/components/stealth-reply-suggestions';
@@ -20,6 +21,7 @@ import { useChatOutbox } from '@/lib/chat-outbox';
 import type { StealthRoomMessage } from '@/lib/stealth-api';
 import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
+import { updateInboxAfterRead } from '@/lib/inbox-read';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, spacing, yellowSurface } from '@/theme/tokens';
 
@@ -46,6 +48,13 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     refetchInterval: focused ? 10_000 : false,
   });
   const match = matches.data?.items.find((m) => m.id === id);
+  const latestRoomMessage = query.data?.items.at(-1)?.id;
+  useEffect(() => {
+    if (actor && focused && query.data?.opened && latestRoomMessage) {
+      void updateInboxAfterRead(queryClient, actor, 'stealth', id, latestRoomMessage);
+      void queryClient.invalidateQueries({ queryKey: ['core', actor, 'notification-badge'] });
+    }
+  }, [actor, focused, id, query.data?.opened, latestRoomMessage]);
   useEffect(() => {
     if (!actor || !query.data?.opened) return;
     queryClient.setQueryData<Awaited<ReturnType<typeof stealthApi.matches>>>(
@@ -117,8 +126,12 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
       if (frozen.current) outbox.fail(frozen.current.key);
     },
   });
+  const accept = useMutation({
+    mutationFn: (revision: number) => stealthApi.consent(id, revision),
+    onSettled: async () => { await refresh(); await query.refetch(); },
+  });
   return (
-    <Screen>
+    <Screen pinKeyboardHeader>
       <DetailHeader
         title="偷揪 · 聊聊細節"
         right={
@@ -132,7 +145,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         }
       />
       <KeyboardViewport>
-        <Text style={styles.note}>先聊品項與取餐分工，談好後再確認成團。</Text>
         {query.error ? (
           <>
             <Text accessibilityRole="alert" style={styles.error}>
@@ -160,6 +172,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               match={match}
               refresh={refresh}
               now={clock.data ? clock.now : undefined}
+              onSubmitted={() => { setFormal(false); void query.refetch(); }}
             />
           </KeyboardScrollView>
         ) : (
@@ -174,6 +187,22 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
               renderItem={({ item }) => (
+                item.event_kind === 'formed' ? (
+                  <Text style={styles.note}>偷揪已成立</Text>
+                ) : item.event_kind === 'terms' && item.event_terms ? (
+                  <View style={styles.message}>
+                    <Text style={styles.body}>{item.event_terms.content}</Text>
+                    <Text style={styles.body}>每人 NT$ {item.event_terms.cost_per_person_twd}</Text>
+                    <Text style={styles.body}>{displayTimestamp(item.event_terms.deadline_at)}</Text>
+                    <Text style={styles.body}>買：夥伴 {item.event_terms.order_member} · 取：夥伴 {item.event_terms.pickup_member}</Text>
+                    {match && item.terms_revision === match.terms_revision && match.status !== 'formed' ? (
+                      <PrimaryButton disabled={!!match.my_terms_accepted || accept.isPending} loading={accept.isPending} onPress={() => accept.mutate(item.terms_revision!)}>
+                        {match.my_terms_accepted ? '已接受' : '接受'} {match.confirmed_count}/{match.member_count}
+                      </PrimaryButton>
+                    ) : <Text style={styles.hint}>{match?.status === 'formed' && item.terms_revision === match.terms_revision ? '已成立' : '方案已更新'}</Text>}
+                    {accept.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(accept.error)}</Text> : null}
+                  </View>
+                ) : (
                 <View
                   style={[
                     styles.message,
@@ -198,14 +227,15 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                   ) : null}
                   <Text style={styles.hint}>{displayTime(item.created_at)}</Text>
                 </View>
+                )
               )}
             />
             {dates.indicator}
           </View>
         )}
-        {match && match.status !== 'unavailable' && query.data?.opened ? (
-          <PrimaryButton secondary onPress={() => setFormal(!formal)}>
-            {formal ? '回到聊天' : '談好了，確認正式拼單'}
+        {formal && match && match.status !== 'unavailable' && query.data?.opened ? (
+          <PrimaryButton secondary style={{ marginHorizontal: spacing.md, marginBottom: spacing.xl }} onPress={() => setFormal(!formal)}>
+            回到聊天
           </PrimaryButton>
         ) : null}
         {!formal && actor && match && query.data?.opened && query.data.can_send && !query.error ? (
@@ -217,6 +247,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             enabled={focused}
             disabled={send.isPending}
             onSelect={setText}
+            onPlan={() => setFormal(true)}
           />
         ) : null}
         {!formal ? (

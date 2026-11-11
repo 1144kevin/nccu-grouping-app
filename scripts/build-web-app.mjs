@@ -9,6 +9,32 @@ const staging = resolve(root, '.local/web-app/export');
 const target = resolve(root, '.local/web-app/dist');
 // A relative API keeps the exported app usable on a new HTTPS QR URL without
 // embedding a private IP, localhost, credentials, or an Expo Go address.
+const rawApiBase = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
+let apiBaseUrl = '/api/v1';
+if (rawApiBase && rawApiBase !== '/api/v1') {
+  const parsed = new URL(rawApiBase);
+  const host = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (
+    parsed.protocol !== 'https:' ||
+    parsed.username ||
+    parsed.password ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== '/api/v1' ||
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === '::1' ||
+    /^[0-9.]+$/.test(host) ||
+    host.includes(':') ||
+    !host.includes('.') ||
+    /\.(local|test|invalid|example)$/.test(host)
+  ) {
+    throw new Error(
+      'EXPO_PUBLIC_API_BASE_URL must be /api/v1 or an exact HTTPS DNS address ending in /api/v1.',
+    );
+  }
+  apiBaseUrl = `${parsed.origin}/api/v1`;
+}
 const env = Object.fromEntries(
   Object.entries(process.env).filter(
     ([name]) =>
@@ -20,7 +46,7 @@ const env = Object.fromEntries(
 Object.assign(env, {
   EXPO_PUBLIC_CORE_API_ENABLED: 'true',
   EXPO_PUBLIC_CORE_DATA_MODE: 'supabase',
-  EXPO_PUBLIC_API_BASE_URL: '/api/v1',
+  EXPO_PUBLIC_API_BASE_URL: apiBaseUrl,
   EXPO_PUBLIC_APP_PROFILE: 'web',
   EXPO_PUBLIC_APPLE_INTAKE_ENABLED: 'false',
   EXPO_PUBLIC_APPLE_INTAKE_TRIAL: 'false',

@@ -5,8 +5,21 @@ import { useNavigationStore } from '@/store/navigation-store';
 import { colors, radius, spacing, typography, yellowSurface, neutralSurface } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Link, router } from 'expo-router';
-import type { ComponentProps, PropsWithChildren, ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import {
+  useEffect,
+  useState,
+  type ComponentProps,
+  type PropsWithChildren,
+  type ReactNode,
+} from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { KeyboardScrollView as ScrollView } from '@/components/keyboard-layout';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePizzaLogoPress } from '@/components/pizza-shower';
@@ -15,12 +28,25 @@ import { Image } from 'expo-image';
 import { useAuthStore } from '@/store/auth-store';
 import { CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { profileSocial } from '@/lib/profile-social';
+import { useNotificationBadge } from '@/lib/notification-badge';
 
 export function Screen({
   children,
   scroll = false,
   style,
-}: PropsWithChildren<{ scroll?: boolean; style?: ViewStyle }>) {
+  pinKeyboardHeader = false,
+}: PropsWithChildren<{ scroll?: boolean; style?: ViewStyle; pinKeyboardHeader?: boolean }>) {
+  const [viewportHeight, setViewportHeight] = useState<number>();
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !pinKeyboardHeader || !window.visualViewport) return;
+    const current = window.visualViewport;
+    const update = () => setViewportHeight(current.height);
+    update();
+    current.addEventListener('resize', update);
+    return () => {
+      current.removeEventListener('resize', update);
+    };
+  }, [pinKeyboardHeader]);
   const content = scroll ? (
     <ScrollView
       contentContainerStyle={[styles.scrollContent, style]}
@@ -32,7 +58,23 @@ export function Screen({
     <View style={[styles.screenContent, style]}>{children}</View>
   );
   return (
-    <SafeAreaView edges={['top']} style={styles.safe}>
+    <SafeAreaView
+      testID={pinKeyboardHeader ? 'fixed-chat-screen' : undefined}
+      edges={['top']}
+      style={[
+        styles.safe,
+        pinKeyboardHeader &&
+          Platform.OS === 'web' &&
+          ({
+            position: 'fixed',
+            top: 0,
+            height: viewportHeight ?? '100dvh',
+            left: 0,
+            right: 0,
+            marginHorizontal: 'auto',
+          } as unknown as ViewStyle),
+      ]}
+    >
       {content}
     </SafeAreaView>
   );
@@ -47,9 +89,19 @@ export function AppHeader({
 }) {
   const openDrawer = useNavigationStore((state) => state.openDrawer);
   const onLogoPress = usePizzaLogoPress();
+  const notifications = useNotificationBadge();
   return (
     <View style={styles.header}>
-      <IconButton icon="menu" label="開啟選單" onPress={openDrawer} />
+      <View>
+        <IconButton
+          icon="menu"
+          label={notifications.count ? `開啟選單，${notifications.count} 則未讀通知` : '開啟選單'}
+          onPress={openDrawer}
+        />
+        {notifications.count > 0 ? (
+          <View pointerEvents="none" style={styles.menuNotificationDot} />
+        ) : null}
+      </View>
       {title ? (
         <Text style={styles.headerTitle}>{title}</Text>
       ) : (
@@ -334,6 +386,15 @@ export function EmptyState({
 }
 
 const styles = StyleSheet.create({
+  menuNotificationDot: {
+    position: 'absolute',
+    top: 4,
+    right: 3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#DC2845',
+  },
   safe: {
     flex: 1,
     width: '100%',

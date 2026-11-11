@@ -68,7 +68,7 @@ function LegacyStealthIntake({
     <View style={styles.card}>
       <Text style={styles.title}>先跟分身說說看</Text>
       <Text style={styles.hint}>
-        免費本機模型整理中文需求；對話只暫留此畫面，不會存入資料庫。補齊後仍需檢查下方表單並親自儲存。
+        AI 協助整理中文需求；內容會送至 OpenAI 處理。補齊後請檢查表單並親自儲存。
       </Text>
       {turns.map((turn, index) => (
         <Text key={index} style={styles.body}>
@@ -159,7 +159,7 @@ function LegacyStealthIntake({
             <Text style={styles.body}>資訊已足夠整理成待確認表單。</Text>
           ) : null}
           <Text style={styles.hint}>
-            本機模型：{result.model}。未提供的費用保持未知；分工只採用本人願意的角色。
+            模型：{result.model}。未提供的費用保持未知；分工只採用本人願意的角色。
           </Text>
         </View>
       ) : null}

@@ -2,16 +2,17 @@ import { BrandLogo } from '@/components/brand-logo';
 import { InlineLoading } from '@/components/inline-loading';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar } from '@/components/primitives';
-import { selectUnreadNotificationCount, useAppStore } from '@/store/app-store';
+import { useAppStore } from '@/store/app-store';
 import { useNavigationStore } from '@/store/navigation-store';
-import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
+import { colors, radius, spacing, typography } from '@/theme/tokens';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
-import { usePenaltyNotices } from '@/lib/penalty-notices';
+import { useNotificationBadge } from '@/lib/notification-badge';
+import { useEffect } from 'react';
 
 const supportItems = [
   { label: '介面調整', icon: 'palette-outline', href: '/font-size' },
@@ -25,11 +26,14 @@ export function AppDrawer() {
   const insets = useSafeAreaInsets();
   const visible = useNavigationStore((state) => state.drawerOpen);
   const close = useNavigationStore((state) => state.closeDrawer);
-  const unreadNotifications = useAppStore(selectUnreadNotificationCount);
   const { logout, busy, error } = useAuthStore();
   const account = useAuthStore((state) => state.user);
   const currentUser = useAppStore((state) => state.currentUser);
-  const notices = usePenaltyNotices();
+  const notices = useNotificationBadge();
+  const { isError: noticeError, refetch: refetchNotices } = notices;
+  useEffect(() => {
+    if (visible && noticeError) void refetchNotices();
+  }, [visible, noticeError, refetchNotices]);
 
   function navigate(href: string) {
     close();
@@ -87,16 +91,15 @@ export function AppDrawer() {
                     ? '通知中心'
                     : item.label
                 }
-                badge={
-                  item.href === '/notifications'
-                    ? CORE_API_ENABLED && CORE_SUPABASE_MODE
-                      ? notices.data?.items.filter((notice) => !notice.read_at).length
-                      : unreadNotifications
-                    : undefined
-                }
+                badge={item.href === '/notifications' ? notices.count : undefined}
                 onPress={() => navigate(item.href)}
               />
             ))}
+            {notices.isError ? (
+              <Text accessibilityRole="alert" style={styles.noticeError}>
+                通知數量暫時無法更新，請重新開啟選單或稍後再試。
+              </Text>
+            ) : null}
           </ScrollView>
           {CORE_API_ENABLED ? (
             <View style={styles.logout}>
@@ -156,7 +159,7 @@ function DrawerItem({
         </>
       )}
       {badge ? (
-        <View style={styles.badge}>
+        <View accessibilityLabel={`${badge} 則未讀通知`} style={styles.badge}>
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       ) : null}
@@ -231,10 +234,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
-    ...yellowSurface,
-    backgroundColor: colors.yellow,
+    backgroundColor: '#DC2845',
   },
-  badgeText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
+  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  noticeError: { color: colors.danger, fontSize: 12, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
   logout: {
     marginTop: 'auto',
     padding: spacing.sm,

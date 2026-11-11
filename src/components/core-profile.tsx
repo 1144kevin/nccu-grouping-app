@@ -69,7 +69,7 @@ export function CoreProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <PizzaLevelIcon level={level} size={30} />
               <Text style={styles.role}>
-                {experience.data ? `${levelTitle}揪團夥伴` : '揪團新朋友'}
+                {experience.data ? `${levelTitle}的揪團夥伴` : '揪團新朋友'}
               </Text>
             </View>
             <Text style={styles.bio}>{user.bio || '寫點介紹，讓夥伴認識你'}</Text>

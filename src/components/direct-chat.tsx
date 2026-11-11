@@ -13,6 +13,8 @@ import { KeyboardViewport } from '@/components/keyboard-layout';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreScreenFocused, invalidateCore } from '@/lib/core-hooks';
 import { socialApi } from '@/lib/social-api';
+import { updateInboxAfterRead } from '@/lib/inbox-read';
+import { queryClient } from '@/lib/query-client';
 import { useChatOutbox } from '@/lib/chat-outbox';
 import type { ThreadMessage } from '@/lib/social-api';
 import { useAuthStore } from '@/store/auth-store';
@@ -54,7 +56,10 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     void socialApi
       .read(id, latest)
       .then(() => {
-        if (useAuthStore.getState().user?.id === actor) void invalidateCore();
+        if (useAuthStore.getState().user?.id === actor) {
+          void updateInboxAfterRead(queryClient, actor, 'direct', id, latest);
+          void invalidateCore();
+        }
       })
       .catch(() => {
         read.current = undefined;
@@ -95,7 +100,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     },
   });
   return (
-    <Screen>
+    <Screen pinKeyboardHeader>
       <DetailHeader
         title={page?.thread.peer_name ?? '私訊'}
         right={

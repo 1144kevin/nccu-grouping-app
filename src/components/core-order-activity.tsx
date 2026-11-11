@@ -14,8 +14,9 @@ import { shortDate } from '@/components/list-ui';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { usePenaltyNotices } from '@/lib/penalty-notices';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth-store';
+import { useNotificationBadge } from '@/lib/notification-badge';
 
 export function CoreOrderActivityScreen() {
   useEffect(() => {
@@ -24,7 +25,8 @@ export function CoreOrderActivityScreen() {
       .then(() =>
         queryClient.invalidateQueries({
           queryKey: ['core'],
-          predicate: (q) => q.queryKey[2] === 'chat-activity',
+          predicate: (q) =>
+            q.queryKey[2] === 'chat-activity' || q.queryKey[2] === 'notification-badge',
         }),
       )
       .catch(() => undefined);
@@ -40,11 +42,41 @@ export function CoreOrderActivityScreen() {
 function CoreRequestActivity() {
   const query = useCoreOrderActivity(true);
   const notices = usePenaltyNotices();
+  const notificationBadge = useNotificationBadge();
   const actor = useAuthStore((state) => state.user?.id);
+  const events = useQuery({
+    queryKey: ['core', actor, 'order-events'],
+    queryFn: async () =>
+      (
+        await api.get<{
+          items: {
+            id: string;
+            kind: string;
+            post_id: string;
+            post_content: string;
+            points: number | null;
+            created_at: string;
+          }[];
+        }>('/notifications/order-events')
+      ).data,
+    enabled: !!actor,
+  });
+  useEffect(() => {
+    if (!events.data?.items.length) return;
+    void api
+      .post('/notifications/order-events/read')
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: ['core', actor, 'notification-badge'] }),
+      )
+      .catch(() => undefined);
+  }, [actor, events.dataUpdatedAt]);
   const markRead = useMutation({
     mutationFn: (id: string) => api.post('/notifications/penalties/read', { id }),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['core', actor, 'penalty-notices'] }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['core', actor, 'penalty-notices'] }),
+        queryClient.invalidateQueries({ queryKey: ['core', actor, 'notification-badge'] }),
+      ]),
   });
   const items = [...query.items].sort(
     (a, b) =>
@@ -75,12 +107,51 @@ function CoreRequestActivity() {
         refreshControl={
           <PullRefreshControl
             onRefresh={() => {
-              return Promise.all([query.refetch(), notices.refetch()]);
+              return Promise.all([query.refetch(), notices.refetch(), events.refetch()]);
             }}
           />
         }
         ListHeaderComponent={
           <View>
+            {events.data?.items.map((event) => (
+              <Pressable
+                key={event.id}
+                accessibilityRole="button"
+                style={styles.card}
+                onPress={() => router.push(`/order/${event.post_id}`)}
+              >
+                <Text style={styles.title}>
+                  {(
+                    {
+                      order_waiting: '團員退出，拼單重新等待成團',
+                      order_formation_pending: '主揪提出成團',
+                      order_formed: '拼單已成團',
+                      order_en_route: '主揪已出發',
+                      order_delivering: '主揪已完成購買',
+                      order_cancelled: '拼單已取消',
+                      completed: '拼單已完成',
+                      order_penalty: `信譽積分扣除 ${event.points ?? 0} 分`,
+                    } as Record<string, string>
+                  )[event.kind] ?? '拼單狀態已更新'}
+                </Text>
+                <Text style={styles.hint}>{shortDate(event.created_at)}</Text>
+                <Text numberOfLines={2} style={styles.body}>
+                  {event.post_content}
+                </Text>
+              </Pressable>
+            ))}
+            {(notificationBadge.data?.messages ?? 0) > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                style={styles.card}
+                onPress={() => router.push('/messages')}
+              >
+                <Text style={styles.title}>
+                  你有 {notificationBadge.data?.messages} 則未讀聊天訊息
+                </Text>
+                <Text style={styles.action}>前往訊息 →</Text>
+              </Pressable>
+            ) : null}
             {notices.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 通知載入失敗，請下拉重試。

@@ -14,6 +14,7 @@ import { Avatar, DetailHeader, IconButton, PrimaryButton, Screen } from '@/compo
 import { coreApi, coreError, newRequestKey } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
+import { updateInboxAfterRead } from '@/lib/inbox-read';
 import { useChatOutbox } from '@/lib/chat-outbox';
 import type { CoreMessage } from '@/lib/core-api';
 import { chatMessagesNewestFirst } from '@/lib/chat-message-pages';
@@ -93,7 +94,10 @@ function GroupChat({ id }: { id: string }) {
       .readChat(id, latestId)
       .then(() => {
         readState.current.done = latestId;
+        if (user?.id && useAuthStore.getState().user?.id === user.id)
+          void updateInboxAfterRead(queryClient, user.id, 'group', id, latestId);
         void queryClient.invalidateQueries({ queryKey: ['core', user?.id, 'chat-activity'] });
+        void queryClient.invalidateQueries({ queryKey: ['core', user?.id, 'notification-badge'] });
       })
       .catch(() => {
         /* Retry on the next successful message refresh. */
@@ -110,7 +114,7 @@ function GroupChat({ id }: { id: string }) {
     mutation.mutate(draft.current);
   }
   return (
-    <Screen>
+    <Screen pinKeyboardHeader>
       <DetailHeader
         title={
           query.data?.pages[0]?.post

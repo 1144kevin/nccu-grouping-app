@@ -1,7 +1,7 @@
 import { PageLoading } from '@/components/page-loading';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { PullRefreshControl } from '@/components/pull-refresh-control';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { api } from '@/lib/api';
 import { queryClient } from '@/lib/query-client';
@@ -22,32 +22,42 @@ import { FeedPostCard } from '@/components/feed-post-card';
 import { HostPostControls } from '@/components/host-post-controls';
 import { RequestCard } from '@/components/core-order-screens';
 import { postEmoji } from '@/components/core-profile';
-import {
-  useCorePost,
-  useCoreRequests,
-  useCoreScreenFocused,
-  invalidateCore,
-} from '@/lib/core-hooks';
+import { useCorePost, useCoreRequests, useCoreScreenFocused } from '@/lib/core-hooks';
 import { coreError, toFeedPost } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
-import { usePostCacheSync } from '@/lib/core-post-cache';
+import { stealthApi } from '@/lib/stealth-api';
 import { orderStateLabel } from '@/lib/order-state';
+import { OrderWorkflowControls } from '@/components/order-workflow-controls';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 
 export function CoreOrderDetail({ id }: { id: string }) {
-  const sync = usePostCacheSync();
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
   useEffect(() => {
     if (actor && focused)
       void api
         .post('/notifications/read', { post_id: id })
-        .then(() => queryClient.invalidateQueries({ queryKey: ['core', actor, 'chat-activity'] }))
+        .then(() =>
+          Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['core', actor, 'chat-activity'] }),
+            queryClient.invalidateQueries({ queryKey: ['core', actor, 'notification-badge'] }),
+          ]),
+        )
         .catch(() => undefined);
   }, [actor, focused, id]);
   const postQuery = useCorePost(id);
   const post = postQuery.data;
+  const stealthRoles = useQuery({
+    queryKey: ['core', actor, 'stealth-formed-roles', id],
+    queryFn: () => stealthApi.formedRoles(id),
+    enabled:
+      !!actor &&
+      focused &&
+      !!post?.tags.includes('偷揪成團') &&
+      ['host', 'accepted'].includes(post.my_status),
+    retry: false,
+  });
   const summary = useQuery({
     queryKey: ['core', actor, 'order-summary', id],
     queryFn: () => socialApi.order(id),
@@ -56,16 +66,6 @@ export function CoreOrderDetail({ id }: { id: string }) {
     refetchInterval: focused ? 10000 : false,
   });
   const requests = useCoreRequests(id, post?.my_status === 'host');
-  const handoff = useMutation({
-    mutationFn: () => socialApi.handoff(id),
-    onSuccess: (updated) => {
-      if (!actor || useAuthStore.getState().user?.id !== actor) return;
-      sync.update(updated.post);
-      queryClient.setQueryData(['core', actor, 'order-summary', id], updated);
-      void summary.refetch();
-      void invalidateCore();
-    },
-  });
   if (!post)
     return (
       <Screen>
@@ -81,7 +81,11 @@ export function CoreOrderDetail({ id }: { id: string }) {
       </Screen>
     );
   const completed = summary.data?.completed ?? post.completed ?? false;
-  const formed = completed || post.joined >= post.capacity;
+  const formed =
+    completed ||
+    (post.workflow_stage ? post.workflow_stage !== 'waiting' : post.joined >= post.capacity);
+  const departed = ['en_route', 'delivering', 'completed'].includes(post.workflow_stage ?? '');
+  const delivering = ['delivering', 'completed'].includes(post.workflow_stage ?? '');
   const members = summary.data?.members ?? [
     {
       id: post.author_id,
@@ -145,6 +149,8 @@ export function CoreOrderDetail({ id }: { id: string }) {
         <View style={styles.timeline}>
           <Step done label="已建立拼單" />
           <Step done={formed} label={formed ? '已確認成團' : '等待成團'} />
+          <Step done={departed} label="前往中" />
+          <Step done={delivering} label="交貨中" />
           <Step done={completed} label="完成訂單" last />
         </View>
         <SectionTitle
@@ -167,7 +173,16 @@ export function CoreOrderDetail({ id }: { id: string }) {
               <Text style={styles.memberName}>{member.name}</Text>
               <ReputationBadge level={member.level} />
             </View>
-            <Pill tone={member.host ? 'yellow' : 'success'}>{member.host ? '主揪' : '已加入'}</Pill>
+            {stealthRoles.data ? (
+              <View style={{ flexDirection: 'row', gap: 4 }}>
+                {member.id === stealthRoles.data.buyer_id ? <Pill tone="yellow">買</Pill> : null}
+                {member.id === stealthRoles.data.pickup_id ? <Pill tone="success">取</Pill> : null}
+              </View>
+            ) : (
+              <Pill tone={member.host ? 'yellow' : 'success'}>
+                {member.host ? '主揪' : '已加入'}
+              </Pill>
+            )}
           </Pressable>
         ))}
         {pending.map((request) => (
@@ -186,26 +201,16 @@ export function CoreOrderDetail({ id }: { id: string }) {
         ) : !pending.length && !requests.isPending ? (
           <Text style={styles.empty}>這筆紀錄沒有待處理的申請</Text>
         ) : null}
-        {summary.data?.can_confirm ? (
-          <View style={{ gap: 8 }}>
-            <Text style={styles.detail}>
-              {summary.data.my_confirmed
-                ? `你已確認完成 · ${summary.data.confirmed_count}/${post.joined} 人已確認`
-                : '餐點已交付、雙方完成約定後，請各自確認完成訂單。全員確認後計入信譽積分。'}
-            </Text>
-            <PrimaryButton
-              disabled={handoff.isPending || summary.data.my_confirmed}
-              onPress={() => handoff.mutate()}
-              loading={handoff.isPending}
-            >
-              {summary.data.my_confirmed ? '已確認完成訂單' : '確認完成訂單'}
-            </PrimaryButton>
-          </View>
-        ) : null}
-        {handoff.error ? (
-          <Text accessibilityRole="alert" style={styles.error}>
-            {coreError(handoff.error)}
-          </Text>
+        {actor ? (
+          <OrderWorkflowControls
+            id={id}
+            actor={actor}
+            active={
+              focused &&
+              post.status !== 'cancelled' &&
+              ['host', 'accepted'].includes(post.my_status)
+            }
+          />
         ) : null}
         <SectionTitle>完整貼文</SectionTitle>
         <View style={{ marginHorizontal: -spacing.lg }}>

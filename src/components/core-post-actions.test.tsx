@@ -120,6 +120,8 @@ it('lets an accepted participant leave a full group', async () => {
   await act(async () => {
     await fireEvent.press(screen.getByRole('button', { name: '退出並釋出名額' }));
   });
+  expect(coreApi.withdraw).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '確認退出拼單' }));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: '想被揪' }).props.accessibilityState?.disabled).toBe(
       false,
@@ -186,7 +188,7 @@ it('keeps a confirmed application instead of overwriting it with a redundant sta
   expect(coreApi.post).not.toHaveBeenCalled();
 });
 
-it.each(['expired', 'cancelled'] as const)(
+it.each(['cancelled'] as const)(
   'does not submit membership changes for a %s post',
   async (status) => {
     const screen = await render(
@@ -194,7 +196,7 @@ it.each(['expired', 'cancelled'] as const)(
         <CorePostActions post={{ ...post, status, my_status: 'accepted' }} />
       </QueryClientProvider>,
     );
-    const button = screen.getByRole('button', { name: status === 'expired' ? '已截止' : '已取消' });
+    const button = screen.getByRole('button', { name: '已取消' });
     expect(button.props.accessibilityState?.disabled).toBe(true);
     await act(async () => {
       await fireEvent.press(button);

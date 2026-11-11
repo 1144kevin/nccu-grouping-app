@@ -128,9 +128,9 @@ function QuickSession({ actor }: { actor?: string }) {
         right={
           <View style={{ flexDirection: 'row' }}>
             <IconButton
-              icon="message-outline"
-              label="我的偷揪聊天"
-              onPress={() => router.push('/messages')}
+              icon="history"
+              label="偷揪紀錄"
+              onPress={() => router.push('/stealth-history' as never)}
             />
             <IconButton
               icon="tune-variant"
@@ -299,7 +299,6 @@ function QuickSession({ actor }: { actor?: string }) {
 
 export function QuickMatch({
   match: snapshot,
-  explanation,
   refresh,
   onDecided,
   onUpdated,
@@ -332,7 +331,7 @@ export function QuickMatch({
             <MaterialCommunityIcons name="account-outline" size={24} color={colors.brown} />
           </View>
           <View style={[styles.person, styles.partner]}>
-            <MaterialCommunityIcons name="account-heart-outline" size={24} color={colors.ink} />
+            <MaterialCommunityIcons name="account-outline" size={24} color={colors.ink} />
           </View>
         </View>
         <View style={{ flex: 1, gap: 3 }}>
@@ -348,12 +347,9 @@ export function QuickMatch({
           </Text>
         </View>
       </View>
-      <Text style={styles.eyebrow}>可以一起揪的原因</Text>
-      <Text style={styles.body}>
-        {(explanation.length ? explanation : match.reasons).slice(0, 2).join('。')}
-      </Text>
       <View style={styles.watchStatus}>
         <MaterialCommunityIcons name="clock-outline" size={16} color={colors.brown} />
+        {match.semantic_proposal ? <Text style={styles.hint}>時間、地點待確認</Text> : null}
         <Text style={styles.hint}>
           {displayTimestamp(match.starts_at)} ·{' '}
           {stealthLocations[match.location_id] ?? match.location_id}
@@ -376,7 +372,7 @@ export function QuickMatch({
         </PrimaryButton>
       ) : match.my_decision === 'accepted' ? (
         <Text accessibilityLiveRegion="polite" style={styles.body}>
-          你已表示有興趣，正在等對方回覆。這還不代表已加入正式拼單。
+          等待夥伴回覆
         </Text>
       ) : (
         <PrimaryButton

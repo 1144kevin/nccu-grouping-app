@@ -22,7 +22,7 @@ export function HostPostControls({ post }: { post: CorePost }) {
     },
   });
   if (post.my_status !== 'host') return null;
-  const closed = cancel.isSuccess || post.status === 'expired' || post.status === 'cancelled';
+  const closed = cancel.isSuccess || !!post.completed || post.status === 'cancelled';
   return (
     <View style={{ gap: 12 }}>
       {!closed && !confirm ? (
@@ -33,6 +33,15 @@ export function HostPostControls({ post }: { post: CorePost }) {
       {!closed && confirm ? (
         <View style={{ gap: 12 }}>
           <Text>確定取消整筆拼單？取消後不能再加入或接受申請。</Text>
+          <Text>
+            預計扣除{' '}
+            {post.workflow_formed_once || (post.workflow_stage && post.workflow_stage !== 'waiting')
+              ? 3
+              : post.joined > 1
+                ? 1
+                : 0}{' '}
+            分信譽積分；實際扣分以送出當下的狀態為準。
+          </Text>
           <PrimaryButton
             disabled={cancel.isPending}
             onPress={() => cancel.mutate()}

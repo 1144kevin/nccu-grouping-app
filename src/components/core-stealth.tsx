@@ -877,7 +877,8 @@ function MatchCard({
       <Text style={styles.title}>{match.invitation_text}</Text>
       <Text style={styles.hint}>
         {match.member_count} 人 · {categories.find(([value]) => value === match.category)?.[1]} ·{' '}
-        {locations[match.location_id]}
+        {match.semantic_proposal ? '參考地點（雙方需再確認）：' : ''}
+        {locations[match.location_id] ?? match.location_id}
       </Text>
       {match.is_demo ? (
         <Text style={styles.note}>
