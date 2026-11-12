@@ -23,10 +23,30 @@ import { useAuthStore } from '@/store/auth-store';
 import { colors, yellowSurface } from '@/theme/tokens';
 import { displayTimestamp } from '@/lib/display-time';
 
+const IGNORED_MATCH_REASONS = new Set([
+  '取餐地點一致',
+  '可用時間有交集',
+  '餐點分類符合本人確認的選項',
+  '需求內容的語義相近，細節仍需雙方確認',
+  '透過需求向量搜尋找到，仍須本人確認',
+  '方案預算上限採所有已提供上限中的最低值',
+  '透過本人明確接受的替代類型形成互補方案',
+]);
+
+function isSystemBoilerplateReason(text: string): boolean {
+  return (
+    IGNORED_MATCH_REASONS.has(text) ||
+    text.includes('向量搜尋') ||
+    text.includes('語義相近') ||
+    text.includes('仍須本人確認') ||
+    text.includes('細節仍需雙方確認')
+  );
+}
+
 function buildMatchSpecialSummary(match: StealthMatch, explanations: string[]): string {
   const parts: string[] = [];
   if (match.highlights?.length) {
-    parts.push(...match.highlights);
+    parts.push(...match.highlights.filter((h) => !isSystemBoilerplateReason(h)));
   }
   const suggestions = match.agent_draft?.role_suggestions ?? [];
   const pickupPartner = suggestions.find(
@@ -42,6 +62,7 @@ function buildMatchSpecialSummary(match: StealthMatch, explanations: string[]): 
     parts.push('對方願意負責下單與付款協調');
   }
   for (const reason of [...match.reasons, ...explanations]) {
+    if (isSystemBoilerplateReason(reason)) continue;
     if (/優惠|折價|省|多付|手續費|跑腿|順路|好市多|Costco|全聯|家樂福|外送|分享/i.test(reason)) {
       if (!parts.includes(reason)) parts.push(reason);
     }
