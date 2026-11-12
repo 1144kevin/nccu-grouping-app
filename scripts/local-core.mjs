@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const account = process.argv.includes('--account');
-const child = spawn(process.execPath, [resolve(root, 'node_modules/expo/bin/cli'), 'start', '--web', '--localhost', '--port', account ? '8082' : '8081'], {
+const child = spawn(process.execPath, [resolve(root, 'node_modules/expo/bin/cli'), 'start', '--clear', '--web', '--localhost', '--port', account ? '8082' : '8081'], {
   cwd: root,
   stdio: 'inherit',
   env: {
