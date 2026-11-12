@@ -43,7 +43,9 @@ function DemoProfileScreen() {
           style={styles.levelCard}
         >
           <View style={styles.levelTitle}>
-            <Text style={styles.levelHeading}>我的熟度等級</Text>
+            <Text style={styles.levelHeading}>
+              有料指數<Text style={styles.levelSubheading}>(信用等級)</Text>
+            </Text>
             <Text style={styles.levelName}>豪華牽絲 (Lv.4)</Text>
             <MaterialCommunityIcons name="information-outline" size={15} color={colors.muted} />
           </View>
@@ -115,6 +117,7 @@ const styles = StyleSheet.create({
   },
   levelTitle: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   levelHeading: { flex: 1, color: colors.ink, fontFamily: typography.rounded, fontWeight: '700' },
+  levelSubheading: { color: colors.muted },
   levelName: {
     color: colors.brown,
     fontFamily: typography.rounded,

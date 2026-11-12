@@ -13,7 +13,7 @@ export const pizzaLevels: {
 }[] = [
   {
     level: 1,
-    title: '只剩餅皮',
+    title: '就很皮',
     description: '錯過多次，盤子空了。',
     background: '#F4F5F7',
     pillBackground: '#6B7280',
@@ -21,7 +21,7 @@ export const pizzaLevels: {
   },
   {
     level: 2,
-    title: '基礎',
+    title: '就醬',
     description: '只是一塊普通披薩。',
     background: '#FDF1EC',
     pillBackground: '#C2410C',
@@ -29,7 +29,7 @@ export const pizzaLevels: {
   },
   {
     level: 3,
-    title: '逐漸有料',
+    title: '有起色',
     description: '你感覺滿有的喔！',
     background: '#FFF7E0',
     pillBackground: '#FFD54A',
@@ -37,7 +37,7 @@ export const pizzaLevels: {
   },
   {
     level: 4,
-    title: '拼一個圓',
+    title: '很有料',
     description: '終究，要找人吃一個大披薩。',
     background: '#EAF7EF',
     pillBackground: '#15803D',

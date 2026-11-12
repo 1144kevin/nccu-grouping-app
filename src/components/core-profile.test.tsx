@@ -33,7 +33,7 @@ it('uses the real account score, starting at zero rather than a preview score', 
     max: 100,
     now: 0,
   });
-  expect(screen.getByText('只剩餅皮揪團夥伴')).toBeTruthy();
+  expect(screen.getByText('就很皮揪團夥伴')).toBeTruthy();
   expect(screen.getByText('還沒有過往拼單')).toBeTruthy();
   mockScore = 50;
   await screen.rerender(<CoreProfileScreen />);
@@ -54,9 +54,9 @@ it('lists every pizza level with its label and title', async () => {
 
 it('explains each pizza level in the info dialog below the scoring rules', async () => {
   const screen = await render(<CoreProfileScreen />);
-  expect(screen.queryByText('把披薩大拼起來')).toBeNull();
+  expect(screen.queryByText('有料指數')).toBeNull();
   await fireEvent.press(screen.getByLabelText('熟度等級說明'));
-  expect(screen.getByText('把披薩大拼起來')).toBeTruthy();
+  expect(screen.getByText('有料指數')).toBeTruthy();
   expect(screen.getByText('熟度反映已確認的參與紀錄，不是付款保證。')).toBeTruthy();
   for (const item of pizzaLevels) expect(screen.getByText(item.description)).toBeTruthy();
 });

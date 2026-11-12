@@ -12,7 +12,7 @@ export function PizzaLevelHelp({ visible, onClose }: { visible: boolean; onClose
       <View style={styles.overlay}>
         <View style={styles.help}>
           <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
-            <Text style={styles.heading}>把披薩大拼起來</Text>
+            <Text style={styles.heading}>有料指數</Text>
             <Text style={styles.body}>
               全員確認完成後，主揪 +5 分、團員 +3 分；每收到 10 個讚再 +1 分，上限 100
               分。尚未完成、取消與示範拼單不計分。
