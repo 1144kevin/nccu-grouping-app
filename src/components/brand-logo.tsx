@@ -1,7 +1,11 @@
 import { Image } from 'expo-image';
-import { Platform } from 'react-native';
+import { Platform, useColorScheme } from 'react-native';
+import { useAppearanceStore } from '@/store/appearance-store';
 
 export function BrandLogo({ size = 32, onBrand = false }: { size?: number; onBrand?: boolean }) {
+  const mode = useAppearanceStore((state) => state.mode);
+  const system = useColorScheme();
+  const dark = mode === 'dark' || (mode === 'system' && system === 'dark');
   return (
     <Image
       source={require('../../assets/images/brand-logo.svg')}
@@ -10,7 +14,8 @@ export function BrandLogo({ size = 32, onBrand = false }: { size?: number; onBra
       style={{
         width: size,
         height: size,
-        ...(Platform.OS === 'web' && !onBrand ? { filter: 'var(--app-logo-filter, none)' } : {}),
+        // Only apply invert() in dark mode so light mode skips CSS filter offscreen rasterization (prevents blur on iOS 27 WebKit).
+        ...(Platform.OS === 'web' && !onBrand && dark ? { filter: 'invert(1)' } : {}),
       }}
     />
   );
