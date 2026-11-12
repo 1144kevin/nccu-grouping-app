@@ -84,6 +84,7 @@ export function Screen({
             left: 0,
             right: 0,
             marginHorizontal: 'auto',
+            backgroundColor: colors.background,
             overflow: 'hidden',
           } as unknown as ViewStyle),
       ]}

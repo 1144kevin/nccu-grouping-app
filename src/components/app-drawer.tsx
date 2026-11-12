@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import { useNotificationBadge, useStealthBadge } from '@/lib/notification-badge';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 const supportItems = [
   { label: '介面調整', icon: 'palette-outline', href: '/font-size' },
@@ -26,6 +26,10 @@ export function AppDrawer() {
   const insets = useSafeAreaInsets();
   const visible = useNavigationStore((state) => state.drawerOpen);
   const close = useNavigationStore((state) => state.closeDrawer);
+  const [instantClose, setInstantClose] = useState(false);
+  useEffect(() => {
+    if (visible) setInstantClose(false);
+  }, [visible]);
   const { logout, busy, error } = useAuthStore();
   const account = useAuthStore((state) => state.user);
   const currentUser = useAppStore((state) => state.currentUser);
@@ -37,12 +41,13 @@ export function AppDrawer() {
   }, [visible, noticeError, refetchNotices]);
 
   function navigate(href: string) {
+    setInstantClose(true);
     close();
     requestAnimationFrame(() => router.push(href as Href));
   }
 
   return (
-    <Modal animationType="fade" onRequestClose={close} transparent visible={visible}>
+    <Modal animationType={instantClose ? 'none' : 'fade'} onRequestClose={close} transparent visible={visible}>
       <View style={styles.overlay}>
         <View
           style={[
