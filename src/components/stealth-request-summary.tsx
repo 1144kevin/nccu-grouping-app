@@ -25,6 +25,7 @@ export function StealthRequestSummary({
   onClose,
   closing,
   closeDisabled,
+  compact = true,
 }: {
   signal: StealthSignalInput;
   facts?: StealthIntake['facts'];
@@ -32,47 +33,72 @@ export function StealthRequestSummary({
   onClose?: () => void;
   closing?: boolean;
   closeDisabled?: boolean;
+  compact?: boolean;
 }) {
-  const range = [signal.starts_at, signal.ends_at]
-    .map((value) => {
-      const date = new Date(value);
-      return Number.isFinite(date.getTime()) ? displayTimestamp(value) : '待確認';
-    })
-    .join(' — ');
+  const isFlexibleWindow =
+    facts?.delay_minutes === 0 && facts?.duration_minutes === 1440;
+  const range = isFlexibleWindow
+    ? '都可以（24小時內）'
+    : [signal.starts_at, signal.ends_at]
+        .map((value) => {
+          const date = new Date(value);
+          return Number.isFinite(date.getTime()) ? displayTimestamp(value) : '都可以';
+        })
+        .join(' — ');
   const proposedLocation = !!facts && facts.location_id == null;
+  const tagBonus = (signal.tags ?? [])
+    .filter((tag) => tag.startsWith('BONUS:') || tag.startsWith('行程:') || tag.startsWith('優惠:'))
+    .map((tag) => tag.replace(/^(BONUS|行程|優惠):/, '').trim())
+    .filter(Boolean)
+    .join('、');
+  const explicitBonus = facts?.bonus?.trim() || tagBonus;
+  const roleSummary = signal.roles?.length
+    ? `我願意${signal.roles.map((role) => roles[role]).join('、')}`
+    : '';
+  const bonusText = explicitBonus
+    ? roleSummary && !explicitBonus.includes(roleSummary.replace(/^我願意/, ''))
+      ? `${explicitBonus}（${roleSummary}）`
+      : explicitBonus
+    : signal.participation_preference === 'receive'
+      ? '偏好原地收餐，分攤自己的餐費' +
+        (signal.roles?.filter((role) => role !== 'share').length
+          ? `；願意${signal.roles
+              .filter((role) => role !== 'share')
+              .map((role) => roles[role])
+              .join('、')}`
+          : '')
+      : roleSummary || '都可以';
   const items = [
     {
       icon: 'map-marker-outline' as const,
-      text: `${proposedLocation ? '建議：' : ''}${stealthLocations[signal.location_id] ?? signal.location_id ?? '地點待確認'}`,
+      label: null as string | null,
+      text: `${proposedLocation ? '建議：' : ''}${stealthLocations[signal.location_id] ?? signal.location_id ?? '都可以'}`,
     },
-    { icon: 'clock-outline' as const, text: `可接受時段：${range}` },
+    {
+      icon: 'clock-outline' as const,
+      label: null as string | null,
+      text: `可接受時段：${range}`,
+    },
     {
       icon: 'wallet-outline' as const,
+      label: null as string | null,
       text:
         signal.budget_max_twd == null
-          ? '預算先依餐點價格評估'
+          ? '都可以（預算先依餐點價格評估）'
           : `每人可接受金額 $${signal.budget_max_twd} 以內`,
     },
     {
-      icon: 'handshake-outline' as const,
-      text:
-        signal.participation_preference === 'receive'
-          ? '偏好原地收餐，分攤自己的餐費' +
-            (signal.roles?.filter((role) => role !== 'share').length
-              ? `；願意${signal.roles
-                  .filter((role) => role !== 'share')
-                  .map((role) => roles[role])
-                  .join('、')}`
-              : '')
-          : signal.roles?.length
-            ? `我願意${signal.roles.map((role) => roles[role]).join('、')}`
-            : '分攤自己的餐費，暫不承擔下單與取餐',
+      icon: 'star-four-points-outline' as const,
+      label: 'BONUS',
+      text: bonusText,
     },
   ];
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, compact && styles.cardCompact]}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-        <Text style={[styles.title, { flex: 1 }]}>{signal.title}</Text>
+        <Text style={[styles.title, compact && styles.titleCompact, { flex: 1 }]}>
+          {signal.title}
+        </Text>
         {onClose ? (
           <Pressable
             accessibilityRole="button"
@@ -80,23 +106,28 @@ export function StealthRequestSummary({
             disabled={closeDisabled}
             onPress={onClose}
             hitSlop={10}
-            style={{ width: 30, height: 30, alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}
           >
             {closing ? (
               <ActivityIndicator size="small" color={colors.danger} />
             ) : (
-              <MaterialCommunityIcons name="close" size={20} color={colors.danger} />
+              <MaterialCommunityIcons name="close" size={18} color={colors.danger} />
             )}
           </Pressable>
         ) : null}
       </View>
-      <View style={styles.items}>
-        {items.map(({ icon, text }) => (
+      <View style={[styles.items, compact && styles.itemsCompact]}>
+        {items.map(({ icon, label, text }) => (
           <View key={icon} style={styles.item}>
-            <View style={styles.itemIcon}>
-              <MaterialCommunityIcons name={icon} size={17} color={colors.muted} />
+            <View style={[styles.itemIcon, compact && styles.itemIconCompact]}>
+              <MaterialCommunityIcons name={icon} size={compact ? 15 : 17} color={colors.muted} />
             </View>
-            <Text style={styles.body}>{text}</Text>
+            {label ? (
+              <View style={styles.bonusBadge}>
+                <Text style={styles.bonusBadgeText}>{label}</Text>
+              </View>
+            ) : null}
+            <Text style={[styles.body, compact && styles.bodyCompact]}>{text}</Text>
           </View>
         ))}
       </View>
@@ -106,21 +137,27 @@ export function StealthRequestSummary({
       <Text style={styles.note}>
         {createdAt
           ? `新增於 ${displayTimestamp(createdAt)} · 保留24小時`
-          : '暫定條件，可回到聊天調整；確認新增後保留24小時。'}
+          : '暫定條件，確認同意後保留24小時。'}
       </Text>
     </View>
   );
 }
 const styles = StyleSheet.create({
   card: {
-    gap: 16,
-    borderRadius: 20,
-    padding: 18,
+    gap: 14,
+    borderRadius: 18,
+    padding: 16,
     backgroundColor: colors.background,
     borderWidth: 1,
     borderColor: colors.border,
     borderLeftWidth: 4,
     borderLeftColor: colors.yellow,
+  },
+  cardCompact: {
+    gap: 10,
+    borderRadius: 16,
+    padding: 12,
+    maxWidth: 340,
   },
   itemIcon: {
     width: 30,
@@ -130,9 +167,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surface,
   },
+  itemIconCompact: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+  },
+  bonusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: colors.yellowSoft,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  bonusBadgeText: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '800',
+    color: colors.brown,
+    letterSpacing: 0.4,
+  },
   title: { fontSize: 17, lineHeight: 26, fontWeight: '700', color: colors.ink },
+  titleCompact: { fontSize: 15, lineHeight: 22 },
   items: { gap: 10 },
+  itemsCompact: { gap: 6 },
   item: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   body: { flex: 1, fontSize: 14, lineHeight: 22, color: colors.ink },
-  note: { fontSize: 12, lineHeight: 19, color: colors.muted },
+  bodyCompact: { fontSize: 13, lineHeight: 19 },
+  note: { fontSize: 11, lineHeight: 17, color: colors.muted },
 });

@@ -109,6 +109,7 @@ export type StealthMatch = {
   formed_at: string | null;
   agent_draft?: StealthAgentTermsDraft | null;
   coordination_opened?: boolean;
+  highlights?: string[];
 };
 export type StealthCreated = {
   signal: StealthSignal;
@@ -220,6 +221,7 @@ export type StealthIntake = {
     known_cost_twd: number | null;
     roles: StealthRole[];
     roles_confirmed: boolean;
+    bonus?: string | null;
     tags: string[];
     dietary_requirements: string[];
   };

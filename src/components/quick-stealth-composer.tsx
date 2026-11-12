@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AppText as Text } from '@/components/app-text';
@@ -26,6 +26,8 @@ type Props = {
   enabled: boolean;
   disabled: boolean;
   focused: boolean;
+  hasActiveSignal?: boolean;
+  chatStreamExtra?: ReactNode;
   onSaved: (result: StealthQuickResult) => Promise<void>;
   onBusyChange: (busy: boolean) => void;
   onStarted?: () => void;
@@ -40,11 +42,12 @@ const starters = [
 ];
 
 export function QuickStealthComposer({
-  viewportHeight,
   actor,
   enabled,
   disabled,
   focused,
+  hasActiveSignal = false,
+  chatStreamExtra,
   onSaved,
   onBusyChange,
   onStarted,
@@ -52,9 +55,9 @@ export function QuickStealthComposer({
   const [text, setText] = useState('');
   const [voiceReview, setVoiceReview] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [voicePlaying, setVoicePlaying] = useState(false);
+  const [, setVoicePlaying] = useState(false);
   const [voicePreparing, setVoicePreparing] = useState(false);
-  const [voiceError, setVoiceError] = useState('');
+  const [, setVoiceError] = useState('');
   const [turns, setTurns] = useState<string[]>([]);
   const [fields, setFields] = useState<(ConversationField | null)[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -212,8 +215,8 @@ export function QuickStealthComposer({
         { role: 'user', text: display },
         { role: 'assistant', text: result.message },
       ]);
-      // A valid draft is immediately reviewable even while the conversation can continue.
-      setReviewing(!!result.signal);
+      // Only automatically pop out the card when the AI determines the threshold is met (ready_for_review).
+      setReviewing(Boolean(result.signal && result.ready_for_review));
       request.current = null;
       if (voiceEnabledRef.current) playReply(result.message);
     } catch (e) {
@@ -229,9 +232,28 @@ export function QuickStealthComposer({
       }
     }
   }
-  async function save() {
+  async function save(allowWithInput = false) {
     const signal = preview?.signal;
-    if (disabled || locked.current || !actor || !signal || text.trim() || !reviewing) return;
+    if (
+      disabled ||
+      locked.current ||
+      !actor ||
+      !signal ||
+      (!allowWithInput && text.trim()) ||
+      !reviewing
+    )
+      return;
+    if (hasActiveSignal) {
+      setError('目前已經有一張進行中的偷揪單（同時最多一張），請先取消目前的偷揪單才能建立新單。');
+      setMessages((old) => [
+        ...old,
+        {
+          role: 'assistant',
+          text: '你目前已經有一張等待配對中的偷揪單（同時最多只能有一張）。如果覺得目前那張單不行，請先點擊卡片右上角的「✕」取消它，才能開一張新的偷揪單喔！',
+        },
+      ]);
+      return;
+    }
     const id = ++epoch.current;
     const payload = JSON.stringify(signal);
     replyVoice.current?.stop();
@@ -248,6 +270,14 @@ export function QuickStealthComposer({
       );
       if (!alive(id)) return;
       setSaved(true);
+      setReviewing(false);
+      setMessages((old) => [
+        ...old,
+        {
+          role: 'assistant',
+          text: '已用這張偷揪單開始等待配對（有效期限 24 小時）！配對到合適夥伴時會直接在這裡通知你。',
+        },
+      ]);
       await onSaved(result);
     } catch (e) {
       if (alive(id)) setError(`${coreError(e)} 已確認的條件仍保留，可以重試，不會重複建立。`);
@@ -257,6 +287,32 @@ export function QuickStealthComposer({
         setPhase('idle');
       }
     }
+  }
+  function submitInput(rawText: string, displayLabel = rawText) {
+    const cleaned = rawText.trim();
+    if (!cleaned || locked.current) return;
+    if (reviewing && preview?.signal && !saved) {
+      if (/^(同意|好|可以|確認|同意開始配對|開始配對|ok|yes)$/i.test(cleaned)) {
+        setText('');
+        setMessages((old) => [...old, { role: 'user', text: displayLabel }]);
+        void save(true);
+        return;
+      }
+      if (/^(不同意|不要|取消|修改|先不要|no)$/i.test(cleaned)) {
+        setText('');
+        setReviewing(false);
+        setMessages((old) => [
+          ...old,
+          { role: 'user', text: displayLabel },
+          {
+            role: 'assistant',
+            text: '沒問題，這張偷揪單先不送出！想調整地點、時間、預算或 BONUS 特別項目，都可以直接跟我說。',
+          },
+        ]);
+        return;
+      }
+    }
+    void analyze(rawText, displayLabel);
   }
   async function speak() {
     if (disabled || locked.current || !actor || turns.length >= 16) return;
@@ -343,18 +399,7 @@ export function QuickStealthComposer({
     request.current = null;
   }
   return (
-    <View
-      style={[styles.panel, viewportHeight ? { minHeight: viewportHeight, flexShrink: 0 } : null]}
-    >
-      {saved ? (
-        <View style={styles.saved}>
-          <MaterialCommunityIcons name="check-circle-outline" size={20} color={colors.brown} />
-          <Text style={{ flex: 1, color: colors.muted }}>需求已儲存</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="再聊一個" onPress={restart}>
-            <MaterialCommunityIcons name="plus" size={24} color={colors.ink} />
-          </Pressable>
-        </View>
-      ) : null}
+    <View style={styles.panel}>
       <View style={styles.panelHeader}>
         <View style={{ flex: 1 }} />
         <Pressable
@@ -377,49 +422,22 @@ export function QuickStealthComposer({
             />
           )}
         </Pressable>
-        {turns.length ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="重新開始對話"
-            disabled={busy}
-            onPress={restart}
-          >
-            <MaterialCommunityIcons name="restart" size={20} color={colors.muted} />
-          </Pressable>
-        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="重新開始對話"
+          disabled={busy}
+          onPress={restart}
+          style={styles.voiceToggle}
+        >
+          <MaterialCommunityIcons name="restart" size={20} color={colors.muted} />
+        </Pressable>
       </View>
-      {voiceEnabled ? (
-        <View style={styles.voiceStatus}>
-          <View />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={voicePlaying ? '停止朗讀' : '重聽回覆'}
-            disabled={busy && !voicePlaying}
-            onPress={() => {
-              if (voicePlaying) replyVoice.current?.stop();
-              else
-                playReply(messages.filter((m) => m.role === 'assistant').at(-1)?.text ?? greeting);
-            }}
-          >
-            <Text style={styles.link}>{voicePlaying ? '停止朗讀' : '重聽回覆'}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {voiceError ? (
-        <Text accessibilityRole="alert" style={styles.hint}>
-          {voiceError}
-        </Text>
-      ) : null}
       <ScrollView
         ref={transcript}
         nestedScrollEnabled
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        style={[
-          styles.transcript,
-          viewportHeight ? { maxHeight: Math.max(240, viewportHeight - 150) } : null,
-          voiceReview && { maxHeight: 140 },
-        ]}
+        style={styles.transcript}
         contentContainerStyle={styles.messages}
         onContentSizeChange={() => transcript.current?.scrollToEnd({ animated: true })}
       >
@@ -450,6 +468,55 @@ export function QuickStealthComposer({
             <InlineLoading label="正在整理回覆" textStyle={styles.hint} />
           </View>
         ) : null}
+        {preview?.signal && !reviewing && !saved ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="先確認目前需求"
+            disabled={busy || !!text.trim()}
+            onPress={() => setReviewing(true)}
+            style={[styles.reviewLink, (busy || !!text.trim()) && styles.disabled]}
+          >
+            <Text style={styles.link}>先確認目前需求</Text>
+            <MaterialCommunityIcons name="arrow-right" size={16} color={colors.brown} />
+          </Pressable>
+        ) : null}
+        {reviewing && preview?.signal && !saved ? (
+          <View style={styles.inChatCardBlock}>
+            <StealthRequestSummary compact signal={preview.signal} facts={preview.facts} />
+            <View style={styles.assistantBubble}>
+              <Text style={styles.body}>
+                已經幫你整理好這張偷揪單囉！請問是否要用這張單開始配對？（請輸入「同意」或「不同意」）
+              </Text>
+            </View>
+            <View style={styles.review}>
+              <PrimaryButton
+                loading={phase === 'saving'}
+                disabled={disabled || busy || !!text.trim()}
+                onPress={() => {
+                  void save();
+                }}
+              >
+                確認條件，開始找人
+              </PrimaryButton>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy}
+                onPress={() => setReviewing(false)}
+              >
+                <Text style={styles.link}>不同意，回到聊天補充</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+        {chatStreamExtra}
+        {turns.length >= 16 ? (
+          <Text style={styles.hint}>這段對話已達長度上限，可以確認目前需求，或重新開始。</Text>
+        ) : null}
+        {error ? (
+          <Text accessibilityRole="alert" style={styles.error}>
+            {error}
+          </Text>
+        ) : null}
       </ScrollView>
       {!turns.length && !busy && !voiceReview ? (
         <View style={styles.choices}>
@@ -469,7 +536,26 @@ export function QuickStealthComposer({
           ))}
         </View>
       ) : null}
-      {preview?.question && !busy && !voiceReview ? (
+      {reviewing && preview?.signal && !saved && !busy && !voiceReview ? (
+        <View style={styles.choices}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={disabled || !!text.trim()}
+            onPress={() => submitInput('同意', '同意')}
+            style={styles.choice}
+          >
+            <Text style={styles.choiceText}>同意</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={disabled || !!text.trim()}
+            onPress={() => submitInput('不同意', '不同意')}
+            style={styles.choice}
+          >
+            <Text style={styles.choiceText}>不同意</Text>
+          </Pressable>
+        </View>
+      ) : preview?.question && !busy && !voiceReview ? (
         <View style={styles.choices}>
           {preview.choices.map((choice) => (
             <Pressable
@@ -511,12 +597,15 @@ export function QuickStealthComposer({
         <ChatTextInput
           emptyCentered
           accessibilityLabel="跟偷揪分身聊天"
-          placeholder="說說你的想法"
+          placeholder={
+            reviewing && preview?.signal && !saved
+              ? '請輸入「同意」或「不同意」'
+              : '說說你的想法'
+          }
           value={text}
           onChangeText={(value) => {
             if (saved) restart();
             setText(value);
-            if (value.trim()) setReviewing(false);
           }}
           multiline
           maxLength={1000}
@@ -529,7 +618,7 @@ export function QuickStealthComposer({
           accessibilityState={{ busy: phase === 'interview' }}
           disabled={disabled || busy || !inputValid}
           onPress={() => {
-            if (!locked.current) void analyze(text);
+            submitInput(text);
           }}
           style={[styles.send, (disabled || busy || !inputValid) && styles.disabled]}
         >
@@ -574,49 +663,11 @@ export function QuickStealthComposer({
         <PrimaryButton
           disabled={disabled || !inputValid}
           onPress={() => {
-            if (!locked.current) void analyze(text);
+            submitInput(text);
           }}
         >
           確認文字並送出
         </PrimaryButton>
-      ) : null}
-      {preview?.signal && !reviewing && !saved ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="先確認目前需求"
-          disabled={busy || !!text.trim()}
-          onPress={() => setReviewing(true)}
-          style={styles.reviewLink}
-        >
-          <Text style={styles.link}>先確認目前需求</Text>
-          <MaterialCommunityIcons name="arrow-right" size={16} color={colors.brown} />
-        </Pressable>
-      ) : null}
-      {reviewing && preview?.signal && !saved ? (
-        <View style={styles.review}>
-          <StealthRequestSummary signal={preview.signal} facts={preview.facts} />
-          <PrimaryButton
-            loading={phase === 'saving'}
-            disabled={disabled || busy || !!text.trim()}
-            onPress={() => {
-              void save();
-            }}
-          >
-            確認條件，開始找人
-          </PrimaryButton>
-          <Text style={styles.footnote}>確認後才開始找人，邀請由你決定。</Text>
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => setReviewing(false)}>
-            <Text style={styles.link}>回到聊天補充</Text>
-          </Pressable>
-        </View>
-      ) : null}
-      {turns.length >= 16 ? (
-        <Text style={styles.hint}>這段對話已達長度上限，可以確認目前需求，或重新開始。</Text>
-      ) : null}
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
       ) : null}
     </View>
   );
@@ -627,20 +678,21 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     overflow: 'hidden',
     padding: 0,
-    gap: 16,
-    flexGrow: 1,
+    gap: 10,
+    flex: 1,
+    minHeight: 0,
   },
-  panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  voiceToggle: { minWidth: 40, minHeight: 40, alignItems: 'center', justifyContent: 'center' },
-  voiceStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  voiceToggle: { minWidth: 38, minHeight: 38, alignItems: 'center', justifyContent: 'center' },
+  inChatCardBlock: {
+    alignSelf: 'flex-start',
+    width: '100%',
+    maxWidth: 350,
     gap: 10,
   },
   name: { fontSize: 15, fontWeight: '800', color: colors.ink },
   hint: { fontSize: 12, lineHeight: 19, color: colors.muted },
-  transcript: { maxHeight: 460, minHeight: 180, flexGrow: 1 },
+  transcript: { flex: 1, minHeight: 0 },
   greeting: { paddingTop: 16, paddingBottom: 28 },
   greetingText: { fontSize: 25, lineHeight: 37, fontWeight: '600', color: colors.ink },
   messages: { gap: 12, paddingVertical: 4 },

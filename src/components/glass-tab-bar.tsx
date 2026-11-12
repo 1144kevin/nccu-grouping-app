@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { Tabs } from 'expo-router';
+import { router, type Tabs } from 'expo-router';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import {
   AccessibilityInfo,
@@ -70,11 +70,13 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
   const [reduceTransparency, setReduceTransparency] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [width, setWidth] = useState(0);
   const track = useRef<View>(null);
   const bounds = useRef({ left: 0, width: 0 });
   const [selectionX] = useState(() => new Animated.Value(0));
   const [dragProgress] = useState(() => new Animated.Value(0));
+  const [menuProgress] = useState(() => new Animated.Value(0));
   const dragging = dragIndex !== null;
   const pointer = useRef({ id: -1, x: 0, y: 0, dragging: false });
   const suppressPress = useRef(false);
@@ -137,6 +139,27 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
     animation.start();
     return () => animation.stop();
   }, [dragIndex, focusedIndex, reduceMotion, selectionX, tabWidth, width]);
+
+  useEffect(() => {
+    const target = createMenuOpen ? 1 : 0;
+    if (reduceMotion) {
+      menuProgress.setValue(target);
+      return;
+    }
+    const animation = Animated.spring(menuProgress, {
+      toValue: target,
+      damping: 18,
+      stiffness: 280,
+      mass: 0.7,
+      useNativeDriver: Platform.OS !== 'web',
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [createMenuOpen, menuProgress, reduceMotion]);
+
+  useEffect(() => {
+    setCreateMenuOpen(false);
+  }, [state.index]);
 
   useEffect(() => {
     const target = dragging ? 1 : 0;
@@ -247,8 +270,104 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
 
   if (keyboardVisible) return null;
 
+  const createRoute = routes.find((route) => route.name === 'create');
+  const createBadge = createRoute ? descriptors[createRoute.key]?.options.tabBarBadge : undefined;
+
   return (
     <View pointerEvents="box-none" style={[styles.dock, { bottom: Math.max(insets.bottom, 12) }]}>
+      {createMenuOpen ? (
+        <View pointerEvents="box-none" style={styles.bubbleRow}>
+          <Animated.View
+            style={{
+              opacity: menuProgress,
+              transform: [
+                {
+                  translateX: menuProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [28, 0],
+                  }),
+                },
+                {
+                  translateY: menuProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [44, 0],
+                  }),
+                },
+                {
+                  scale: menuProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.35, 1],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={'偷揪' + (createBadge ? `，${createBadge} 則待處理` : '')}
+              onPress={() => {
+                setCreateMenuOpen(false);
+                router.push('/stealth');
+              }}
+              style={({ pressed }) => [styles.bubblePressable, pressed && styles.pressed]}
+            >
+              <GlassSurface solid={reduceTransparency} style={styles.bubbleSurface}>
+                <View>
+                  <MaterialCommunityIcons name="robot-outline" size={23} color={colors.ink} />
+                  {createBadge ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {Number(createBadge) > 99 ? '99+' : createBadge}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={[styles.label, styles.selectedLabel]}>偷揪</Text>
+              </GlassSurface>
+            </Pressable>
+          </Animated.View>
+          <Animated.View
+            style={{
+              opacity: menuProgress,
+              transform: [
+                {
+                  translateX: menuProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-28, 0],
+                  }),
+                },
+                {
+                  translateY: menuProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [44, 0],
+                  }),
+                },
+                {
+                  scale: menuProgress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.35, 1],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="貼文"
+              onPress={() => {
+                setCreateMenuOpen(false);
+                if (createRoute) open(createRoute);
+              }}
+              style={({ pressed }) => [styles.bubblePressable, pressed && styles.pressed]}
+            >
+              <GlassSurface solid={reduceTransparency} style={styles.bubbleSurface}>
+                <MaterialCommunityIcons name="pencil-plus-outline" size={23} color={colors.ink} />
+                <Text style={[styles.label, styles.selectedLabel]}>貼文</Text>
+              </GlassSurface>
+            </Pressable>
+          </Animated.View>
+        </View>
+      ) : null}
       <View pointerEvents="box-none" style={styles.dockRow}>
         <View style={styles.navigation}>
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -314,7 +433,13 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
                   accessibilityState={{ selected: state.routes[state.index].key === route.key }}
                   accessibilityLabel={tab.label + (badge ? '，' + badge + ' 則待處理' : '')}
                   onPress={() => {
-                    if (!suppressPress.current) open(route);
+                    if (suppressPress.current) return;
+                    if (route.name === 'create') {
+                      setCreateMenuOpen((prev) => !prev);
+                      return;
+                    }
+                    setCreateMenuOpen(false);
+                    open(route);
                   }}
                   onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
                   style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
@@ -378,6 +503,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  bubbleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 12,
+    zIndex: 20,
+  },
+  bubblePressable: {
+    borderRadius: 34,
+  },
+  bubbleSurface: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
   },
   surface: {
     borderRadius: 34,

@@ -132,7 +132,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         {query.isPending ? (
           <PageLoading />
         ) : (
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minHeight: 0 }}>
             <FlatList
               onViewableItemsChanged={dates.onViewableItemsChanged}
               onScroll={dates.onScroll}

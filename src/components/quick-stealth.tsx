@@ -2,9 +2,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
-import { KeyboardScrollView } from '@/components/keyboard-layout';
+import { KeyboardViewport } from '@/components/keyboard-layout';
 import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { InlineLoading } from '@/components/inline-loading';
 import {
@@ -22,6 +22,45 @@ import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, yellowSurface } from '@/theme/tokens';
 import { displayTimestamp } from '@/lib/display-time';
+
+function buildMatchSpecialSummary(match: StealthMatch, explanations: string[]): string {
+  const parts: string[] = [];
+  if (match.highlights?.length) {
+    parts.push(...match.highlights);
+  }
+  const suggestions = match.agent_draft?.role_suggestions ?? [];
+  const pickupPartner = suggestions.find(
+    (s) => s.role === 'pickup' && s.member_number != null && s.member_number !== match.my_member_number,
+  );
+  if (pickupPartner && !parts.some((p) => p.includes('取餐') || p.includes('跑這一趟'))) {
+    parts.push('對方願意跑這一趟幫忙去買／取餐');
+  }
+  const orderPartner = suggestions.find(
+    (s) => s.role === 'order' && s.member_number != null && s.member_number !== match.my_member_number,
+  );
+  if (orderPartner && !parts.some((p) => p.includes('下單'))) {
+    parts.push('對方願意負責下單與付款協調');
+  }
+  for (const reason of [...match.reasons, ...explanations]) {
+    if (/優惠|折價|省|多付|手續費|跑腿|順路|好市多|Costco|全聯|家樂福|外送|分享/i.test(reason)) {
+      if (!parts.includes(reason)) parts.push(reason);
+    }
+  }
+  if (
+    match.known_cost_twd != null &&
+    match.budget_max_twd != null &&
+    match.known_cost_twd <= match.budget_max_twd
+  ) {
+    parts.push(`每人預計 NT$ ${match.known_cost_twd}（符合你的預算上限）`);
+  }
+  if (!parts.length) {
+    const loc = stealthLocations[match.location_id] ?? match.location_id;
+    parts.push(
+      `對方今天剛好想在「${loc}」一起湊${stealthCategories[match.category] ?? '同類需求'}，時間與條件互補`,
+    );
+  }
+  return parts.slice(0, 3).join('；');
+}
 
 export function QuickStealthScreen() {
   const actor = useAuthStore((s) => s.user?.id);
@@ -64,11 +103,8 @@ function QuickSession({ actor }: { actor?: string }) {
   });
   const clock = useCoreClock();
   const [composerBusy, setComposerBusy] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(640);
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
-  const [carouselWidth, setCarouselWidth] = useState(320);
-  const carousel = useRef<ScrollView>(null);
   const [localMatches, setLocalMatches] = useState<Record<string, StealthMatch>>({});
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -94,11 +130,7 @@ function QuickSession({ actor }: { actor?: string }) {
   const active = (signals.data?.items ?? []).filter(
     (s) => s.status === 'active' && Date.parse(s.expires_at) > now,
   );
-  const firstRequest = active[0]?.id;
-  useEffect(() => {
-    carousel.current?.scrollTo({ x: 0, animated: false });
-  }, [firstRequest]);
-  const cardWidth = active.length > 1 ? Math.min(440, carouselWidth - 20) : carouselWidth;
+  const activeSignal = active[0];
   const { ordered, valid } = selectSemanticMatches(
     matches.data?.items ?? [],
     focused ? analysis : undefined,
@@ -120,8 +152,104 @@ function QuickSession({ actor }: { actor?: string }) {
         !m.coordination_opened &&
         Date.parse(m.expires_at) > now,
     );
+  const chatStreamExtra = (
+    <View style={{ gap: 12 }}>
+      {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
+      {capability.data?.conversation_configured === false ? (
+        <View style={styles.systemBubble}>
+          <Text style={styles.error}>暫時無法聊天，請稍後再試。</Text>
+        </View>
+      ) : null}
+      {!capability.isPending && !capability.data?.ready ? (
+        <View style={styles.systemBubble}>
+          <Text style={styles.hint}>目前無法自動找人，請稍後再試。</Text>
+        </View>
+      ) : null}
+      {agent.error ? (
+        <View style={styles.systemBubble}>
+          <Text accessibilityRole="alert" style={styles.error}>
+            {coreError(agent.error)}
+          </Text>
+          <PrimaryButton
+            secondary
+            onPress={() => {
+              void agent.refetch();
+            }}
+          >
+            重試連線
+          </PrimaryButton>
+        </View>
+      ) : null}
+      {notice ? (
+        <View style={styles.systemBubble}>
+          <Text accessibilityRole="alert" style={styles.body}>
+            {notice}
+          </Text>
+        </View>
+      ) : null}
+      {activeSignal ? (
+        <View style={styles.inChatCardWrap}>
+          <View style={styles.systemBubble}>
+            <Text style={styles.body}>
+              目前已使用這張偷揪單等待配對中（保留 24 小時）。同時最多只能有一張偷揪單，若覺得這張單不行或想重開新單，請先點選卡片右上角取消：
+            </Text>
+          </View>
+          <StealthRequestSummary
+            compact
+            signal={activeSignal}
+            createdAt={activeSignal.created_at}
+            onClose={() => revoke.mutate(activeSignal.id)}
+            closing={revoke.isPending && revoke.variables === activeSignal.id}
+            closeDisabled={revoke.isPending}
+          />
+          {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
+        </View>
+      ) : null}
+      {matches.error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {coreError(matches.error)}
+        </Text>
+      ) : null}
+      {(capability.data?.ready ? visible : []).map((match) => {
+        const explanations = valid.get(match.id)?.explanations ?? [];
+        const specialSummary = buildMatchSpecialSummary(match, explanations);
+        return (
+          <View key={match.id} style={styles.inChatCardWrap}>
+            <View style={styles.systemBubble}>
+              <Text style={styles.body}>
+                🎉 現在有一個配對機會，請問是否要接受？{'\n'}✨ 這次配對特別之處：{specialSummary}
+              </Text>
+            </View>
+            <QuickMatch
+              match={match}
+              explanation={explanations}
+              refresh={refresh}
+              onUpdated={(result) => setLocalMatches((old) => ({ ...old, [result.id]: result }))}
+            />
+          </View>
+        );
+      })}
+      {activeSignal ? (
+        <View style={{ alignSelf: 'flex-start' }}>
+          <PrimaryButton
+            secondary
+            loading={retry.isPending}
+            disabled={busy || !capability.data?.ready}
+            onPress={() => retry.mutate()}
+          >
+            再找找看
+          </PrimaryButton>
+        </View>
+      ) : null}
+      {retry.error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {coreError(retry.error)} 原本需求與結果仍保留。
+        </Text>
+      ) : null}
+    </View>
+  );
   return (
-    <Screen>
+    <Screen pinKeyboardHeader>
       <DetailHeader
         title="偷揪"
         sideWidth={80}
@@ -140,15 +268,13 @@ function QuickSession({ actor }: { actor?: string }) {
           </View>
         }
       />
-      <View
-        style={{ flex: 1 }}
-        onLayout={(event) => setViewportHeight(event.nativeEvent.layout.height)}
-      >
-        <KeyboardScrollView contentContainerStyle={styles.page}>
+      <KeyboardViewport>
+        <View style={styles.page}>
           <QuickStealthComposer
-            viewportHeight={Math.max(400, viewportHeight - 40)}
             actor={actor}
             enabled={!!agent.data?.enabled}
+            hasActiveSignal={active.length >= 1}
+            chatStreamExtra={chatStreamExtra}
             focused={focused}
             disabled={
               !focused ||
@@ -167,132 +293,13 @@ function QuickSession({ actor }: { actor?: string }) {
                   ? '需求已儲存，目前是分身的安靜時段。'
                   : result.created.matching === 'unavailable'
                     ? '需求已儲存，配對暫時未完成，稍後可再找找。'
-                    : '已開始找人，有合適的夥伴會顯示在下方。',
+                    : '已開始找人，有合適的夥伴會直接在聊天室通知你。',
               );
               await refresh();
             }}
           />
-          {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
-          {capability.data?.conversation_configured === false ? (
-            <Text style={styles.error}>暫時無法聊天，請稍後再試。</Text>
-          ) : null}
-          {!capability.isPending && !capability.data?.ready ? (
-            <Text style={styles.hint}>目前無法自動找人，請稍後再試。</Text>
-          ) : null}
-          {agent.error ? (
-            <>
-              <Text accessibilityRole="alert" style={styles.error}>
-                {coreError(agent.error)}
-              </Text>
-              <PrimaryButton
-                secondary
-                onPress={() => {
-                  void agent.refetch();
-                }}
-              >
-                重試連線
-              </PrimaryButton>
-            </>
-          ) : null}
-          {notice ? (
-            <Text accessibilityRole="alert" style={styles.hint}>
-              {notice}
-            </Text>
-          ) : null}
-          {active.length || visible.length ? (
-            <View style={styles.sectionHeading}>
-              <Text style={styles.title}>揪團進度</Text>
-              <Text style={styles.hint}>{active.length} 個有效需求</Text>
-            </View>
-          ) : null}
-          {active.length ? (
-            <View style={styles.statusCard}>
-              <View style={styles.statusIcon}>
-                <MaterialCommunityIcons
-                  name={
-                    visible.length ? 'account-multiple-check-outline' : 'account-search-outline'
-                  }
-                  size={24}
-                  color={colors.brown}
-                />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.statusTitle}>
-                  {visible.length
-                    ? '有合適的夥伴，看看要不要聊聊'
-                    : agent.data?.enabled
-                      ? '正在留意合適的夥伴'
-                      : '需求已保留，分身目前暫停'}
-                </Text>
-                <Text style={styles.hint}>
-                  可以先逛首頁，回來查看結果。所有夥伴都願意聊聊後，才會開啟聊天室。
-                </Text>
-              </View>
-            </View>
-          ) : null}
-          {matches.error ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {coreError(matches.error)}
-            </Text>
-          ) : null}
-          {(capability.data?.ready ? visible : []).map((match) => (
-            <QuickMatch
-              key={match.id}
-              match={match}
-              explanation={valid.get(match.id)?.explanations ?? []}
-              refresh={refresh}
-              onUpdated={(result) => setLocalMatches((old) => ({ ...old, [result.id]: result }))}
-            />
-          ))}
-          {active.length ? (
-            <PrimaryButton
-              secondary
-              loading={retry.isPending}
-              disabled={busy || !capability.data?.ready}
-              onPress={() => retry.mutate()}
-            >
-              再找找看
-            </PrimaryButton>
-          ) : null}
-          {retry.error ? (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {coreError(retry.error)} 原本需求與結果仍保留。
-            </Text>
-          ) : null}
-          {active.length ? (
-            <>
-              <View
-                onLayout={(event) =>
-                  setCarouselWidth(Math.max(240, event.nativeEvent.layout.width))
-                }
-              >
-                <ScrollView
-                  ref={carousel}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  accessibilityLabel="我的需求卡片，可左右滑動"
-                  snapToInterval={cardWidth + 12}
-                  decelerationRate="fast"
-                  contentContainerStyle={{ gap: 12 }}
-                >
-                  {active.map((signal) => (
-                    <View key={signal.id} style={{ width: cardWidth, gap: 12 }}>
-                      <StealthRequestSummary
-                        signal={signal}
-                        createdAt={signal.created_at}
-                        onClose={() => revoke.mutate(signal.id)}
-                        closing={revoke.isPending && revoke.variables === signal.id}
-                        closeDisabled={revoke.isPending}
-                      />
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-              {revoke.error ? <Text style={styles.error}>{coreError(revoke.error)}</Text> : null}
-            </>
-          ) : null}
-        </KeyboardScrollView>
-      </View>
+        </View>
+      </KeyboardViewport>
     </Screen>
   );
 }
@@ -358,8 +365,10 @@ export function QuickMatch({
           {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}
         </Text>
       </View>
-      {match.status === 'formed' && match.formed_post_id ? (
-        <PrimaryButton onPress={() => router.push(`/chat/${match.formed_post_id}`)}>
+      {match.status === 'formed' ? (
+        <PrimaryButton
+          onPress={() => router.push({ pathname: '/stealth-chat/[id]', params: { id: match.id } })}
+        >
           進入成團聊天室
         </PrimaryButton>
       ) : match.is_demo ? (
@@ -372,7 +381,7 @@ export function QuickMatch({
         </PrimaryButton>
       ) : match.my_decision === 'accepted' ? (
         <Text accessibilityLiveRegion="polite" style={styles.body}>
-          等待夥伴回覆
+          你已表示有興趣，等待夥伴回覆
         </Text>
       ) : (
         <PrimaryButton
@@ -407,10 +416,27 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 620,
     alignSelf: 'center',
-    padding: 20,
-    paddingBottom: 32,
-    flexGrow: 1,
-    gap: 18,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 14,
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  inChatCardWrap: {
+    alignSelf: 'flex-start',
+    width: '100%',
+    maxWidth: 350,
+    gap: 8,
+  },
+  systemBubble: {
+    alignSelf: 'flex-start',
+    maxWidth: '94%',
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    borderTopLeftRadius: 4,
+    padding: 12,
+    gap: 6,
   },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   agentIcon: {

@@ -58,6 +58,17 @@ export function CoreOrderDetail({ id }: { id: string }) {
       ['host', 'accepted'].includes(post.my_status),
     retry: false,
   });
+  const stealthMatches = useQuery({
+    queryKey: ['core', actor, 'stealth', 'matches'],
+    queryFn: stealthApi.matches,
+    enabled:
+      !!actor &&
+      focused &&
+      !!post?.tags.includes('偷揪成團') &&
+      ['host', 'accepted'].includes(post.my_status),
+    retry: false,
+  });
+  const stealthMatch = stealthMatches.data?.items.find((item) => item.formed_post_id === id);
   const summary = useQuery({
     queryKey: ['core', actor, 'order-summary', id],
     queryFn: () => socialApi.order(id),
@@ -222,7 +233,11 @@ export function CoreOrderDetail({ id }: { id: string }) {
           />
         </View>
         {['host', 'accepted'].includes(post.my_status) ? (
-          <PrimaryButton onPress={() => router.push(`/chat/${post.id}`)}>
+          <PrimaryButton
+            onPress={() =>
+              router.push(stealthMatch ? `/stealth-chat/${stealthMatch.id}` : `/chat/${post.id}`)
+            }
+          >
             進入拼單聊天室
           </PrimaryButton>
         ) : null}

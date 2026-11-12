@@ -29,7 +29,7 @@ it('keeps the chat viewport fixed at the top as the keyboard changes its height'
     viewport.offsetTop = 60;
     resize();
   });
-  expect(style()).toEqual(expect.objectContaining({ position: 'fixed', top: 0, height: 430 }));
+  expect(style()).toEqual(expect.objectContaining({ position: 'fixed', top: 60, height: 430 }));
   await act(() => {
     viewport.height = 800;
     viewport.offsetTop = 0;

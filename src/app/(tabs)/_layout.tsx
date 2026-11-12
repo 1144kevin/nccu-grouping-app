@@ -3,11 +3,13 @@ import { GlassTabBar } from '@/components/glass-tab-bar';
 import { selectPendingCount, selectUnreadCount, useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { useCoreChatActivity } from '@/lib/core-chat-hooks';
+import { useStealthBadge } from '@/lib/notification-badge';
 
 export default function TabLayout() {
   const pending = useAppStore(selectPendingCount);
   const unread = useAppStore(selectUnreadCount);
   const activity = useCoreChatActivity();
+  const stealthBadge = useStealthBadge();
   return (
     <Tabs tabBar={(props) => <GlassTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" options={{ title: '首頁' }} />
@@ -21,7 +23,13 @@ export default function TabLayout() {
               : pending) || undefined,
         }}
       />
-      <Tabs.Screen name="create" options={{ title: '新增貼文' }} />
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: '新增貼文',
+          tabBarBadge: stealthBadge.count || undefined,
+        }}
+      />
       <Tabs.Screen
         name="messages"
         options={{

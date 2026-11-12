@@ -109,7 +109,7 @@ const wrap = (children: React.ReactNode) => (
   <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 );
 
-it('shows multiple independent requests in a horizontal carousel until their own expiry', async () => {
+it('shows at most one active request card directly inside the chat stream', async () => {
   jest.mocked(stealthApi.signals).mockResolvedValue({
     items: [
       {
@@ -141,12 +141,11 @@ it('shows multiple independent requests in a horizontal carousel until their own
     ],
   } as never);
   const screen = await render(wrap(<QuickStealthScreen />));
-  await waitFor(() => expect(screen.getByText('需求二')).toBeTruthy());
-  expect(screen.getByText('需求一')).toBeTruthy();
-  expect(screen.getByLabelText('我的需求卡片，可左右滑動')).toHaveProp('horizontal', true);
-  expect(screen.getAllByRole('button', { name: /^停止需求：/ })).toHaveLength(2);
-  expect(screen.queryByText('停止這個需求')).toBeNull();
-  expect(screen.queryByText('這次幫你找')).toBeNull();
+  await waitFor(() => expect(screen.getByText('需求一')).toBeTruthy());
+  expect(screen.queryByText('需求二')).toBeNull();
+  expect(screen.getAllByRole('button', { name: /^停止需求：/ })).toHaveLength(1);
+  expect(screen.getByText(/同時最多只能有一張偷揪單/)).toBeTruthy();
+  expect(screen.queryByText('揪團進度')).toBeNull();
 });
 
 it('opens with a greeting without inference or automatic matching', async () => {

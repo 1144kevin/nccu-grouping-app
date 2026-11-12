@@ -11,7 +11,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
-import { useNotificationBadge } from '@/lib/notification-badge';
+import { useNotificationBadge, useStealthBadge } from '@/lib/notification-badge';
 import { useEffect } from 'react';
 
 const supportItems = [
@@ -30,6 +30,7 @@ export function AppDrawer() {
   const account = useAuthStore((state) => state.user);
   const currentUser = useAppStore((state) => state.currentUser);
   const notices = useNotificationBadge();
+  const stealthBadge = useStealthBadge();
   const { isError: noticeError, refetch: refetchNotices } = notices;
   useEffect(() => {
     if (visible && noticeError) void refetchNotices();
@@ -79,7 +80,12 @@ export function AppDrawer() {
           </View>
           <ScrollView contentContainerStyle={styles.items}>
             {CORE_API_ENABLED && CORE_SUPABASE_MODE ? (
-              <DrawerItem label="偷揪" icon="robot-outline" onPress={() => navigate('/stealth')} />
+              <DrawerItem
+                label="偷揪"
+                icon="robot-outline"
+                badge={stealthBadge.count}
+                onPress={() => navigate('/stealth')}
+              />
             ) : null}
             <View style={styles.divider} />
             {supportItems.map((item) => (

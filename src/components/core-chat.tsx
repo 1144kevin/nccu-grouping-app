@@ -150,7 +150,7 @@ function GroupChat({ id }: { id: string }) {
           ) : null}
         </View>
       ) : (
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minHeight: 0 }}>
           <KeyboardViewport>
             {current.post.is_demo ? (
               <Text style={styles.note}>
@@ -162,7 +162,7 @@ function GroupChat({ id }: { id: string }) {
                 {coreError(query.error)}
               </Text>
             ) : null}
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, minHeight: 0 }}>
               <FlatList
                 onViewableItemsChanged={dates.onViewableItemsChanged}
                 onScroll={dates.onScroll}

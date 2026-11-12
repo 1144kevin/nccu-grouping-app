@@ -43,4 +43,4 @@ export function KeyboardViewport({ children }: PropsWithChildren) {
   </View>;
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({ fill: { flex: 1, minHeight: 0, overflow: 'hidden' } });

@@ -6,7 +6,8 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { ChatTextInput as TextInput } from '@/components/chat-text-input';
 import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
-import { DetailHeader, PrimaryButton, Screen, IconButton } from '@/components/primitives';
+import { Avatar, DetailHeader, PrimaryButton, Screen, IconButton } from '@/components/primitives';
+import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatSendButton } from './chat-controls';
 import { useChatDateIndicator } from './chat-date-indicator';
 import { displayTime } from '@/lib/display-time';
@@ -15,6 +16,7 @@ import { router } from 'expo-router';
 import { StealthFormation } from '@/components/core-stealth-formation';
 import { StealthReplySuggestions } from '@/components/stealth-reply-suggestions';
 import { coreError, newRequestKey } from '@/lib/core-api';
+import { socialApi } from '@/lib/social-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useCoreClock } from '@/lib/core-clock';
 import { useChatOutbox } from '@/lib/chat-outbox';
@@ -48,6 +50,16 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     refetchInterval: focused ? 10_000 : false,
   });
   const match = matches.data?.items.find((m) => m.id === id);
+  const formedOrder = useQuery({
+    queryKey: ['core', actor, 'order-summary', match?.formed_post_id],
+    queryFn: () => socialApi.order(match!.formed_post_id!),
+    enabled: !!actor && focused && !!match?.formed_post_id,
+    retry: false,
+    refetchInterval: focused ? 10_000 : false,
+  });
+  const sortedMembers = formedOrder.data?.members
+    ? [...formedOrder.data.members].sort((a, b) => a.id.localeCompare(b.id))
+    : [];
   const latestRoomMessage = query.data?.items.at(-1)?.id;
   useEffect(() => {
     if (actor && focused && query.data?.opened && latestRoomMessage) {
@@ -130,6 +142,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     mutationFn: (revision: number) => stealthApi.consent(id, revision),
     onSettled: async () => { await refresh(); await query.refetch(); },
   });
+  const formedIndex = outbox.items.findIndex((item) => item.event_kind === 'formed');
   return (
     <Screen pinKeyboardHeader>
       <DetailHeader
@@ -176,7 +189,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             />
           </KeyboardScrollView>
         ) : (
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minHeight: 0 }}>
             <FlatList
               onViewableItemsChanged={dates.onViewableItemsChanged}
               onScroll={dates.onScroll}
@@ -186,49 +199,77 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               contentContainerStyle={styles.messages}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
-              renderItem={({ item }) => (
-                item.event_kind === 'formed' ? (
-                  <Text style={styles.note}>偷揪已成立</Text>
-                ) : item.event_kind === 'terms' && item.event_terms ? (
-                  <View style={styles.message}>
-                    <Text style={styles.body}>{item.event_terms.content}</Text>
-                    <Text style={styles.body}>每人 NT$ {item.event_terms.cost_per_person_twd}</Text>
-                    <Text style={styles.body}>{displayTimestamp(item.event_terms.deadline_at)}</Text>
-                    <Text style={styles.body}>買：夥伴 {item.event_terms.order_member} · 取：夥伴 {item.event_terms.pickup_member}</Text>
-                    {match && item.terms_revision === match.terms_revision && match.status !== 'formed' ? (
-                      <PrimaryButton disabled={!!match.my_terms_accepted || accept.isPending} loading={accept.isPending} onPress={() => accept.mutate(item.terms_revision!)}>
-                        {match.my_terms_accepted ? '已接受' : '接受'} {match.confirmed_count}/{match.member_count}
-                      </PrimaryButton>
-                    ) : <Text style={styles.hint}>{match?.status === 'formed' && item.terms_revision === match.terms_revision ? '已成立' : '方案已更新'}</Text>}
-                    {accept.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(accept.error)}</Text> : null}
+              renderItem={({ item, index }) => {
+                if (item.event_kind === 'formed') {
+                  return <Text style={styles.formedDivider}>--------偷揪成立----------</Text>;
+                }
+                if (item.event_kind === 'terms' && item.event_terms) {
+                  return (
+                    <View style={styles.message}>
+                      <Text style={styles.body}>{item.event_terms.content}</Text>
+                      <Text style={styles.body}>每人 NT$ {item.event_terms.cost_per_person_twd}</Text>
+                      <Text style={styles.body}>{displayTimestamp(item.event_terms.deadline_at)}</Text>
+                      <Text style={styles.body}>買：夥伴 {item.event_terms.order_member} · 取：夥伴 {item.event_terms.pickup_member}</Text>
+                      {match && item.terms_revision === match.terms_revision && match.status !== 'formed' ? (
+                        <PrimaryButton
+                          disabled={!!match.my_terms_accepted || accept.isPending}
+                          loading={accept.isPending}
+                          onPress={() => accept.mutate(item.terms_revision!)}
+                          style={styles.consentButton}
+                        >
+                          {match.my_terms_accepted ? '已接受' : '接受'} {match.confirmed_count}/{match.member_count}
+                        </PrimaryButton>
+                      ) : <Text style={[styles.hint, { marginTop: 10, textAlign: 'center' }]}>{match?.status === 'formed' && item.terms_revision === match.terms_revision ? '已成立' : '方案已更新'}</Text>}
+                      {accept.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(accept.error)}</Text> : null}
+                    </View>
+                  );
+                }
+                const afterFormed = formedIndex !== -1 && index > formedIndex;
+                const member = afterFormed ? sortedMembers[item.member_number - 1] : undefined;
+                return (
+                  <View style={[styles.messageRow, item.is_me && styles.mineRow]}>
+                    {afterFormed ? (
+                      <View style={[styles.senderProfile, item.is_me && styles.mineSenderProfile]}>
+                        <Avatar
+                          name={member?.name ?? `夥伴 ${item.member_number}`}
+                          badge={member?.badge ?? '🍱'}
+                          userId={member?.id}
+                          onPress={member?.id ? () => router.push(`/user/${member.id}`) : undefined}
+                          size={26}
+                        />
+                        <Text style={styles.senderName}>
+                          {member?.name ?? `夥伴 ${item.member_number}`}
+                        </Text>
+                        {member?.level != null ? <ReputationBadge level={member.level} /> : null}
+                      </View>
+                    ) : null}
+                    <View
+                      style={[
+                        styles.message,
+                        item.is_me && styles.mine,
+                        item.image_id && styles.photoMessage,
+                      ]}
+                    >
+                      {!afterFormed && !item.is_me ? (
+                        <Text style={styles.hint}>{`夥伴 ${item.member_number}`}</Text>
+                      ) : null}
+                      {item.image_id ? (
+                        <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
+                      ) : (
+                        <Text style={styles.body}>{item.content}</Text>
+                      )}
+                      {item.delivery ? (
+                        item.delivery === 'sending' ? (
+                          <InlineLoading label="傳送中" textStyle={styles.hint} />
+                        ) : (
+                          <Text style={styles.hint}>尚未送出，請重試</Text>
+                        )
+                      ) : null}
+                      <Text style={styles.hint}>{displayTime(item.created_at)}</Text>
+                    </View>
                   </View>
-                ) : (
-                <View
-                  style={[
-                    styles.message,
-                    item.is_me && styles.mine,
-                    item.image_id && styles.photoMessage,
-                  ]}
-                >
-                  {!item.is_me ? (
-                    <Text style={styles.hint}>{`夥伴 ${item.member_number}`}</Text>
-                  ) : null}
-                  {item.image_id ? (
-                    <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
-                  ) : (
-                    <Text style={styles.body}>{item.content}</Text>
-                  )}
-                  {item.delivery ? (
-                    item.delivery === 'sending' ? (
-                      <InlineLoading label="傳送中" textStyle={styles.hint} />
-                    ) : (
-                      <Text style={styles.hint}>尚未送出，請重試</Text>
-                    )
-                  ) : null}
-                  <Text style={styles.hint}>{displayTime(item.created_at)}</Text>
-                </View>
-                )
-              )}
+                );
+              }}
             />
             {dates.indicator}
           </View>
@@ -293,6 +334,27 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
 }
 const styles = StyleSheet.create({
   note: { padding: spacing.md, color: colors.muted, lineHeight: 21, fontSize: 13 },
+  formedDivider: {
+    paddingVertical: spacing.md,
+    textAlign: 'center',
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  consentButton: {
+    alignSelf: 'center',
+    marginTop: 14,
+    minHeight: 32,
+    paddingHorizontal: 18,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  messageRow: { alignItems: 'flex-start', gap: 4 },
+  mineRow: { alignItems: 'flex-end' },
+  senderProfile: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4 },
+  mineSenderProfile: { flexDirection: 'row-reverse' },
+  senderName: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   error: { padding: spacing.sm, color: colors.danger },
   messages: { paddingHorizontal: 8, paddingVertical: spacing.md, gap: spacing.sm, flexGrow: 1 },
   message: {

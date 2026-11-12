@@ -1,8 +1,7 @@
 import type { ReplyVoice } from './reply-voice';
 import { createNaturalReplyVoice } from './natural-reply-voice.web';
 
-export function createReplyVoice(natural = false): ReplyVoice | null {
-  if (natural) return createNaturalReplyVoice();
+function createBrowserReplyVoice(): ReplyVoice | null {
   if (typeof speechSynthesis === 'undefined' || typeof SpeechSynthesisUtterance === 'undefined')
     return null;
   const synth = speechSynthesis;
@@ -52,10 +51,41 @@ export function createReplyVoice(natural = false): ReplyVoice | null {
       };
       utterance.onerror = fail;
       try {
+        (synth as { resume?: () => void }).resume?.();
         synth.speak(utterance);
       } catch {
         fail();
       }
+    },
+  };
+}
+
+export function createReplyVoice(natural = false): ReplyVoice | null {
+  const browser = createBrowserReplyVoice();
+  if (!natural) return browser;
+  const cloud = createNaturalReplyVoice();
+  if (!cloud) return browser;
+  if (!browser) return cloud;
+  return {
+    stop() {
+      cloud.stop();
+      browser.stop();
+    },
+    dispose() {
+      cloud.dispose?.();
+      browser.dispose?.();
+    },
+    speak(text, onState, onError, onPreparing) {
+      browser.stop();
+      cloud.speak(
+        text,
+        onState,
+        (reason) => {
+          onPreparing?.(false);
+          browser.speak(text, onState, () => onError(reason));
+        },
+        onPreparing,
+      );
     },
   };
 }

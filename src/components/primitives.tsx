@@ -36,15 +36,27 @@ export function Screen({
   style,
   pinKeyboardHeader = false,
 }: PropsWithChildren<{ scroll?: boolean; style?: ViewStyle; pinKeyboardHeader?: boolean }>) {
-  const [viewportHeight, setViewportHeight] = useState<number>();
+  const [viewportBox, setViewportBox] = useState<{ height: number; offsetTop: number }>();
   useEffect(() => {
-    if (Platform.OS !== 'web' || !pinKeyboardHeader || !window.visualViewport) return;
+    if (Platform.OS !== 'web' || !pinKeyboardHeader || typeof window === 'undefined' || !window.visualViewport) return;
     const current = window.visualViewport;
-    const update = () => setViewportHeight(current.height);
+    const update = () => {
+      if (typeof window.scrollTo === 'function' && window.scrollY) {
+        window.scrollTo(0, 0);
+      }
+      setViewportBox({
+        height: current.height,
+        offsetTop: Math.max(0, current.offsetTop ?? 0),
+      });
+    };
     update();
     current.addEventListener('resize', update);
+    current.addEventListener?.('scroll', update);
+    window.addEventListener?.('scroll', update);
     return () => {
       current.removeEventListener('resize', update);
+      current.removeEventListener?.('scroll', update);
+      window.removeEventListener?.('scroll', update);
     };
   }, [pinKeyboardHeader]);
   const content = scroll ? (
@@ -67,11 +79,12 @@ export function Screen({
           Platform.OS === 'web' &&
           ({
             position: 'fixed',
-            top: 0,
-            height: viewportHeight ?? '100dvh',
+            top: viewportBox?.offsetTop ?? 0,
+            height: viewportBox?.height ?? '100dvh',
             left: 0,
             right: 0,
             marginHorizontal: 'auto',
+            overflow: 'hidden',
           } as unknown as ViewStyle),
       ]}
     >
@@ -402,7 +415,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: colors.background,
   },
-  screenContent: { flex: 1 },
+  screenContent: { flex: 1, minHeight: 0, overflow: 'hidden' },
   scrollContent: { flexGrow: 1, paddingBottom: spacing.xl },
   header: {
     height: 54,
