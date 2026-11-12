@@ -1,3 +1,4 @@
+import { AppLoadingPage } from '@/components/app-loading-page';
 import { PageLoading } from '@/components/page-loading';
 import { BrandLogo } from '@/components/brand-logo';
 import { RegistrationTerms } from '@/components/registration-terms';
@@ -69,7 +70,7 @@ export function CoreLoginScreen() {
   if (!ready)
     return (
       <Screen>
-        <PageLoading accessibilityLabel="正在確認登入" />
+        <AppLoadingPage accessibilityLabel="正在確認登入" />
       </Screen>
     );
   return <LoginForm />;

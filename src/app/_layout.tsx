@@ -1,4 +1,4 @@
-import { PageLoading } from '@/components/page-loading';
+import { AppLoadingPage } from '@/components/app-loading-page';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { AppearanceController } from '@/components/appearance-controller';
@@ -45,7 +45,7 @@ function RootNavigator() {
   if (CORE_API_ENABLED && !ready)
     return (
       <Screen>
-        <PageLoading accessibilityLabel="正在確認登入" />
+        <AppLoadingPage accessibilityLabel="正在確認登入" />
       </Screen>
     );
   const authenticated = !CORE_API_ENABLED || !!user;
