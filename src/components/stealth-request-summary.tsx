@@ -71,17 +71,14 @@ export function StealthRequestSummary({
   const items = [
     {
       icon: 'map-marker-outline' as const,
-      label: null as string | null,
       text: `${proposedLocation ? '建議：' : ''}${stealthLocations[signal.location_id] ?? signal.location_id ?? '都可以'}`,
     },
     {
       icon: 'clock-outline' as const,
-      label: null as string | null,
       text: `可接受時段：${range}`,
     },
     {
       icon: 'wallet-outline' as const,
-      label: null as string | null,
       text:
         signal.budget_max_twd == null
           ? '都可以（預算先依餐點價格評估）'
@@ -89,7 +86,6 @@ export function StealthRequestSummary({
     },
     {
       icon: 'star-four-points-outline' as const,
-      label: 'BONUS',
       text: bonusText,
     },
   ];
@@ -117,16 +113,11 @@ export function StealthRequestSummary({
         ) : null}
       </View>
       <View style={[styles.items, compact && styles.itemsCompact]}>
-        {items.map(({ icon, label, text }) => (
+        {items.map(({ icon, text }) => (
           <View key={icon} style={styles.item}>
             <View style={[styles.itemIcon, compact && styles.itemIconCompact]}>
               <MaterialCommunityIcons name={icon} size={compact ? 15 : 17} color={colors.muted} />
             </View>
-            {label ? (
-              <View style={styles.bonusBadge}>
-                <Text style={styles.bonusBadgeText}>{label}</Text>
-              </View>
-            ) : null}
             <Text style={[styles.body, compact && styles.bodyCompact]}>{text}</Text>
           </View>
         ))}
@@ -171,21 +162,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 8,
-  },
-  bonusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: colors.yellowSoft,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  bonusBadgeText: {
-    fontSize: 10,
-    lineHeight: 14,
-    fontWeight: '800',
-    color: colors.brown,
-    letterSpacing: 0.4,
   },
   title: { fontSize: 17, lineHeight: 26, fontWeight: '700', color: colors.ink },
   titleCompact: { fontSize: 15, lineHeight: 22 },
