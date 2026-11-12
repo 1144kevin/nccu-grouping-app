@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText as Text } from '@/components/app-text';
-import { KeyboardViewport } from '@/components/keyboard-layout';
+import { KeyboardViewport, useKeyboardOpen } from '@/components/keyboard-layout';
 import { DetailHeader, IconButton, PrimaryButton, Screen } from '@/components/primitives';
 import { InlineLoading } from '@/components/inline-loading';
 import {
@@ -90,6 +91,8 @@ export function QuickStealthScreen() {
 
 function QuickSession({ actor }: { actor?: string }) {
   const focused = useCoreScreenFocused();
+  const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardOpen();
   const current = useRef(true);
   useEffect(() => {
     current.current = focused;
@@ -290,7 +293,12 @@ function QuickSession({ actor }: { actor?: string }) {
         }
       />
       <KeyboardViewport>
-        <View style={styles.page}>
+        <View
+          style={[
+            styles.page,
+            { paddingBottom: keyboardOpen ? 8 : Math.max(28, insets.bottom + 20) },
+          ]}
+        >
           <QuickStealthComposer
             actor={actor}
             enabled={!!agent.data?.enabled}

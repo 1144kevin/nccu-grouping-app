@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type PropsWithChildren, type Ref } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -7,6 +8,33 @@ import {
   View,
   type ScrollViewProps,
 } from 'react-native';
+
+export function useKeyboardOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      if (typeof window === 'undefined' || !window.visualViewport) return;
+      const vv = window.visualViewport;
+      let baseHeight = window.innerHeight;
+      const update = () => {
+        if (vv.height > baseHeight) baseHeight = vv.height;
+        setOpen(baseHeight - vv.height > 120);
+      };
+      update();
+      vv.addEventListener('resize', update);
+      return () => vv.removeEventListener('resize', update);
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setOpen(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setOpen(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+  return open;
+}
 
 // UIKit adjusts the scroll offset to the focused field as well as its bottom inset.
 // Do not put a KeyboardAvoidingView around this: that would count the keyboard twice.

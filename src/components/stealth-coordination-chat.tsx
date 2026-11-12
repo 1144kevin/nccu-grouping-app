@@ -5,7 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { ChatTextInput as TextInput } from '@/components/chat-text-input';
-import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
+import { KeyboardViewport, KeyboardScrollView, useKeyboardOpen } from '@/components/keyboard-layout';
 import { Avatar, DetailHeader, PrimaryButton, Screen, IconButton } from '@/components/primitives';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatSendButton } from './chat-controls';
@@ -35,6 +35,8 @@ export function StealthCoordinationChat({ id }: { id: string }) {
 function Chat({ id, actor }: { id: string; actor?: string }) {
   const dates = useChatDateIndicator(false);
   const focused = useCoreScreenFocused();
+  const keyboardOpen = useKeyboardOpen();
+  const [inputFocused, setInputFocused] = useState(false);
   const clock = useCoreClock();
   const key = ['core', actor, 'stealth'];
   const query = useQuery({
@@ -287,6 +289,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             contextKey={replyContext}
             enabled={focused}
             disabled={send.isPending}
+            collapsed={keyboardOpen || inputFocused}
             onSelect={setText}
             onPlan={() => setFormal(true)}
           />
@@ -311,6 +314,8 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               placeholder="想喝什麼？我們怎麼分工？"
               value={text}
               onChangeText={setText}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               multiline
               maxLength={2000}
               editable={query.data?.can_send && !send.isPending}

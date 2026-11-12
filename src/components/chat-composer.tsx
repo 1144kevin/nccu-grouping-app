@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useKeyboardOpen } from '@/components/keyboard-layout';
 import { AppText as Text } from '@/components/app-text';
 import { IconButton, PrimaryButton } from '@/components/primitives';
 import { chatPhotos, type PhotoChatKind, type SentPhoto } from '@/lib/chat-photos';
@@ -52,6 +53,7 @@ function ComposerSession({
   actor?: string;
 }>) {
   const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardOpen();
   const [draft, setDraft] = useState<Draft>();
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState('');
@@ -137,7 +139,7 @@ function ComposerSession({
           {error}
         </Text>
       ) : null}
-      <View style={[styles.footer, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
+      <View style={[styles.footer, { paddingBottom: keyboardOpen ? 6 : Math.max(24, insets.bottom + 16) }]}>
         <View style={styles.row}>
           <ChatAddButton
             disabled={disabled || picking || send.isPending}
@@ -196,6 +198,7 @@ function ComposerSession({
 }
 export function ChatPhoto({ imageId, localUri }: { imageId: string; localUri?: string }) {
   const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardOpen();
   const actor = useAuthStore((s) => s.user?.id);
   const focused = useCoreScreenFocused();
   const [expanded, setExpanded] = useState(false);
