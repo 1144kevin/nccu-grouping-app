@@ -295,6 +295,7 @@ function QuickSession({ actor }: { actor?: string }) {
             actor={actor}
             enabled={!!agent.data?.enabled}
             hasActiveSignal={active.length >= 1}
+            activeSignal={activeSignal}
             chatStreamExtra={chatStreamExtra}
             focused={focused}
             disabled={

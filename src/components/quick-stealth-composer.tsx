@@ -12,6 +12,7 @@ import {
   type ConversationField,
   type StealthConversation,
   type StealthQuickResult,
+  type StealthSignal,
 } from '@/lib/stealth-api';
 import { startPostSpeech } from '@/lib/post-speech';
 import { createReplyVoice, type ReplyVoice } from '@/lib/reply-voice';
@@ -27,6 +28,7 @@ type Props = {
   disabled: boolean;
   focused: boolean;
   hasActiveSignal?: boolean;
+  activeSignal?: StealthSignal;
   chatStreamExtra?: ReactNode;
   onSaved: (result: StealthQuickResult) => Promise<void>;
   onBusyChange: (busy: boolean) => void;
@@ -47,11 +49,16 @@ export function QuickStealthComposer({
   disabled,
   focused,
   hasActiveSignal = false,
+  activeSignal,
   chatStreamExtra,
   onSaved,
   onBusyChange,
   onStarted,
 }: Props) {
+  const draft = useStealthPreferencesStore((s) => (actor ? s.drafts?.[actor] : undefined));
+  const saveDraft = useStealthPreferencesStore((s) => s.saveDraft);
+  const clearDraft = useStealthPreferencesStore((s) => s.clearDraft);
+  const [requestPanel, setRequestPanel] = useState(false);
   const [text, setText] = useState('');
   const [voiceReview, setVoiceReview] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -87,6 +94,10 @@ export function QuickStealthComposer({
   const inferenceAbort = useRef<AbortController | null>(null);
   const request = useRef<{ payload: string; key: string } | null>(null);
   const busy = phase !== 'idle';
+  // The card under review comes from the live conversation, or from the persisted
+  // draft when the conversation was lost (leave / refresh) and the user restores it.
+  const pendingSignal = preview?.signal ?? (reviewing ? draft?.signal : undefined);
+  const pendingFacts = preview?.signal ? preview.facts : draft?.facts;
   useEffect(() => {
     onBusyChange(busy);
   }, [busy, onBusyChange]);
@@ -217,6 +228,12 @@ export function QuickStealthComposer({
       ]);
       // Only automatically pop out the card when the AI determines the threshold is met (ready_for_review).
       setReviewing(Boolean(result.signal && result.ready_for_review));
+      if (result.signal && result.ready_for_review)
+        saveDraft(actor, {
+          signal: result.signal,
+          facts: result.facts,
+          updatedAt: new Date().toISOString(),
+        });
       request.current = null;
       if (voiceEnabledRef.current) playReply(result.message);
     } catch (e) {
@@ -233,7 +250,7 @@ export function QuickStealthComposer({
     }
   }
   async function save(allowWithInput = false) {
-    const signal = preview?.signal;
+    const signal = pendingSignal;
     if (
       disabled ||
       locked.current ||
@@ -271,6 +288,7 @@ export function QuickStealthComposer({
       if (!alive(id)) return;
       setSaved(true);
       setReviewing(false);
+      clearDraft(actor);
       setMessages((old) => [
         ...old,
         {
@@ -291,7 +309,7 @@ export function QuickStealthComposer({
   function submitInput(rawText: string, displayLabel = rawText) {
     const cleaned = rawText.trim();
     if (!cleaned || locked.current) return;
-    if (reviewing && preview?.signal && !saved) {
+    if (reviewing && pendingSignal && !saved) {
       if (/^(同意|好|可以|確認|同意開始配對|開始配對|ok|yes)$/i.test(cleaned)) {
         setText('');
         setMessages((old) => [...old, { role: 'user', text: displayLabel }]);
@@ -480,9 +498,9 @@ export function QuickStealthComposer({
             <MaterialCommunityIcons name="arrow-right" size={16} color={colors.brown} />
           </Pressable>
         ) : null}
-        {reviewing && preview?.signal && !saved ? (
+        {reviewing && pendingSignal && !saved ? (
           <View style={styles.inChatCardBlock}>
-            <StealthRequestSummary compact signal={preview.signal} facts={preview.facts} />
+            <StealthRequestSummary compact signal={pendingSignal} facts={pendingFacts} />
             <View style={styles.assistantBubble}>
               <Text style={styles.body}>
                 已經幫你整理好這張偷揪單囉！請問是否要用這張單開始配對？（請輸入「同意」或「不同意」）
@@ -536,7 +554,7 @@ export function QuickStealthComposer({
           ))}
         </View>
       ) : null}
-      {reviewing && preview?.signal && !saved && !busy && !voiceReview ? (
+      {reviewing && pendingSignal && !saved && !busy && !voiceReview ? (
         <View style={styles.choices}>
           <Pressable
             accessibilityRole="button"
@@ -578,7 +596,81 @@ export function QuickStealthComposer({
           <Text style={styles.hint}>可修改後再送出。</Text>
         </View>
       ) : null}
+      {requestPanel ? (
+        <View style={styles.requestPanel}>
+          <View style={styles.requestPanelHeader}>
+            <Text style={styles.name}>目前的需求單</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="關閉需求單"
+              hitSlop={10}
+              onPress={() => setRequestPanel(false)}
+            >
+              <MaterialCommunityIcons name="close" size={20} color={colors.muted} />
+            </Pressable>
+          </View>
+          {activeSignal ? (
+            <>
+              <StealthRequestSummary
+                compact
+                signal={activeSignal}
+                createdAt={activeSignal.created_at}
+              />
+              <Text style={styles.hint}>
+                這張單正在等待配對中。若要重開新單，請先在聊天室中點卡片右上角「✕」取消。
+              </Text>
+            </>
+          ) : draft ? (
+            <>
+              <StealthRequestSummary compact signal={draft.signal} facts={draft.facts} />
+              <Text style={styles.hint}>尚未送出，這是上一段對話整理出的需求單。</Text>
+              <View style={styles.choices}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={disabled || busy}
+                  onPress={() => {
+                    setRequestPanel(false);
+                    setSaved(false);
+                    setReviewing(true);
+                  }}
+                  style={[styles.choice, styles.choicePrimary, (disabled || busy) && styles.disabled]}
+                >
+                  <Text style={styles.choiceText}>用這張單開始配對</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={busy}
+                  onPress={() => {
+                    if (actor) clearDraft(actor);
+                    if (!preview?.signal) setReviewing(false);
+                    setRequestPanel(false);
+                  }}
+                  style={styles.choice}
+                >
+                  <Text style={styles.choiceText}>刪除這張需求單</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.hint}>目前沒有需求單，跟分身聊聊想做什麼，整理好後會出現在這裡。</Text>
+          )}
+        </View>
+      ) : null}
       <View style={styles.composer}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="查看目前需求單"
+          accessibilityState={{ expanded: requestPanel }}
+          onPress={() => setRequestPanel((open) => !open)}
+          style={styles.voice}
+        >
+          <MaterialCommunityIcons
+            name="clipboard-text-outline"
+            size={22}
+            color={requestPanel ? colors.ink : colors.muted}
+          />
+          {activeSignal || draft ? <View style={styles.requestDot} /> : null}
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="用語音回答"
@@ -598,7 +690,7 @@ export function QuickStealthComposer({
           emptyCentered
           accessibilityLabel="跟偷揪分身聊天"
           placeholder={
-            reviewing && preview?.signal && !saved
+            reviewing && pendingSignal && !saved
               ? '請輸入「同意」或「不同意」'
               : '說說你的想法'
           }
@@ -747,6 +839,29 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   voice: { width: 34, height: 38, alignItems: 'center', justifyContent: 'center' },
+  requestDot: {
+    position: 'absolute',
+    top: 7,
+    right: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: colors.yellow,
+  },
+  requestPanel: {
+    gap: 10,
+    padding: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  requestPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  choicePrimary: { ...yellowSurface, backgroundColor: colors.yellowSoft },
   input: {
     flex: 1,
     color: colors.ink,
