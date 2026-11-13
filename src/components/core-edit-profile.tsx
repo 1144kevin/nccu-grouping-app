@@ -154,7 +154,9 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
               onPress={() => { setBadge(item.badge); setPhoto(null); setUseIllustration(true); }}
               style={[styles.badge, item.badge === badge && !photo && (useIllustration || !user.avatar_id) && styles.selected]}
             >
-              <Image source={item.image} contentFit="contain" style={{ width: 42, height: 42 }} />
+              <View style={styles.badgeImageWrap}>
+                <Image source={item.image} contentFit="cover" style={{ width: 84, height: 84 }} />
+              </View>
             </Pressable>
           ))}
         </View>
@@ -225,13 +227,21 @@ const styles = StyleSheet.create({
   },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badge: {
-    minWidth: 46,
-    minHeight: 46,
+    width: 92,
+    height: 92,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 46,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  badgeImageWrap: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
   },
   selected: { ...yellowSurface, backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
   error: { color: colors.danger, fontSize: 14 },
