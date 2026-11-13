@@ -565,7 +565,7 @@ export function QuickStealthComposer({
           ))}
         </View>
       ) : null}
-      {reviewing && pendingSignal && !saved && !busy && !voiceReview ? (
+      {reviewing && pendingSignal && !saved && !busy && !voiceReview && !requestPanel && !chatLocked ? (
         <View style={styles.choices}>
           <Pressable
             accessibilityRole="button"
@@ -584,7 +584,7 @@ export function QuickStealthComposer({
             <Text style={styles.choiceText}>不同意</Text>
           </Pressable>
         </View>
-      ) : preview?.question && !busy && !voiceReview ? (
+      ) : preview?.question && !busy && !voiceReview && !requestPanel && !chatLocked ? (
         <View style={styles.choices}>
           {preview.choices.map((choice) => (
             <Pressable
