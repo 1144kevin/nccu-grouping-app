@@ -1,5 +1,5 @@
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
-import { File, Paths } from 'expo-file-system';
+import type { AudioPlayer } from 'expo-audio';
+import type { File } from 'expo-file-system';
 import { stealthApi } from './stealth-api';
 
 export type ReplyVoice = {
@@ -82,7 +82,9 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
       void (async () => {
         const result = await stealthApi.speech(text, controller.signal);
         if (current !== epoch) return;
-        const file = new File(Paths.cache, `stealth-reply-${current}-${Date.now()}.wav`);
+        const { File: ExpoFile, Paths } = require('expo-file-system') as typeof import('expo-file-system');
+        const { createAudioPlayer, setAudioModeAsync } = require('expo-audio') as typeof import('expo-audio');
+        const file = new ExpoFile(Paths.cache, `stealth-reply-${current}-${Date.now()}.wav`);
         file.create({ overwrite: true });
         file.write(result.audio_base64, { encoding: 'base64' });
         tempFile = file;
