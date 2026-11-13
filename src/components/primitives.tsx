@@ -248,8 +248,8 @@ function AvatarBody({ name, badge, size = 48, uri: source, onPress, square = fal
         {
           width: size,
           height: size,
-          borderRadius: square ? 0 : size / 2,
-          backgroundColor: palette[index],
+          borderRadius: square || (!source && preset) ? 0 : size / 2,
+          backgroundColor: !source && preset ? 'transparent' : palette[index],
           overflow: 'hidden',
         },
       ]}
@@ -257,7 +257,7 @@ function AvatarBody({ name, badge, size = 48, uri: source, onPress, square = fal
       {source ? (
         <Image source={{ uri: source }} contentFit="cover" style={{ width: size, height: size }} />
       ) : preset ? (
-        <Image source={preset} contentFit="cover" style={{ width: size, height: size }} />
+        <Image source={preset} contentFit="contain" style={{ width: size, height: size }} />
       ) : (
         <Text fixedSize style={{ fontSize: size * 0.44 }}>
           {badge}

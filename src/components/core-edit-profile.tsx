@@ -154,7 +154,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
               onPress={() => { setBadge(item.badge); setPhoto(null); setUseIllustration(true); }}
               style={[styles.badge, item.badge === badge && !photo && (useIllustration || !user.avatar_id) && styles.selected]}
             >
-              <Image source={item.image} contentFit="cover" style={{ width: 42, height: 42, borderRadius: 21 }} />
+              <Image source={item.image} contentFit="contain" style={{ width: 42, height: 42 }} />
             </Pressable>
           ))}
         </View>

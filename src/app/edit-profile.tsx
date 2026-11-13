@@ -53,7 +53,7 @@ function DemoEditProfileScreen() {
               onPress={() => setBadge(item.badge)}
               style={[styles.badge, badge === item.badge && styles.badgeActive]}
             >
-              <Image source={item.image} contentFit="cover" style={{ width: 42, height: 42, borderRadius: 21 }} />
+              <Image source={item.image} contentFit="contain" style={{ width: 42, height: 42 }} />
               {badge === item.badge ? (
                 <View style={styles.check}>
                   <MaterialCommunityIcons name="check" size={10} color={colors.ink} />
