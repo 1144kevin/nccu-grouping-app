@@ -129,6 +129,10 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     mutationFn: (revision: number) => stealthApi.consent(id, revision),
     onSettled: async () => { await refresh(); await query.refetch(); },
   });
+  const decline = useMutation({
+    mutationFn: () => stealthApi.decide(id, 'declined'),
+    onSettled: async () => { await refresh(); await query.refetch(); },
+  });
   const [aiDraft, setAiDraft] = useState<StealthAgentTermsDraft | null>(null);
   const [aiNotice, setAiNotice] = useState('');
   const activeDraft = aiDraft ?? match?.agent_draft ?? null;
@@ -285,23 +289,94 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                   return <Text style={styles.formedDivider}>偷揪成立</Text>;
                 }
                 if (item.event_kind === 'terms' && item.event_terms) {
+                  const activeTerms =
+                    match && item.terms_revision === match.terms_revision && match.status !== 'formed';
                   return (
-                    <View style={styles.message}>
-                      <Text style={styles.body}>{item.event_terms.content}</Text>
-                      <Text style={styles.body}>每人 NT$ {item.event_terms.cost_per_person_twd}</Text>
-                      <Text style={styles.body}>{displayTimestamp(item.event_terms.deadline_at)}</Text>
-                      <Text style={styles.body}>買：夥伴 {item.event_terms.order_member} · 取：夥伴 {item.event_terms.pickup_member}</Text>
-                      {match && item.terms_revision === match.terms_revision && match.status !== 'formed' ? (
-                        <PrimaryButton
-                          disabled={!!match.my_terms_accepted || accept.isPending}
-                          loading={accept.isPending}
-                          onPress={() => accept.mutate(item.terms_revision!)}
-                          style={styles.consentButton}
-                        >
-                          {match.my_terms_accepted ? '已接受' : '接受'} {match.confirmed_count}/{match.member_count}
-                        </PrimaryButton>
-                      ) : <Text style={[styles.hint, { marginTop: 10, textAlign: 'center' }]}>{match?.status === 'formed' && item.terms_revision === match.terms_revision ? '已成立' : '方案已更新'}</Text>}
-                      {accept.error ? <Text accessibilityRole="alert" style={styles.error}>{coreError(accept.error)}</Text> : null}
+                    <View style={styles.termsCard}>
+                      <View style={styles.termsHeader}>
+                        <View style={styles.termsPill}>
+                          <MaterialCommunityIcons
+                            name="file-check-outline"
+                            size={14}
+                            color={colors.brown}
+                          />
+                          <Text style={styles.termsPillText}>
+                            拼單方案{item.terms_revision ? ` v${item.terms_revision}` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.termsContent}>{item.event_terms.content}</Text>
+                      <View style={styles.termsInfoList}>
+                        <View style={styles.termsInfoRow}>
+                          <MaterialCommunityIcons
+                            name="cash-multiple"
+                            size={16}
+                            color={colors.muted}
+                          />
+                          <Text style={styles.termsInfoText}>
+                            NT$ {item.event_terms.cost_per_person_twd}／人
+                          </Text>
+                        </View>
+                        <View style={styles.termsInfoRow}>
+                          <MaterialCommunityIcons
+                            name="clock-outline"
+                            size={16}
+                            color={colors.muted}
+                          />
+                          <Text style={styles.termsInfoText}>
+                            {displayTimestamp(item.event_terms.deadline_at)}
+                          </Text>
+                        </View>
+                        <View style={styles.termsInfoRow}>
+                          <MaterialCommunityIcons
+                            name="account-outline"
+                            size={16}
+                            color={colors.muted}
+                          />
+                          <Text style={styles.termsInfoText}>
+                            買：夥伴 {item.event_terms.order_member} · 取：夥伴{' '}
+                            {item.event_terms.pickup_member}
+                          </Text>
+                        </View>
+                      </View>
+                      {activeTerms ? (
+                        <View style={styles.termsActions}>
+                          <PrimaryButton
+                            secondary
+                            disabled={decline.isPending || accept.isPending || match.status === 'unavailable'}
+                            loading={decline.isPending}
+                            onPress={() => decline.mutate()}
+                            style={styles.termsActionButton}
+                          >
+                            拒絕
+                          </PrimaryButton>
+                          <PrimaryButton
+                            disabled={
+                              !!match.my_terms_accepted ||
+                              accept.isPending ||
+                              decline.isPending ||
+                              match.status === 'unavailable'
+                            }
+                            loading={accept.isPending}
+                            onPress={() => accept.mutate(item.terms_revision!)}
+                            style={styles.termsActionButton}
+                          >
+                            {match.my_terms_accepted ? '已接受' : '接受'} {match.confirmed_count}/
+                            {match.member_count}
+                          </PrimaryButton>
+                        </View>
+                      ) : (
+                        <Text style={[styles.hint, styles.termsStatusText]}>
+                          {match?.status === 'formed' && item.terms_revision === match.terms_revision
+                            ? '已成立'
+                            : '方案已更新'}
+                        </Text>
+                      )}
+                      {accept.error || decline.error ? (
+                        <Text accessibilityRole="alert" style={styles.error}>
+                          {coreError(accept.error ?? decline.error)}
+                        </Text>
+                      ) : null}
                     </View>
                   );
                 }
@@ -429,13 +504,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     paddingVertical: 8,
   },
-  consentButton: {
-    alignSelf: 'center',
-    marginTop: 14,
-    minHeight: 32,
-    paddingHorizontal: 18,
-    paddingVertical: 5,
-    borderRadius: 999,
+  termsCard: {
+    width: '90%',
+    alignSelf: 'flex-start',
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#E8CA54',
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
+  },
+  termsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  termsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    ...yellowSurface,
+    backgroundColor: colors.yellowSoft,
+  },
+  termsPillText: { fontSize: 12, fontWeight: '700', color: colors.brown },
+  termsContent: { fontSize: 15, lineHeight: 22, color: colors.ink, fontWeight: '500' },
+  termsInfoList: { gap: 5 },
+  termsInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  termsInfoText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.ink },
+  termsActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  termsActionButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radius.md,
+  },
+  termsStatusText: {
+    marginTop: 4,
+    textAlign: 'center',
   },
   messageRow: { alignItems: 'flex-start', gap: 4 },
   mineRow: { alignItems: 'flex-end' },
