@@ -19,6 +19,7 @@ import { NotificationReadBadge } from '@/components/notification-read-badge';
 import type { NotificationBadge } from '@/lib/notification-badge';
 
 const watermarkMemory = new Map<string, string>();
+const readKeysMemory = new Map<string, Set<string>>();
 
 function readWatermark(actor?: string): string | null {
   if (!actor) return null;
@@ -38,6 +39,43 @@ function writeWatermark(actor: string | undefined, iso: string) {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     try {
       window.localStorage.setItem(`notifications_read_at:${actor}`, iso);
+    } catch {
+      /* ignore storage errors */
+    }
+  }
+}
+
+function loadReadKeys(actor?: string): Set<string> {
+  if (!actor) return new Set();
+  const mem = readKeysMemory.get(actor);
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    try {
+      const raw = window.localStorage.getItem(`notifications_read_keys:${actor}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const set = new Set<string>(parsed.filter((v): v is string => typeof v === 'string'));
+          readKeysMemory.set(actor, set);
+          return set;
+        }
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }
+  return mem ? new Set(mem) : new Set();
+}
+
+function saveReadKey(actor: string | undefined, key: string) {
+  if (!actor) return;
+  const current = readKeysMemory.get(actor) ?? loadReadKeys(actor);
+  current.add(key);
+  readKeysMemory.set(actor, current);
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    try {
+      // Keep the most recent 200 keys to bound storage size.
+      const trimmed = [...current].slice(-200);
+      window.localStorage.setItem(`notifications_read_keys:${actor}`, JSON.stringify(trimmed));
     } catch {
       /* ignore storage errors */
     }
@@ -69,25 +107,33 @@ type UnifiedNotification =
 
 export function CoreOrderActivityScreen() {
   const actor = useAuthStore((state) => state.user?.id);
-  const [visitCutoff] = useState<string | null>(() => readWatermark(actor));
   const cachedBadge = queryClient.getQueryData<NotificationBadge>([
     'core',
     actor,
     'notification-badge',
   ]);
   const initialOrdersUnreadRef = useRef<number | null>(cachedBadge?.orders ?? null);
+  const [visitCutoff] = useState<string | null>(() => {
+    const existing = readWatermark(actor);
+    if (existing) return existing;
+    if (initialOrdersUnreadRef.current === 0) {
+      const now = new Date().toISOString();
+      writeWatermark(actor, now);
+      return now;
+    }
+    return null;
+  });
 
   useEffect(() => {
     void api
       .post('/notifications/read', {})
-      .then(() => {
-        writeWatermark(actor, new Date().toISOString());
-        return queryClient.invalidateQueries({
+      .then(() =>
+        queryClient.invalidateQueries({
           queryKey: ['core'],
           predicate: (q) =>
             q.queryKey[2] === 'chat-activity' || q.queryKey[2] === 'notification-badge',
-        });
-      })
+        }),
+      )
       .catch(() => undefined);
   }, [actor]);
   return (
@@ -111,8 +157,9 @@ function CoreRequestActivity({
   const query = useCoreOrderActivity(true);
   const notices = usePenaltyNotices();
   const actor = useAuthStore((state) => state.user?.id);
-  const [locallyReadKeys, setLocallyReadKeys] = useState<Set<string>>(() => new Set());
+  const [locallyReadKeys, setLocallyReadKeys] = useState<Set<string>>(() => loadReadKeys(actor));
   const markLocalRead = (key: string) => {
+    saveReadKey(actor, key);
     setLocallyReadKeys((prev) => {
       if (prev.has(key)) return prev;
       const next = new Set(prev);
@@ -134,10 +181,7 @@ function CoreRequestActivity({
     if (!events.data?.items.length) return;
     void api
       .post('/notifications/order-events/read')
-      .then(() => {
-        writeWatermark(actor, new Date().toISOString());
-        return queryClient.invalidateQueries({ queryKey: ['core', actor, 'notification-badge'] });
-      })
+      .then(() => queryClient.invalidateQueries({ queryKey: ['core', actor, 'notification-badge'] }))
       .catch(() => undefined);
   }, [actor, events.dataUpdatedAt, events.data?.items.length]);
   const markRead = useMutation({
@@ -184,8 +228,6 @@ function CoreRequestActivity({
   const isItemUnread = (entry: UnifiedNotification): boolean => {
     if (locallyReadKeys.has(entry.key)) return false;
     if (entry.kind === 'penalty') return !entry.notice.read_at;
-    if (entry.kind === 'event' && entry.event.read_at) return false;
-    if (initialOrdersUnread === 0) return false;
     if (visitCutoff) {
       return (Date.parse(entry.timestamp) || 0) > (Date.parse(visitCutoff) || 0);
     }
@@ -407,7 +449,6 @@ const styles = StyleSheet.create({
   },
   unreadCard: {
     borderColor: '#E8CA54',
-    backgroundColor: '#FFFDF3',
   },
   cardHeader: {
     flexDirection: 'row',

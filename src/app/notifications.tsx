@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
   },
-  unreadRow: { borderColor: '#E8CA54', backgroundColor: '#FFFDF3' },
+  unreadRow: { borderColor: '#E8CA54' },
   icon: {
     width: 38,
     height: 38,

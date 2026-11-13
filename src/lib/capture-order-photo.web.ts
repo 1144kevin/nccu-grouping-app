@@ -49,7 +49,12 @@ export async function captureOrderPhoto(): Promise<PickedPostImage | null> {
         fontSize: '18px',
         cursor: 'pointer',
       });
+    cancel.style.background = '#ffffff';
+    cancel.style.color = '#dc2626';
+    cancel.style.fontWeight = '600';
     take.style.background = '#ffce00';
+    take.style.color = '#111111';
+    take.style.fontWeight = '700';
     controls.append(cancel, take);
     overlay.append(video, controls);
     document.body.append(overlay);
