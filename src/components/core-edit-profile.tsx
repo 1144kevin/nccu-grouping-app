@@ -14,8 +14,8 @@ import type { PickedPostImage } from '@/lib/pick-post-images';
 import { profileSocial } from '@/lib/profile-social';
 import { newRequestKey } from '@/lib/core-api';
 import { queryClient } from '@/lib/query-client';
-
-const badges: NonNullable<CoreUser['badge']>[] = ['🍜', '🥐', '🍕', '🧋', '🍱', '🍍'];
+import { PROFILE_AVATARS } from '@/lib/profile-avatars';
+import { Image } from 'expo-image';
 
 export function CoreEditProfileScreen({ onboarding }: { onboarding?: boolean } = {}) {
   const user = useAuthStore((state) => state.user);
@@ -35,6 +35,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
   const [badge, setBadge] = useState<NonNullable<CoreUser['badge']>>(user.badge ?? '🍱');
   const [version, setVersion] = useState(user.version ?? 1);
   const [photo, setPhoto] = useState<PickedPostImage | null>(null);
+  const [useIllustration, setUseIllustration] = useState(false);
   const [photoError, setPhotoError] = useState('');
   const [picking, setPicking] = useState(false);
   const avatarDraft = useRef<{ key: string; id?: string }>({ key: newRequestKey() });
@@ -45,6 +46,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
       const selected = await pickPersonalImage(camera);
       if (selected) {
         setPhoto(selected);
+        setUseIllustration(false);
         avatarDraft.current = { key: newRequestKey() };
       }
     } catch (error) {
@@ -62,7 +64,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
       if (useAuthStore.getState().user?.id !== user.id)
         throw new Error('invalid_or_expired_session');
       return coreApi.updateProfile({
-        ...(photo && avatarDraft.current.id ? { avatar_id: avatarDraft.current.id } : {}),
+        ...(photo && avatarDraft.current.id ? { avatar_id: avatarDraft.current.id } : useIllustration ? { avatar_id: null } : {}),
         display_name: name.trim(),
         bio: bio.trim(),
         badge,
@@ -71,7 +73,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
     },
     onSuccess: async (updated) => {
       if (!applyProfileUpdate(updated)) return;
-      if (photo)
+      if (photo || useIllustration)
         void queryClient.invalidateQueries({ queryKey: ['core', user.id, 'avatar', user.id] });
       await invalidateCore();
       if (useAuthStore.getState().user?.id === updated.id) {
@@ -90,6 +92,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
       setBadge(updated.badge ?? '🍱');
       setVersion(updated.version ?? 1);
       setPhoto(null);
+      setUseIllustration(false);
       avatarDraft.current = { key: newRequestKey() };
       mutation.reset();
     },
@@ -109,6 +112,7 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
             badge={badge}
             userId={user.id}
             uri={photo?.uri}
+            skipAccountPhoto={useIllustration}
             size={88}
           />
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
@@ -137,20 +141,20 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
             </Text>
           ) : null}
         </View>
-        <Text style={styles.hint}>顯示名稱、圖示與介紹會出現在公開個人資料；信箱不會公開。</Text>
-        <Text style={styles.label}>圖示</Text>
+        <Text style={styles.hint}>顯示名稱、頭像與介紹會出現在公開個人資料；信箱不會公開。</Text>
+        <Text style={styles.label}>頭像</Text>
         <View style={styles.badges}>
-          {badges.map((item) => (
+          {PROFILE_AVATARS.map((item) => (
             <Pressable
-              key={item}
+              key={item.badge}
               accessibilityRole="radio"
-              accessibilityLabel={`圖示 ${item}`}
-              accessibilityState={{ checked: item === badge }}
+              accessibilityLabel={`頭像 ${item.label}`}
+              accessibilityState={{ checked: item.badge === badge && !photo && (useIllustration || !user.avatar_id) }}
               disabled={busy}
-              onPress={() => setBadge(item)}
-              style={[styles.badge, item === badge && styles.selected]}
+              onPress={() => { setBadge(item.badge); setPhoto(null); setUseIllustration(true); }}
+              style={[styles.badge, item.badge === badge && !photo && (useIllustration || !user.avatar_id) && styles.selected]}
             >
-              <Text style={{ fontSize: 24 }}>{item}</Text>
+              <Image source={item.image} contentFit="cover" style={{ width: 42, height: 42, borderRadius: 21 }} />
             </Pressable>
           ))}
         </View>

@@ -9,8 +9,9 @@ import { useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { CoreEditProfileScreen } from '@/components/core-edit-profile';
 import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
+import { PROFILE_AVATARS } from '@/lib/profile-avatars';
+import { Image } from 'expo-image';
 
-const badges = ['🍜', '🥐', '🍕', '🧋', '🍱', '🍍'];
 
 export default function EditProfileScreen() {
   return CORE_API_ENABLED ? <CoreEditProfileScreen /> : <DemoEditProfileScreen />;
@@ -41,18 +42,19 @@ function DemoEditProfileScreen() {
           <Text style={styles.previewName}>{name.trim() || '你的名稱'}</Text>
           <Text style={styles.previewBio}>{bio.trim() || '尚未填寫個人介紹'}</Text>
         </View>
-        <Text style={styles.label}>熟度圖示</Text>
+        <Text style={styles.label}>頭像</Text>
         <View style={styles.badges}>
-          {badges.map((item) => (
+          {PROFILE_AVATARS.map((item) => (
             <Pressable
               accessibilityRole="radio"
-              accessibilityState={{ checked: badge === item }}
-              key={item}
-              onPress={() => setBadge(item)}
-              style={[styles.badge, badge === item && styles.badgeActive]}
+              accessibilityLabel={`頭像 ${item.label}`}
+              accessibilityState={{ checked: badge === item.badge }}
+              key={item.badge}
+              onPress={() => setBadge(item.badge)}
+              style={[styles.badge, badge === item.badge && styles.badgeActive]}
             >
-              <Text style={styles.badgeText}>{item}</Text>
-              {badge === item ? (
+              <Image source={item.image} contentFit="cover" style={{ width: 42, height: 42, borderRadius: 21 }} />
+              {badge === item.badge ? (
                 <View style={styles.check}>
                   <MaterialCommunityIcons name="check" size={10} color={colors.ink} />
                 </View>

@@ -29,6 +29,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { CORE_SUPABASE_MODE } from '@/lib/core-api';
 import { profileSocial } from '@/lib/profile-social';
 import { useNotificationBadge } from '@/lib/notification-badge';
+import { profileAvatarImage } from '@/lib/profile-avatars';
 
 export function Screen({
   children,
@@ -205,12 +206,13 @@ type AvatarProps = {
   uri?: string;
   onPress?: () => void;
   square?: boolean;
+  skipAccountPhoto?: boolean;
 };
 export function Avatar(props: AvatarProps) {
   return props.userId &&
     /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(props.userId) &&
     CORE_SUPABASE_MODE &&
-    !props.uri ? (
+    !props.uri && !props.skipAccountPhoto ? (
     <AccountAvatar {...props} />
   ) : (
     <AvatarBody {...props} />
@@ -234,6 +236,7 @@ function AccountAvatar(props: AvatarProps) {
   );
 }
 function AvatarBody({ name, badge, size = 48, uri: source, onPress, square = false }: AvatarProps) {
+  const preset = profileAvatarImage(badge);
   const palette = ['#CDE2EA', '#E8E1B4', '#E7CDC3', '#D2DDC9'];
   const index =
     [...name].reduce((sum, character) => sum + character.charCodeAt(0), 0) % palette.length;
@@ -253,6 +256,8 @@ function AvatarBody({ name, badge, size = 48, uri: source, onPress, square = fal
     >
       {source ? (
         <Image source={{ uri: source }} contentFit="cover" style={{ width: size, height: size }} />
+      ) : preset ? (
+        <Image source={preset} contentFit="cover" style={{ width: size, height: size }} />
       ) : (
         <Text fixedSize style={{ fontSize: size * 0.44 }}>
           {badge}
