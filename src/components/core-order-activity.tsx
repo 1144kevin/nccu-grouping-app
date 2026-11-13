@@ -11,7 +11,6 @@ import { Avatar, DetailHeader, EmptyState, PrimaryButton, Screen } from '@/compo
 import { coreError, type CoreOrderActivity } from '@/lib/core-api';
 import { useCoreOrderActivity } from '@/lib/core-chat-hooks';
 import { shortDate } from '@/components/list-ui';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing } from '@/theme/tokens';
 import { usePenaltyNotices } from '@/lib/penalty-notices';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -359,7 +358,6 @@ function CoreRequestActivity({
                   <ReputationBadge level={item.requester_level} />
                   <Text style={styles.hint}>{shortDate(item.occurred_at)}</Text>
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.subtle} />
               </View>
               <Text numberOfLines={2} style={styles.body}>
                 {item.post_content}
