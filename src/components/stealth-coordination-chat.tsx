@@ -1,8 +1,9 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { InlineLoading } from '@/components/inline-loading';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { ChatTextInput as TextInput } from '@/components/chat-text-input';
 import { KeyboardViewport, KeyboardScrollView, useKeyboardOpen } from '@/components/keyboard-layout';
@@ -26,7 +27,7 @@ import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
 import { updateInboxAfterRead } from '@/lib/inbox-read';
 import { useAuthStore } from '@/store/auth-store';
-import { colors, spacing, yellowSurface } from '@/theme/tokens';
+import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 export function StealthCoordinationChat({ id }: { id: string }) {
   const actor = useAuthStore((s) => s.user?.id);
@@ -87,6 +88,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   }, [actor, id, query.data?.opened]);
   const [text, setText] = useState('');
   const [formal, setFormal] = useState(false);
+  const [draftExpanded, setDraftExpanded] = useState(false);
   const replyContext = JSON.stringify({
     messages: query.data?.items.slice(-20).map((m) => m.id),
     match: match && [
@@ -184,6 +186,16 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     },
   });
   const formedIndex = outbox.items.findIndex((item) => item.event_kind === 'formed');
+  const hasTentativeDraft = Boolean(
+    !formal &&
+      match &&
+      query.data?.opened &&
+      match.status !== 'formed' &&
+      match.status !== 'unavailable' &&
+      match.terms_revision === 0 &&
+      !match.terms &&
+      activeDraft,
+  );
   return (
     <Screen pinKeyboardHeader>
       <DetailHeader
@@ -220,6 +232,46 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         {query.data?.opened && !query.data.can_send ? (
           <Text style={styles.note}>有人撤回、封鎖或拼單已取消，訊息保留唯讀。</Text>
         ) : null}
+        {hasTentativeDraft && match && activeDraft ? (
+          <View style={styles.announcementWrap}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={draftExpanded ? '收合共同暫定方案' : '展開共同暫定方案'}
+              onPress={() => setDraftExpanded((v) => !v)}
+              style={styles.announcementBar}
+            >
+              <MaterialCommunityIcons name="bullhorn-outline" size={16} color={colors.brown} />
+              <Text style={styles.announcementTitle}>暫定方案</Text>
+              <Text numberOfLines={1} style={styles.announcementPreview}>
+                {activeDraft.content}
+              </Text>
+              <MaterialCommunityIcons
+                name={draftExpanded ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.brown}
+              />
+            </Pressable>
+            {draftExpanded ? (
+              <View style={styles.announcementCard}>
+                <StealthTentativeDraftCard
+                  match={match}
+                  draft={activeDraft}
+                  aiNotice={aiNotice}
+                  aiPending={polishAi.isPending}
+                  proposePending={proposeDraft.isPending}
+                  proposeError={proposeDraft.error ? coreError(proposeDraft.error) : ''}
+                  canEdit={!!query.data?.can_send}
+                  onPropose={() => proposeDraft.mutate()}
+                  onEdit={() => {
+                    setDraftExpanded(false);
+                    setFormal(true);
+                  }}
+                  onPolishAi={() => polishAi.mutate()}
+                />
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         {formal && match ? (
           <KeyboardScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
             <StealthFormation
@@ -240,30 +292,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               contentContainerStyle={styles.messages}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
-              ListHeaderComponent={
-                match &&
-                query.data?.opened &&
-                match.status !== 'formed' &&
-                match.status !== 'unavailable' &&
-                match.terms_revision === 0 &&
-                !match.terms &&
-                activeDraft ? (
-                  <View style={{ marginBottom: spacing.sm }}>
-                    <StealthTentativeDraftCard
-                      match={match}
-                      draft={activeDraft}
-                      aiNotice={aiNotice}
-                      aiPending={polishAi.isPending}
-                      proposePending={proposeDraft.isPending}
-                      proposeError={proposeDraft.error ? coreError(proposeDraft.error) : ''}
-                      canEdit={!!query.data?.can_send}
-                      onPropose={() => proposeDraft.mutate()}
-                      onEdit={() => setFormal(true)}
-                      onPolishAi={() => polishAi.mutate()}
-                    />
-                  </View>
-                ) : null
-              }
               renderItem={({ item, index }) => {
                 if (item.event_kind === 'formed') {
                   return <Text style={styles.formedDivider}>偷揪成立</Text>;
@@ -401,6 +429,26 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   );
 }
 const styles = StyleSheet.create({
+  announcementWrap: {
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  announcementBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 9,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#E8CA54',
+    ...yellowSurface,
+    backgroundColor: colors.yellowSoft,
+  },
+  announcementTitle: { fontSize: 12, fontWeight: '700', color: colors.brown },
+  announcementPreview: { flex: 1, fontSize: 13, color: colors.ink },
+  announcementCard: { paddingBottom: spacing.xs },
   note: { padding: spacing.md, color: colors.muted, lineHeight: 21, fontSize: 13 },
   formedDivider: {
     textAlign: 'center',

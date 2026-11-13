@@ -66,13 +66,13 @@ describe('StealthTentativeDraftCard & StealthFormation prefill', () => {
     const screen = await render(
       <StealthTentativeDraftCard match={baseMatch} draft={incompleteDraft} canEdit onEdit={jest.fn()} />,
     );
-    expect(screen.getByText('已由使用者明確提供的資訊')).toBeTruthy();
+    expect(screen.getByText('推薦理由')).toBeTruthy();
     expect(screen.getByText('建議方案')).toBeTruthy();
-    expect(screen.getByText('尚待確認的事項')).toBeTruthy();
+    expect(screen.queryByText('已由使用者明確提供的資訊')).toBeNull();
+    expect(screen.queryByText('尚待確認的事項')).toBeNull();
     expect(screen.getByText(/待確認（預算上限 NT\$ 150，非實際費用）/)).toBeTruthy();
-    expect(screen.getByText('誰負責購買：待確認')).toBeTruthy();
-    expect(screen.getByText('誰負責取餐：待確認')).toBeTruthy();
-    expect(screen.getByText('補充／修改方案')).toBeTruthy();
+    expect(screen.getByText('買：待確認 · 取：待確認')).toBeTruthy();
+    expect(screen.getByText('修改／補充')).toBeTruthy();
   });
 
   it('prefills StealthFormation from complete agent_draft without requiring blank re-entry', async () => {
