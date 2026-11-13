@@ -74,6 +74,19 @@ export function createStreamingReplyVoice(): ReplyVoice | null {
   };
   return {
     stop,
+    unlock() {
+      // iOS requires audio activation during the user's tap, before the AI request awaits.
+      void context.resume().catch(() => undefined);
+      try {
+        const silent = context.createBuffer(1, 1, 24000);
+        const source = context.createBufferSource();
+        source.buffer = silent;
+        source.connect(context.destination);
+        source.start();
+      } catch {
+        // Playback errors are reported when the response is played.
+      }
+    },
     dispose() {
       stop();
       void context.close().catch(() => undefined);

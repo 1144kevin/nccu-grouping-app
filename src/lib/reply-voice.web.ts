@@ -67,6 +67,9 @@ export function createReplyVoice(natural = false): ReplyVoice | null {
   if (!cloud) return browser;
   if (!browser) return cloud;
   return {
+    unlock() {
+      cloud.unlock?.();
+    },
     stop() {
       cloud.stop();
       browser.stop();

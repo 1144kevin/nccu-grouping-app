@@ -185,7 +185,7 @@ export function QuickStealthComposer({
             ? '已達本機 AI 預算上限，暫停朗讀；文字不受影響。'
             : code === 'openai_quota_or_rate_limit'
               ? 'OpenAI 額度不足或請求過於頻繁，暫停朗讀；文字不受影響。'
-              : '朗讀未完成，可按「重聽回覆」再試一次，文字不受影響。');
+              : '語音播放失敗，文字回覆不受影響。');
       },
       (pending) => {
         if (mounted.current && visible.current) setVoicePreparing(pending);
@@ -207,6 +207,10 @@ export function QuickStealthComposer({
 
   async function analyze(answer: string, display = answer, id = ++epoch.current) {
     if (!actor || disabled || chatLocked || !alive(id) || !validAnswer(answer)) return;
+    if (voiceEnabledRef.current) {
+      replyVoice.current ??= createReplyVoice(true);
+      replyVoice.current?.unlock?.();
+    }
     onStarted?.();
     replyVoice.current?.stop();
     locked.current = true;

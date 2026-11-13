@@ -10,6 +10,7 @@ export type ReplyVoice = {
     onPreparing?: (pending: boolean) => void,
   ) => void;
   stop: () => void;
+  unlock?: () => void;
   dispose?: () => void;
 };
 

@@ -69,6 +69,23 @@ it('rejects incomplete audio rather than treating a cut connection as successful
     ),
   ).rejects.toThrow('incomplete audio');
 });
+it('activates audio synchronously when the user submits a message', () => {
+  const start = jest.fn();
+  const resume = jest.fn(async () => undefined);
+  class Context {
+    destination = {};
+    resume = resume;
+    close = async () => undefined;
+    createBuffer() { return {}; }
+    createBufferSource() { return { buffer: null, connect: jest.fn(), start }; }
+  }
+  Object.defineProperty(globalThis, 'window', { value: { AudioContext: Context }, configurable: true });
+  const voice = createStreamingReplyVoice()!;
+  voice.unlock?.();
+  expect(resume).toHaveBeenCalledTimes(1);
+  expect(start).toHaveBeenCalledTimes(1);
+  voice.dispose?.();
+});
 it('schedules PCM playback and stops all queued audio on cancel', async () => {
   const sources: {
     stop: ReturnType<typeof jest.fn>;
