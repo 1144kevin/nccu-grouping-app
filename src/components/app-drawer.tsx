@@ -43,8 +43,12 @@ export function AppDrawer() {
   function navigate(href: string) {
     setInstantClose(true);
     close();
-    requestAnimationFrame(() => router.push(href as Href));
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => router.push(href as Href));
+    });
   }
+
+  if (!visible && instantClose) return null;
 
   return (
     <Modal animationType={instantClose ? 'none' : 'fade'} onRequestClose={close} transparent visible={visible}>
