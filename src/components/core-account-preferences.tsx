@@ -18,6 +18,7 @@ import { queryClient } from '@/lib/query-client';
 import { useAuthStore } from '@/store/auth-store';
 import { AccountDeletionPanel } from '@/components/core-account-deletion';
 import { CloudBlockList } from '@/components/core-user-blocks';
+import { TAIWAN_COUNTIES, TAIWAN_COUNTY_SET } from '@/lib/taiwan-geo';
 import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 
 const options: [keyof NotificationPreferences, string, string][] = [
@@ -185,7 +186,10 @@ export function PreferencesForm({
               ...new Set([
                 ...tags.slice(0, 7),
                 ...selected.filter(
-                  (tag) => !tags.slice(7).includes(tag) && !customLocations.includes(tag),
+                  (tag) =>
+                    !tags.slice(7).includes(tag) &&
+                    !customLocations.includes(tag) &&
+                    !TAIWAN_COUNTY_SET.has(tag),
                 ),
               ]),
             ].map((tag) => (
@@ -216,7 +220,7 @@ export function PreferencesForm({
             {[
               ...new Set([
                 ...tags.slice(7),
-                ...customLocations.filter((tag) => selected.includes(tag)),
+                ...customLocations.filter((tag) => selected.includes(tag) && !TAIWAN_COUNTY_SET.has(tag)),
               ]),
             ].map((tag) => (
               <Pressable
@@ -236,6 +240,32 @@ export function PreferencesForm({
                 <Text style={styles.body}>
                   {selected.includes(tag) ? '✓ ' : ''}
                   {tag}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.title}>縣市區域</Text>
+          <Text style={styles.hint}>依貼文的實際地理座標篩選所在縣市（未選則不限區域）。</Text>
+          <View style={styles.wrap}>
+            {TAIWAN_COUNTIES.map((county) => (
+              <Pressable
+                key={county}
+                accessibilityRole="checkbox"
+                accessibilityLabel={county}
+                accessibilityState={{ checked: selected.includes(county), disabled: save.isPending }}
+                disabled={save.isPending}
+                onPress={() => toggle(county)}
+                style={[
+                  styles.choice,
+                  selected.includes(county) && {
+                    ...yellowSurface,
+                    backgroundColor: colors.yellowSoft,
+                  },
+                ]}
+              >
+                <Text style={styles.body}>
+                  {selected.includes(county) ? '✓ ' : ''}
+                  {county}
                 </Text>
               </Pressable>
             ))}

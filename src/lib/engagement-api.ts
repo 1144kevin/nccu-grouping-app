@@ -5,6 +5,7 @@ import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreApi } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import type { CorePost, CorePostPage } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
+import { filterPostsByPreferredRegions } from '@/lib/taiwan-geo';
 
 export type NotificationPreferences = {
   joinRequests: boolean;
@@ -108,7 +109,10 @@ export function useCoreRecommendations(active: boolean) {
     retry: (count, error) => !(isAxiosError(error) && error.response?.status === 409) && count < 1,
     queryFn: async ({ pageParam }) => {
       const page = await engagementApi.recommendations(pageParam);
-      return { ...page, items: recommendationCandidates(page.items) };
+      return {
+        ...page,
+        items: recommendationCandidates(page.items, preferences.data?.preferred_tags),
+      };
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.next_cursor ?? undefined,
@@ -133,10 +137,14 @@ export function useCoreRecommendations(active: boolean) {
   };
 }
 
-export function recommendationCandidates(posts: CorePost[]): CorePost[] {
+export function recommendationCandidates(
+  posts: CorePost[],
+  preferredTags: readonly string[] = [],
+): CorePost[] {
   // Defensive display filter also works before the reviewed SQL upgrade is applied.
   // Admission still uses the authoritative server transaction.
-  return posts.filter((post) => post.status === 'open' && post.joined < post.capacity);
+  const open = posts.filter((post) => post.status === 'open' && post.joined < post.capacity);
+  return filterPostsByPreferredRegions(open, preferredTags);
 }
 
 /** Prefetch home feed posts so HomeScreen renders immediately after AppLoadingPage finishes. */
@@ -153,7 +161,7 @@ export async function prefetchHomeFeed(client: QueryClient, userId: string): Pro
         queryKey: ['core', userId, 'recommendations', prefs.version],
         queryFn: async ({ pageParam }) => {
           const page = await engagementApi.recommendations(pageParam);
-          return { ...page, items: recommendationCandidates(page.items) };
+          return { ...page, items: recommendationCandidates(page.items, prefs.preferred_tags) };
         },
         initialPageParam: undefined as string | undefined,
         staleTime: Infinity,
