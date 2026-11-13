@@ -18,7 +18,6 @@ export function AppearanceController() {
     });
     root.style.colorScheme = dark ? 'dark' : 'light';
     root.style.backgroundColor = palette.background;
-    root.style.setProperty('--app-logo-filter', dark ? 'invert(1)' : 'none');
     document.body.style.backgroundColor = palette.background;
     let themeColor = document.querySelector('meta[name="theme-color"]');
     if (!themeColor) {

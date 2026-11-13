@@ -44,6 +44,7 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { user, ready: authReady } = useAuthStore();
+  const userId = user?.id ?? '';
   const authenticated = !CORE_API_ENABLED || !!user;
   const allowed = authenticated && (!CORE_API_ENABLED || !user?.profile_setup_required);
   const canEnterFeed = CORE_API_ENABLED && allowed && !!user && !user.deletion_pending;
@@ -53,38 +54,42 @@ function RootNavigator() {
   );
   const [gateReady, setGateReady] = useState(false);
   const prevCanEnterRef = useRef<boolean | null>(null);
+  const prefetchRunRef = useRef(0);
 
   useEffect(() => {
     if (!CORE_API_ENABLED || !authReady) return;
-    let active = true;
     const prev = prevCanEnterRef.current;
     prevCanEnterRef.current = canEnterFeed;
-
-    if (gateState === 'booting') {
-      if (canEnterFeed && user) {
-        void prefetchHomeFeed(queryClient, user.id).finally(() => {
-          if (active) setGateReady(true);
-        });
-      } else {
-        setGateReady(true);
-      }
-      return () => {
-        active = false;
-      };
-    }
-
-    if (prev === false && canEnterFeed && user) {
+    if (prev === false && canEnterFeed) {
       setGateState('entering');
       setGateReady(false);
-      void prefetchHomeFeed(queryClient, user.id).finally(() => {
-        if (active) setGateReady(true);
+    }
+  }, [authReady, canEnterFeed]);
+
+  useEffect(() => {
+    if (!CORE_API_ENABLED || !authReady || gateState === 'done') return;
+    let active = true;
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+    const runId = ++prefetchRunRef.current;
+
+    if (canEnterFeed && userId) {
+      setGateReady(false);
+      fallbackTimer = setTimeout(() => {
+        if (active && prefetchRunRef.current === runId) setGateReady(true);
+      }, 8000);
+      void prefetchHomeFeed(queryClient, userId).finally(() => {
+        clearTimeout(fallbackTimer);
+        if (active && prefetchRunRef.current === runId) setGateReady(true);
       });
+    } else {
+      setGateReady(true);
     }
 
     return () => {
       active = false;
+      clearTimeout(fallbackTimer);
     };
-  }, [authReady, canEnterFeed, gateState, user]);
+  }, [authReady, canEnterFeed, gateState, userId]);
 
   if (CORE_API_ENABLED && gateState !== 'done') {
     return (
