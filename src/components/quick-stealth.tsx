@@ -426,7 +426,7 @@ export function QuickMatch({
           >
             有興趣，先聊聊
           </PrimaryButton>
-          <Text style={styles.hint}>同意聊聊僅先進入聊天室確認，不會直接同意費用或成立拼單。</Text>
+          <Text style={styles.hint}>同意聊聊僅先進入聊天室確認，不會直接同意成立拼單。</Text>
         </>
       )}
       {match.status !== 'formed' && match.status !== 'unavailable' && !match.is_demo ? (
