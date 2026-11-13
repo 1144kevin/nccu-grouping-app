@@ -91,6 +91,19 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     await queryClient.invalidateQueries({ queryKey: key });
   };
   const outbox = useChatOutbox<StealthRoomMessage>(query.data?.items ?? [], false);
+  const listRef = useRef<FlatList<(typeof outbox.items)[number]>>(null);
+  const initialScrolledRef = useRef(false);
+  const nearBottomRef = useRef(true);
+  const prevCountRef = useRef(0);
+  useEffect(() => {
+    const count = outbox.items.length;
+    const prev = prevCountRef.current;
+    prevCountRef.current = count;
+    if (count > prev && (!initialScrolledRef.current || nearBottomRef.current || outbox.items.at(-1)?.is_me)) {
+      const animated = initialScrolledRef.current;
+      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated }));
+    }
+  }, [outbox.items]);
   const ownMessage = (content: string, messageId: string): StealthRoomMessage => ({
     id: messageId,
     content,
@@ -276,8 +289,25 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         ) : (
           <View style={{ flex: 1, minHeight: 0 }}>
             <FlatList
+              ref={listRef}
               onViewableItemsChanged={dates.onViewableItemsChanged}
-              onScroll={dates.onScroll}
+              onScroll={(event) => {
+                dates.onScroll();
+                const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+                nearBottomRef.current =
+                  contentSize.height - (contentOffset.y + layoutMeasurement.height) < 80;
+              }}
+              onContentSizeChange={() => {
+                if (!outbox.items.length) return;
+                if (!initialScrolledRef.current) {
+                  initialScrolledRef.current = true;
+                  listRef.current?.scrollToEnd({ animated: false });
+                  return;
+                }
+                if (nearBottomRef.current) {
+                  listRef.current?.scrollToEnd({ animated: true });
+                }
+              }}
               scrollEventThrottle={100}
               data={outbox.items}
               keyExtractor={(item) => item.id}
