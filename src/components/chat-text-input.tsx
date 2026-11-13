@@ -47,6 +47,8 @@ export function ChatTextInput({
           maxHeight: 120,
           height: value ? height : 40,
           paddingVertical: 8,
+          paddingLeft: emptyCentered ? 10 : 16,
+          paddingRight: 12,
           lineHeight: 24,
           textAlignVertical: 'center',
           textAlign: emptyCentered && !value ? 'center' : 'left',
