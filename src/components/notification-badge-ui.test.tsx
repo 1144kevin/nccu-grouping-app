@@ -4,7 +4,10 @@ import { AppHeader } from './primitives';
 import { AppDrawer } from './app-drawer';
 
 let mockCount = 3;
-jest.mock('@/lib/notification-badge', () => ({ useNotificationBadge: () => ({ count: mockCount }) }));
+jest.mock('@/lib/notification-badge', () => ({
+  useNotificationBadge: () => ({ count: mockCount }),
+  useStealthBadge: () => ({ count: 0 }),
+}));
 jest.mock('react-native-safe-area-context', () => ({
   ...jest.requireActual<typeof import('react-native-safe-area-context')>('react-native-safe-area-context'),
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),

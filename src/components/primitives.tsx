@@ -380,11 +380,13 @@ export function SectionTitle({ children, action }: PropsWithChildren<{ action?: 
 
 export function EmptyState({
   icon,
+  iconNode,
   title,
   action,
   loading = false,
 }: {
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  iconNode?: ReactNode;
   title: string;
   action?: ReactNode;
   loading?: boolean;
@@ -392,7 +394,7 @@ export function EmptyState({
   if (loading) return <PageLoading accessibilityLabel={title} />;
   return (
     <View style={styles.empty}>
-      <MaterialCommunityIcons name={icon} size={38} color={colors.subtle} />
+      {iconNode ?? <MaterialCommunityIcons name={icon} size={38} color={colors.subtle} />}
       <Text style={styles.emptyText}>{title}</Text>
       {action}
     </View>

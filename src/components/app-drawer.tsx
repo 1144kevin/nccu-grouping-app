@@ -1,4 +1,5 @@
 import { BrandLogo } from '@/components/brand-logo';
+import { StealthIcon } from '@/components/stealth-icon';
 import { InlineLoading } from '@/components/inline-loading';
 import { AppText as Text } from '@/components/app-text';
 import { Avatar } from '@/components/primitives';
@@ -92,6 +93,7 @@ export function AppDrawer() {
               <DrawerItem
                 label="偷揪"
                 icon="robot-outline"
+                customIcon={<StealthIcon size={24} />}
                 badge={stealthBadge.count}
                 onPress={() => navigate('/stealth')}
               />
@@ -149,12 +151,14 @@ function DrawerItem({
   onPress,
   disabled,
   loading = false,
+  customIcon,
 }: {
   label: string;
   icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   badge?: number;
   disabled?: boolean;
   loading?: boolean;
+  customIcon?: React.ReactNode;
   onPress: () => void;
 }) {
   return (
@@ -169,7 +173,7 @@ function DrawerItem({
         <InlineLoading label={label} textStyle={styles.itemText} />
       ) : (
         <>
-          <MaterialCommunityIcons name={icon} size={20} color={colors.ink} />
+          {customIcon ?? <MaterialCommunityIcons name={icon} size={20} color={colors.ink} />}
           <Text style={styles.itemText}>{label}</Text>
         </>
       )}

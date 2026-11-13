@@ -1,4 +1,5 @@
 import { AppText as Text } from '@/components/app-text';
+import { StealthIcon } from '@/components/stealth-icon';
 import {
   useCallback,
   useEffect,
@@ -313,7 +314,7 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
             >
               <GlassSurface solid={reduceTransparency} style={styles.bubbleSurface}>
                 <View>
-                  <MaterialCommunityIcons name="robot-outline" size={23} color={colors.ink} />
+                  <StealthIcon size={25} />
                   {createBadge ? (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>
