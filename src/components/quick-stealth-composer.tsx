@@ -304,13 +304,6 @@ export function QuickStealthComposer({
       setSaved(true);
       setReviewing(false);
       clearDraft(actor);
-      setMessages((old) => [
-        ...old,
-        {
-          role: 'assistant',
-          text: '已用這張偷揪單開始等待配對（有效期限 24 小時）！配對到合適夥伴時會直接在這裡通知你。',
-        },
-      ]);
       await onSaved(result);
     } catch (e) {
       if (alive(id)) setError(`${coreError(e)} 已確認的條件仍保留，可以重試，不會重複建立。`);
@@ -755,13 +748,7 @@ export function QuickStealthComposer({
         <ChatTextInput
           emptyCentered
           accessibilityLabel="跟偷揪分身聊天"
-          placeholder={
-            chatLocked
-              ? '目前有進行中的需求單，欲重新對話請先取消需求單'
-              : reviewing && pendingSignal && !saved
-                ? '請輸入「同意」或「不同意」'
-                : '說說你的想法'
-          }
+          placeholder=""
           value={text}
           onChangeText={(value) => {
             if (saved) restart();

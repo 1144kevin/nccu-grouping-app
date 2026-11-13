@@ -365,7 +365,7 @@ function QuickSession({ actor }: { actor?: string }) {
                   ? '需求已儲存，目前是分身的安靜時段。'
                   : result.created.matching === 'unavailable'
                     ? '需求已儲存，配對暫時未完成，稍後可再找找。'
-                    : '已開始找人，有合適的夥伴會直接在聊天室通知你。',
+                    : '',
               );
               await refresh();
             }}
