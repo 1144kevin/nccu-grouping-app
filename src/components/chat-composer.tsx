@@ -139,7 +139,7 @@ function ComposerSession({
           {error}
         </Text>
       ) : null}
-      <View style={[styles.footer, { paddingBottom: keyboardOpen ? 6 : Math.max(24, insets.bottom + 16) }]}>
+      <View style={[styles.footer, { paddingBottom: keyboardOpen ? 6 : Math.max(4, insets.bottom - 4) }]}>
         <View style={styles.row}>
           <ChatAddButton
             disabled={disabled || picking || send.isPending}

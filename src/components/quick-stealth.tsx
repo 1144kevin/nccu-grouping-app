@@ -296,7 +296,7 @@ function QuickSession({ actor }: { actor?: string }) {
         <View
           style={[
             styles.page,
-            { paddingBottom: keyboardOpen ? 8 : Math.max(28, insets.bottom + 20) },
+            { paddingBottom: keyboardOpen ? 8 : Math.max(8, insets.bottom) },
           ]}
         >
           <QuickStealthComposer
