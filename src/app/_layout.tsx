@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { AppLoadingPage } from '@/components/app-loading-page';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
@@ -9,6 +10,7 @@ import { colors } from '@/theme/tokens';
 import { AppDrawer } from '@/components/app-drawer';
 import { CoreAuthGate } from '@/components/core-auth-gate';
 import { CORE_API_ENABLED } from '@/lib/core-api';
+import { prefetchHomeFeed } from '@/lib/engagement-api';
 import { useAuthStore } from '@/store/auth-store';
 import { Screen } from '@/components/primitives';
 import { PostLoginReturn } from '@/components/post-login-return';
@@ -41,15 +43,61 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { user, ready } = useAuthStore();
-  if (CORE_API_ENABLED && !ready)
-    return (
-      <Screen>
-        <AppLoadingPage accessibilityLabel="正在確認登入" />
-      </Screen>
-    );
+  const { user, ready: authReady } = useAuthStore();
   const authenticated = !CORE_API_ENABLED || !!user;
   const allowed = authenticated && (!CORE_API_ENABLED || !user?.profile_setup_required);
+  const canEnterFeed = CORE_API_ENABLED && allowed && !!user && !user.deletion_pending;
+
+  const [gateState, setGateState] = useState<'booting' | 'entering' | 'done'>(() =>
+    CORE_API_ENABLED ? 'booting' : 'done',
+  );
+  const [gateReady, setGateReady] = useState(false);
+  const prevCanEnterRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!CORE_API_ENABLED || !authReady) return;
+    let active = true;
+    const prev = prevCanEnterRef.current;
+    prevCanEnterRef.current = canEnterFeed;
+
+    if (gateState === 'booting') {
+      if (canEnterFeed && user) {
+        void prefetchHomeFeed(queryClient, user.id).finally(() => {
+          if (active) setGateReady(true);
+        });
+      } else {
+        setGateReady(true);
+      }
+      return () => {
+        active = false;
+      };
+    }
+
+    if (prev === false && canEnterFeed && user) {
+      setGateState('entering');
+      setGateReady(false);
+      void prefetchHomeFeed(queryClient, user.id).finally(() => {
+        if (active) setGateReady(true);
+      });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [authReady, canEnterFeed, gateState, user]);
+
+  if (CORE_API_ENABLED && gateState !== 'done') {
+    return (
+      <Screen>
+        <AppLoadingPage
+          key={gateState}
+          ready={gateReady}
+          onComplete={() => setGateState('done')}
+          accessibilityLabel={gateState === 'booting' ? '正在確認登入' : '正在載入首頁'}
+        />
+      </Screen>
+    );
+  }
   return (
     <Stack
       screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}

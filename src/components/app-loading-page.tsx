@@ -8,10 +8,21 @@ const BAR_WIDTH = 240;
 const ICON_SIZE = 44;
 const TRAVEL_WIDTH = BAR_WIDTH - ICON_SIZE;
 
-export function AppLoadingPage({ accessibilityLabel = '正在確認登入' }: { accessibilityLabel?: string }) {
+export function AppLoadingPage({
+  ready = false,
+  onComplete,
+  accessibilityLabel = '正在確認登入',
+}: {
+  ready?: boolean;
+  onComplete?: () => void;
+  accessibilityLabel?: string;
+}) {
   const [progress, setProgress] = useState(0.06);
   const progressAnim = useRef(new Animated.Value(0.06)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const spinLoop = Animated.loop(
@@ -24,23 +35,56 @@ export function AppLoadingPage({ accessibilityLabel = '正在確認登入' }: { 
     );
     spinLoop.start();
 
-    const progressTween = Animated.timing(progressAnim, {
-      toValue: 0.94,
-      duration: 2400,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    });
     const listener = progressAnim.addListener(({ value }) => {
       setProgress(value);
     });
-    progressTween.start();
+
+    const initialTween = !ready
+      ? Animated.timing(progressAnim, {
+          toValue: 0.85,
+          duration: 2200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: false,
+        })
+      : null;
+    initialTween?.start();
 
     return () => {
       spinLoop.stop();
-      progressTween.stop();
+      initialTween?.stop();
       progressAnim.removeListener(listener);
     };
   }, [progressAnim, spinAnim]);
+
+  useEffect(() => {
+    if (!ready || completedRef.current) return;
+    let cancelled = false;
+    let doneTimer: ReturnType<typeof setTimeout> | undefined;
+    let finishTween: Animated.CompositeAnimation | undefined;
+    progressAnim.stopAnimation((current) => {
+      if (cancelled || completedRef.current) return;
+      const remaining = Math.max(0, 1 - current);
+      const duration = Math.max(220, Math.round(remaining * 450));
+      finishTween = Animated.timing(progressAnim, {
+        toValue: 1,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      });
+      finishTween.start(({ finished }) => {
+        if (!finished || cancelled || completedRef.current) return;
+        completedRef.current = true;
+        doneTimer = setTimeout(() => {
+          if (!cancelled) onCompleteRef.current?.();
+        }, 60);
+      });
+    });
+    return () => {
+      cancelled = true;
+      finishTween?.stop();
+      if (doneTimer) clearTimeout(doneTimer);
+    };
+  }, [progressAnim, ready]);
 
   const level: PizzaLevel = progress < 0.34 ? 1 : progress < 0.68 ? 2 : 3;
   const rotate = spinAnim.interpolate({

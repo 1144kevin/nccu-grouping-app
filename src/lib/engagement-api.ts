@@ -1,7 +1,7 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type QueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { api } from '@/lib/api';
-import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
+import { CORE_API_ENABLED, CORE_SUPABASE_MODE, coreApi } from '@/lib/core-api';
 import { useAuthStore } from '@/store/auth-store';
 import type { CorePost, CorePostPage } from '@/lib/core-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
@@ -137,6 +137,38 @@ export function recommendationCandidates(posts: CorePost[]): CorePost[] {
   // Defensive display filter also works before the reviewed SQL upgrade is applied.
   // Admission still uses the authoritative server transaction.
   return posts.filter((post) => post.status === 'open' && post.joined < post.capacity);
+}
+
+/** Prefetch home feed posts so HomeScreen renders immediately after AppLoadingPage finishes. */
+export async function prefetchHomeFeed(client: QueryClient, userId: string): Promise<void> {
+  if (!CORE_API_ENABLED || !userId) return;
+  try {
+    if (CORE_SUPABASE_MODE) {
+      const prefs = await client.ensureQueryData({
+        queryKey: ['core', userId, 'preferences'],
+        queryFn: engagementApi.preferences,
+        staleTime: 5 * 60_000,
+      });
+      await client.ensureInfiniteQueryData({
+        queryKey: ['core', userId, 'recommendations', prefs.version],
+        queryFn: async ({ pageParam }) => {
+          const page = await engagementApi.recommendations(pageParam);
+          return { ...page, items: recommendationCandidates(page.items) };
+        },
+        initialPageParam: undefined as string | undefined,
+        staleTime: Infinity,
+      });
+    } else {
+      await client.ensureInfiniteQueryData({
+        queryKey: ['core', userId, 'posts', 'feed', '', false, 30],
+        queryFn: ({ pageParam }) => coreApi.posts('feed', pageParam, '', false, 30),
+        initialPageParam: undefined as string | undefined,
+        staleTime: Infinity,
+      });
+    }
+  } catch {
+    // Allow app entry on transient fetch failure; HomeScreen shows its retry UI.
+  }
 }
 export function useSavedPostPreferences() {
   const id = useAuthStore((state) => state.user?.id);
