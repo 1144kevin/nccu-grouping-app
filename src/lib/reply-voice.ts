@@ -65,34 +65,64 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
       onPreparing?.(true);
       onState(true);
 
-      const fail = (err?: unknown) => {
+      const fail = (step: string, err?: unknown) => {
         if (current !== epoch) return;
-        const message =
-          err instanceof Error ? err.message : typeof err === 'string' ? err : undefined;
+        const detail =
+          err instanceof Error ? err.message : typeof err === 'string' ? err : '';
         stop();
-        onError(message);
+        onError(detail ? `${step}:${detail}` : step);
       };
 
-      timer = setTimeout(() => fail('timeout'), 45_000);
+      timer = setTimeout(() => fail('timeout_load'), 45_000);
       void (async () => {
-        const token = await tokenStorage.get();
+        let token: string | null = null;
+        try {
+          // Ensure access token is refreshed via axios interceptor if expired.
+          await api.get('/stealth-cloud/quick-status');
+          token = await tokenStorage.get();
+        } catch {
+          token = await tokenStorage.get();
+        }
         if (current !== epoch) return;
         const baseURL = (api.defaults.baseURL ?? '').replace(/\/$/, '');
+        if (!baseURL) {
+          fail('missing_base_url');
+          return;
+        }
         const uri = `${baseURL}/stealth-cloud/speech-audio?text=${encodeURIComponent(cleaned)}`;
         const source = token ? { uri, headers: { Authorization: `Bearer ${token}` } } : uri;
-        const {
-          createAudioPlayer,
-          setAudioModeAsync,
-          setIsAudioActiveAsync,
-        } = require('expo-audio') as typeof import('expo-audio');
-        await setIsAudioActiveAsync?.(true);
-        await setAudioModeAsync({
-          playsInSilentMode: true,
-          allowsRecording: false,
-          interruptionMode: 'doNotMix',
-        });
+
+        let audioMod: typeof import('expo-audio');
+        try {
+          audioMod = require('expo-audio') as typeof import('expo-audio');
+        } catch (e) {
+          fail('audio_module', e);
+          return;
+        }
+
+        try {
+          await audioMod.setIsAudioActiveAsync?.(true);
+        } catch {
+          // Non-fatal on platforms/runtimes where setIsAudioActiveAsync is unnecessary.
+        }
+        try {
+          await audioMod.setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: false,
+          });
+        } catch (e) {
+          fail('audio_mode', e);
+          return;
+        }
         if (current !== epoch) return;
-        const nextPlayer = createAudioPlayer(source);
+
+        let nextPlayer: AudioPlayer;
+        try {
+          nextPlayer = audioMod.createAudioPlayer(source);
+        } catch (e) {
+          fail('player_create', e);
+          return;
+        }
         player = nextPlayer;
         let started = false;
         subscription = nextPlayer.addListener('playbackStatusUpdate', (status) => {
@@ -101,15 +131,25 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
             started = true;
             onPreparing?.(false);
             clearTimeout(timer);
-            timer = setTimeout(() => fail('timeout'), 90_000);
-            if (!status.playing) nextPlayer.play();
+            timer = setTimeout(() => fail('timeout_play'), 90_000);
+            if (!status.playing) {
+              try {
+                nextPlayer.play();
+              } catch (e) {
+                fail('player_play', e);
+              }
+            }
           }
           if (status.didJustFinish) {
             stop();
           }
         });
-        nextPlayer.play();
-      })().catch(fail);
+        try {
+          nextPlayer.play();
+        } catch (e) {
+          fail('player_play_init', e);
+        }
+      })().catch((e) => fail('unexpected', e));
     },
   };
 }

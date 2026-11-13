@@ -185,7 +185,9 @@ export function QuickStealthComposer({
             ? '已達本機 AI 預算上限，暫停朗讀；文字不受影響。'
             : code === 'openai_quota_or_rate_limit'
               ? 'OpenAI 額度不足或請求過於頻繁，暫停朗讀；文字不受影響。'
-              : '語音播放失敗，文字回覆不受影響。');
+              : code
+                ? `語音播放失敗（${code}），文字回覆不受影響。`
+                : '語音播放失敗，文字回覆不受影響。');
       },
       (pending) => {
         if (mounted.current && visible.current) setVoicePreparing(pending);
