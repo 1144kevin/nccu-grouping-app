@@ -144,15 +144,6 @@ export function CoreProfileScreen() {
             載入更多
           </PrimaryButton>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/settings')}
-          style={styles.settingsButton}
-        >
-          <MaterialCommunityIcons name="shield-account-outline" size={18} color={colors.ink} />
-          <Text style={styles.settingsText}>帳號與隱私設定</Text>
-          <MaterialCommunityIcons name="chevron-right" size={17} color={colors.subtle} />
-        </Pressable>
       </ScrollView>
       <PizzaLevelHelp visible={help} onClose={() => setHelp(false)} />
     </Screen>
@@ -254,16 +245,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   historyDetail: { marginTop: 5, color: colors.muted, fontSize: 12 },
-  settingsButton: {
-    minHeight: 50,
-    marginTop: 10,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-  },
-  settingsText: { flex: 1, color: colors.ink, fontSize: 15, fontWeight: '700' },
 });
