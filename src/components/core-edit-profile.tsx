@@ -120,15 +120,6 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
               secondary
               disabled={busy}
               onPress={() => {
-                void pick(true);
-              }}
-            >
-              拍照
-            </PrimaryButton>
-            <PrimaryButton
-              secondary
-              disabled={busy}
-              onPress={() => {
                 void pick(false);
               }}
             >
