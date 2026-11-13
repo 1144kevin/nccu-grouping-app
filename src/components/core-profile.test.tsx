@@ -57,7 +57,7 @@ it('explains each pizza level in the info dialog below the scoring rules', async
   expect(screen.queryByText('有料指數')).toBeNull();
   await fireEvent.press(screen.getByLabelText('熟度等級說明'));
   expect(screen.getByText('有料指數')).toBeTruthy();
-  expect(screen.getByText('熟度反映已確認的參與紀錄，不是付款保證。')).toBeTruthy();
+  expect(screen.getByText('有料指數反映已確認的參與紀錄，不是付款保證。')).toBeTruthy();
   for (const item of pizzaLevels) expect(screen.getByText(item.description)).toBeTruthy();
 });
 

@@ -17,7 +17,7 @@ export function PizzaLevelHelp({ visible, onClose }: { visible: boolean; onClose
               全員確認完成後，主揪 +5 分、團員 +3 分；每收到 10 個讚再 +1 分，上限 100
               分。尚未完成、取消與示範拼單不計分。
             </Text>
-            <Text style={styles.body}>熟度反映已確認的參與紀錄，不是付款保證。</Text>
+            <Text style={styles.body}>有料指數反映已確認的參與紀錄，不是付款保證。</Text>
             <View style={styles.list}>
               {pizzaLevels.map((item) => (
                 <View key={item.level} style={[styles.card, { backgroundColor: item.background }]}>
