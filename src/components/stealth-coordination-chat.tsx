@@ -6,7 +6,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { ChatTextInput as TextInput } from '@/components/chat-text-input';
-import { KeyboardViewport, KeyboardScrollView, useKeyboardOpen } from '@/components/keyboard-layout';
+import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
 import { Avatar, DetailHeader, PrimaryButton, Screen, IconButton } from '@/components/primitives';
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatSendButton } from './chat-controls';
@@ -15,7 +15,6 @@ import { displayTime } from '@/lib/display-time';
 import { displayTimestamp } from '@/lib/display-time';
 import { router } from 'expo-router';
 import { StealthFormation } from '@/components/core-stealth-formation';
-import { StealthReplySuggestions } from '@/components/stealth-reply-suggestions';
 import { StealthTentativeDraftCard } from '@/components/stealth-tentative-draft-card';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
@@ -37,8 +36,6 @@ export function StealthCoordinationChat({ id }: { id: string }) {
 function Chat({ id, actor }: { id: string; actor?: string }) {
   const dates = useChatDateIndicator(false);
   const focused = useCoreScreenFocused();
-  const keyboardOpen = useKeyboardOpen();
-  const [inputFocused, setInputFocused] = useState(false);
   const clock = useCoreClock();
   const key = ['core', actor, 'stealth'];
   const query = useQuery({
@@ -89,21 +86,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   const [text, setText] = useState('');
   const [formal, setFormal] = useState(false);
   const [draftExpanded, setDraftExpanded] = useState(false);
-  const replyContext = JSON.stringify({
-    messages: query.data?.items.slice(-20).map((m) => m.id),
-    match: match && [
-      match.id,
-      match.status,
-      match.category,
-      match.location_id,
-      match.my_signal_title,
-      match.terms_revision,
-      match.my_roles,
-      match.unknowns,
-      match.known_cost_twd,
-      match.budget_max_twd,
-    ],
-  });
   const frozen = useRef<{ text: string; key: string } | null>(null);
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -206,6 +188,12 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               icon="file-document-outline"
               label="查看拼單詳情"
               onPress={() => router.push(`/order/${match.formed_post_id}`)}
+            />
+          ) : query.data?.opened && query.data?.can_send && !formal ? (
+            <IconButton
+              icon="file-document-edit-outline"
+              label="填寫拼單"
+              onPress={() => setFormal(true)}
             />
           ) : undefined
         }
@@ -372,19 +360,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
             回到聊天
           </PrimaryButton>
         ) : null}
-        {!formal && actor && match && query.data?.opened && query.data.can_send && !query.error ? (
-          <StealthReplySuggestions
-            key={replyContext}
-            id={id}
-            actor={actor}
-            contextKey={replyContext}
-            enabled={focused}
-            disabled={send.isPending}
-            collapsed={keyboardOpen || inputFocused}
-            onSelect={setText}
-            onPlan={() => setFormal(true)}
-          />
-        ) : null}
         {!formal ? (
           <ChatComposer
             kind="stealth"
@@ -405,8 +380,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               placeholder="想喝什麼？我們怎麼分工？"
               value={text}
               onChangeText={setText}
-              onFocus={() => setInputFocused(true)}
-              onBlur={() => setInputFocused(false)}
               multiline
               maxLength={2000}
               editable={query.data?.can_send && !send.isPending}
