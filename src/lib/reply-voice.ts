@@ -1,8 +1,9 @@
 import type { AudioPlayer } from 'expo-audio';
-import type { File } from 'expo-file-system';
-import { stealthApi } from './stealth-api';
+import { api } from './api';
+import { tokenStorage } from './token-storage';
 
 export type ReplyVoice = {
+  unlock?: () => void;
   speak: (
     text: string,
     onState: (playing: boolean) => void,
@@ -10,19 +11,16 @@ export type ReplyVoice = {
     onPreparing?: (pending: boolean) => void,
   ) => void;
   stop: () => void;
-  unlock?: () => void;
   dispose?: () => void;
 };
 
 /**
- * Native iOS/Android reply voice adapter using backend TTS WAV + expo-audio.
+ * Native iOS/Android reply voice adapter streaming WAV audio via expo-audio.
  */
 export function createReplyVoice(_natural = false): ReplyVoice | null {
   let epoch = 0;
-  let controller: AbortController | undefined;
   let player: AudioPlayer | undefined;
   let subscription: { remove: () => void } | undefined;
-  let tempFile: File | undefined;
   let notify: ((playing: boolean) => void) | undefined;
   let preparing: ((pending: boolean) => void) | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -34,23 +32,19 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
     subscription = undefined;
     try {
       player?.pause();
+    } catch {
+      // Ignore cleanup errors on already-released players.
+    }
+    try {
       player?.remove();
     } catch {
-      // Ignore already-released player errors.
+      // Ignore cleanup errors on already-released players.
     }
     player = undefined;
-    try {
-      if (tempFile?.exists) tempFile.delete();
-    } catch {
-      // Ignore cache cleanup errors.
-    }
-    tempFile = undefined;
   };
 
   const stop = () => {
     epoch += 1;
-    controller?.abort();
-    controller = undefined;
     cleanupPlayer();
     preparing?.(false);
     preparing = undefined;
@@ -63,9 +57,9 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
     dispose: stop,
     speak(text, onState, onError, onPreparing) {
       stop();
-      if (!text.trim()) return;
+      const cleaned = text.trim();
+      if (!cleaned) return;
       const current = epoch;
-      controller = new AbortController();
       notify = onState;
       preparing = onPreparing;
       onPreparing?.(true);
@@ -81,32 +75,39 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
 
       timer = setTimeout(() => fail('timeout'), 45_000);
       void (async () => {
-        const result = await stealthApi.speech(text, controller.signal);
+        const token = await tokenStorage.get();
         if (current !== epoch) return;
-        let source: string = `data:audio/wav;base64,${result.audio_base64}`;
-        try {
-          const { File: ExpoFile, Paths } = require('expo-file-system') as typeof import('expo-file-system');
-          const file = new ExpoFile(Paths.cache, `stealth-reply-${current}-${Date.now()}.wav`);
-          file.create({ overwrite: true });
-          file.write(result.audio_base64, { encoding: 'base64' });
-          tempFile = file;
-          source = file.uri;
-        } catch {
-          // Fallback to data URI when expo-file-system is unavailable in the native runtime.
-        }
-        const { createAudioPlayer, setAudioModeAsync } = require('expo-audio') as typeof import('expo-audio');
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+        const baseURL = (api.defaults.baseURL ?? '').replace(/\/$/, '');
+        const uri = `${baseURL}/stealth-cloud/speech-audio?text=${encodeURIComponent(cleaned)}`;
+        const source = token ? { uri, headers: { Authorization: `Bearer ${token}` } } : uri;
+        const {
+          createAudioPlayer,
+          setAudioModeAsync,
+          setIsAudioActiveAsync,
+        } = require('expo-audio') as typeof import('expo-audio');
+        await setIsAudioActiveAsync?.(true);
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: false,
+          interruptionMode: 'doNotMix',
+        });
         if (current !== epoch) return;
         const nextPlayer = createAudioPlayer(source);
         player = nextPlayer;
-        onPreparing?.(false);
+        let started = false;
         subscription = nextPlayer.addListener('playbackStatusUpdate', (status) => {
-          if (status.didJustFinish && current === epoch) {
+          if (current !== epoch) return;
+          if (status.isLoaded && !started) {
+            started = true;
+            onPreparing?.(false);
+            clearTimeout(timer);
+            timer = setTimeout(() => fail('timeout'), 90_000);
+            if (!status.playing) nextPlayer.play();
+          }
+          if (status.didJustFinish) {
             stop();
           }
         });
-        clearTimeout(timer);
-        timer = setTimeout(() => fail('timeout'), 90_000);
         nextPlayer.play();
       })().catch(fail);
     },
