@@ -203,7 +203,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               keyboardDismissMode="interactive"
               renderItem={({ item, index }) => {
                 if (item.event_kind === 'formed') {
-                  return <Text style={styles.formedDivider}>--------偷揪成立----------</Text>;
+                  return <Text style={styles.formedDivider}>偷揪成立</Text>;
                 }
                 if (item.event_kind === 'terms' && item.event_terms) {
                   return (
@@ -340,12 +340,10 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
 const styles = StyleSheet.create({
   note: { padding: spacing.md, color: colors.muted, lineHeight: 21, fontSize: 13 },
   formedDivider: {
-    paddingVertical: spacing.md,
     textAlign: 'center',
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontSize: 12,
+    paddingVertical: 8,
   },
   consentButton: {
     alignSelf: 'center',
