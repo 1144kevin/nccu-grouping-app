@@ -82,15 +82,21 @@ export function createReplyVoice(_natural = false): ReplyVoice | null {
       void (async () => {
         const result = await stealthApi.speech(text, controller.signal);
         if (current !== epoch) return;
-        const { File: ExpoFile, Paths } = require('expo-file-system') as typeof import('expo-file-system');
+        let source: string = `data:audio/wav;base64,${result.audio_base64}`;
+        try {
+          const { File: ExpoFile, Paths } = require('expo-file-system') as typeof import('expo-file-system');
+          const file = new ExpoFile(Paths.cache, `stealth-reply-${current}-${Date.now()}.wav`);
+          file.create({ overwrite: true });
+          file.write(result.audio_base64, { encoding: 'base64' });
+          tempFile = file;
+          source = file.uri;
+        } catch {
+          // Fallback to data URI when expo-file-system is unavailable in the native runtime.
+        }
         const { createAudioPlayer, setAudioModeAsync } = require('expo-audio') as typeof import('expo-audio');
-        const file = new ExpoFile(Paths.cache, `stealth-reply-${current}-${Date.now()}.wav`);
-        file.create({ overwrite: true });
-        file.write(result.audio_base64, { encoding: 'base64' });
-        tempFile = file;
         await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
         if (current !== epoch) return;
-        const nextPlayer = createAudioPlayer(file.uri);
+        const nextPlayer = createAudioPlayer(source);
         player = nextPlayer;
         onPreparing?.(false);
         subscription = nextPlayer.addListener('playbackStatusUpdate', (status) => {

@@ -75,7 +75,7 @@ export function QuickStealthComposer({
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [, setVoicePlaying] = useState(false);
   const [voicePreparing, setVoicePreparing] = useState(false);
-  const [, setVoiceError] = useState('');
+  const [voiceError, setVoiceError] = useState('');
   const [turns, setTurns] = useState<string[]>([]);
   const [fields, setFields] = useState<(ConversationField | null)[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -606,6 +606,11 @@ export function QuickStealthComposer({
           <Text style={styles.name}>確認語音文字</Text>
           <Text style={styles.hint}>可修改後再送出。</Text>
         </View>
+      ) : null}
+      {voiceError ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {voiceError}
+        </Text>
       ) : null}
       {requestPanel ? (
         <View style={styles.requestPanel}>
