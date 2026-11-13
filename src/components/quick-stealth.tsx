@@ -179,9 +179,14 @@ function QuickSession({ actor }: { actor?: string }) {
         Date.parse(m.expires_at) > now,
     );
   const allMatches = matches.data?.items ?? [];
-  const formedMatch = allMatches.find(
-    (m) => m.status === 'formed' && !dismissedFormedIds.includes(m.id),
-  );
+  const formedMatch = allMatches.find((m) => {
+    if (m.status !== 'formed' || dismissedFormedIds.includes(m.id)) return false;
+    const matchTime = Date.parse(m.formed_at ?? m.created_at);
+    if (activeSignal) {
+      return Number.isFinite(matchTime) && matchTime >= Date.parse(activeSignal.created_at);
+    }
+    return Number.isFinite(matchTime) && matchTime > now - 24 * 60 * 60 * 1000;
+  });
   const readyMatch = allMatches.find(
     (m) => m.status === 'ready' && m.my_decision !== 'declined' && Date.parse(m.expires_at) > now,
   );
