@@ -29,6 +29,10 @@ type Props = {
   focused: boolean;
   hasActiveSignal?: boolean;
   activeSignal?: StealthSignal;
+  progressStage?: 0 | 1 | 2 | 3 | 4;
+  cancelling?: boolean;
+  onCancelActiveSignal?: () => Promise<void>;
+  onRestartStealth?: () => Promise<void>;
   chatStreamExtra?: ReactNode;
   onSaved: (result: StealthQuickResult) => Promise<void>;
   onBusyChange: (busy: boolean) => void;
@@ -37,6 +41,7 @@ type Props = {
 type Phase = 'idle' | 'starting' | 'listening' | 'finishing' | 'interview' | 'saving';
 type Message = { role: 'user' | 'assistant'; text: string };
 const greeting = '今天有什麼想跟我分享的嗎？';
+const PROGRESS_STEPS = ['建立需求單', '找到偷揪夥伴', '聊聊中', '偷揪成立'] as const;
 const starters = [
   { icon: 'cup-outline' as const, label: '想喝飲料', answer: '我想找人一起喝飲料' },
   { icon: 'ticket-percent-outline' as const, label: '手上有優惠', answer: '我有優惠券想分享' },
@@ -50,11 +55,17 @@ export function QuickStealthComposer({
   focused,
   hasActiveSignal = false,
   activeSignal,
+  progressStage,
+  cancelling = false,
+  onCancelActiveSignal,
+  onRestartStealth,
   chatStreamExtra,
   onSaved,
   onBusyChange,
   onStarted,
 }: Props) {
+  const effectiveStage = progressStage ?? (hasActiveSignal ? 1 : 0);
+  const chatLocked = effectiveStage >= 1 && effectiveStage < 4;
   const draft = useStealthPreferencesStore((s) => (actor ? s.drafts?.[actor] : undefined));
   const saveDraft = useStealthPreferencesStore((s) => s.saveDraft);
   const clearDraft = useStealthPreferencesStore((s) => s.clearDraft);
@@ -195,7 +206,7 @@ export function QuickStealthComposer({
   };
 
   async function analyze(answer: string, display = answer, id = ++epoch.current) {
-    if (!actor || disabled || !alive(id) || !validAnswer(answer)) return;
+    if (!actor || disabled || chatLocked || !alive(id) || !validAnswer(answer)) return;
     onStarted?.();
     replyVoice.current?.stop();
     locked.current = true;
@@ -308,7 +319,7 @@ export function QuickStealthComposer({
   }
   function submitInput(rawText: string, displayLabel = rawText) {
     const cleaned = rawText.trim();
-    if (!cleaned || locked.current) return;
+    if (!cleaned || locked.current || chatLocked) return;
     if (reviewing && pendingSignal && !saved) {
       if (/^(同意|好|可以|確認|同意開始配對|開始配對|ok|yes)$/i.test(cleaned)) {
         setText('');
@@ -333,7 +344,7 @@ export function QuickStealthComposer({
     void analyze(rawText, displayLabel);
   }
   async function speak() {
-    if (disabled || locked.current || !actor || turns.length >= 16) return;
+    if (disabled || chatLocked || locked.current || !actor || turns.length >= 16) return;
     onStarted?.();
     replyVoice.current?.stop();
     const id = ++epoch.current;
@@ -536,7 +547,7 @@ export function QuickStealthComposer({
           </Text>
         ) : null}
       </ScrollView>
-      {!turns.length && !busy && !voiceReview ? (
+      {!turns.length && !busy && !voiceReview && !requestPanel && !chatLocked ? (
         <View style={styles.choices}>
           {starters.map((item) => (
             <Pressable
@@ -599,67 +610,113 @@ export function QuickStealthComposer({
       {requestPanel ? (
         <View style={styles.requestPanel}>
           <View style={styles.requestPanelHeader}>
-            <Text style={styles.name}>目前的需求單</Text>
+            <Text style={styles.name}>目前的需求單進度</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="關閉需求單"
+              accessibilityLabel="關閉需求單進度"
               hitSlop={10}
               onPress={() => setRequestPanel(false)}
             >
               <MaterialCommunityIcons name="close" size={20} color={colors.muted} />
             </Pressable>
           </View>
-          {activeSignal ? (
+          <View style={styles.progressTrack} accessibilityRole="progressbar">
+            {PROGRESS_STEPS.map((label, index) => {
+              const step = index + 1;
+              const done = effectiveStage > step || (effectiveStage === 4 && step === 4);
+              const current = effectiveStage === step && effectiveStage < 4;
+              const active = done || current;
+              const lineBeforeActive = effectiveStage >= step;
+              const lineAfterActive = effectiveStage > step;
+              return (
+                <View key={label} style={styles.progressStep}>
+                  <View style={styles.progressTopRow}>
+                    <View
+                      style={[
+                        styles.progressLine,
+                        index === 0 && styles.progressLineHidden,
+                        lineBeforeActive && styles.progressLineActive,
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.progressNode,
+                        done && styles.progressNodeDone,
+                        current && styles.progressNodeCurrent,
+                      ]}
+                    >
+                      {done ? (
+                        <MaterialCommunityIcons name="check" size={13} color={colors.ink} />
+                      ) : (
+                        <Text style={[styles.progressStepNum, active && styles.progressStepNumActive]}>
+                          {step}
+                        </Text>
+                      )}
+                    </View>
+                    <View
+                      style={[
+                        styles.progressLine,
+                        index === PROGRESS_STEPS.length - 1 && styles.progressLineHidden,
+                        lineAfterActive && styles.progressLineActive,
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[styles.progressLabel, active && styles.progressLabelActive]}
+                    numberOfLines={2}
+                  >
+                    {label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+          {effectiveStage === 0 ? (
+            <Text style={styles.hint}>
+              目前沒有進行中的需求單，跟分身聊聊想做什麼，建立後會顯示進度。
+            </Text>
+          ) : effectiveStage === 4 ? (
             <>
-              <StealthRequestSummary
-                compact
-                signal={activeSignal}
-                createdAt={activeSignal.created_at}
-              />
-              <Text style={styles.hint}>
-                這張單正在等待配對中。若要重開新單，請先在聊天室中點卡片右上角「✕」取消。
-              </Text>
-            </>
-          ) : draft ? (
-            <>
-              <StealthRequestSummary compact signal={draft.signal} facts={draft.facts} />
-              <Text style={styles.hint}>尚未送出，這是上一段對話整理出的需求單。</Text>
-              <View style={styles.choices}>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={disabled || busy}
-                  onPress={() => {
-                    setRequestPanel(false);
-                    setSaved(false);
-                    setReviewing(true);
-                  }}
-                  style={[styles.choice, styles.choicePrimary, (disabled || busy) && styles.disabled]}
-                >
-                  <Text style={styles.choiceText}>用這張單開始配對</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  onPress={() => {
-                    if (actor) clearDraft(actor);
-                    if (!preview?.signal) setReviewing(false);
-                    setRequestPanel(false);
-                  }}
-                  style={styles.choice}
-                >
-                  <Text style={styles.choiceText}>刪除這張需求單</Text>
-                </Pressable>
-              </View>
+              <Text style={styles.hint}>這筆偷揪已成立！想再找下一次可以點擊下方按鈕重新開始。</Text>
+              <PrimaryButton
+                loading={cancelling}
+                onPress={async () => {
+                  await onRestartStealth?.();
+                  restart();
+                  setRequestPanel(false);
+                }}
+              >
+                再偷揪一單
+              </PrimaryButton>
             </>
           ) : (
-            <Text style={styles.hint}>目前沒有需求單，跟分身聊聊想做什麼，整理好後會出現在這裡。</Text>
+            <>
+              <Text style={styles.hint}>
+                {effectiveStage === 3
+                  ? '雙方已進入聊聊中，這筆需求單不會再與其他需求配對。偷揪成立前若要重新對話，請先取消需求單。'
+                  : effectiveStage === 2
+                    ? '已找到偷揪夥伴，等待雙方同意聊聊。偷揪成立前若要重新跟分身對話，請先取消需求單。'
+                    : '正在尋找合適的偷揪夥伴中。偷揪成立前若要重新跟分身對話，請先取消這筆需求單。'}
+              </Text>
+              {activeSignal && onCancelActiveSignal ? (
+                <PrimaryButton
+                  secondary
+                  loading={cancelling}
+                  onPress={() => {
+                    void onCancelActiveSignal();
+                  }}
+                >
+                  取消需求單
+                </PrimaryButton>
+              ) : null}
+            </>
           )}
         </View>
       ) : null}
       <View style={styles.composer}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="查看目前需求單"
+          accessibilityLabel="查看目前需求單進度"
           accessibilityState={{ expanded: requestPanel }}
           onPress={() => setRequestPanel((open) => !open)}
           style={styles.voice}
@@ -669,12 +726,12 @@ export function QuickStealthComposer({
             size={22}
             color={requestPanel ? colors.ink : colors.muted}
           />
-          {activeSignal || draft ? <View style={styles.requestDot} /> : null}
+          {effectiveStage > 0 ? <View style={styles.requestDot} /> : null}
         </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="用語音回答"
-          disabled={disabled || busy}
+          disabled={disabled || busy || chatLocked}
           onPress={() => {
             void speak();
           }}
@@ -683,16 +740,18 @@ export function QuickStealthComposer({
           <MaterialCommunityIcons
             name="microphone-outline"
             size={23}
-            color={busy || disabled ? colors.subtle : colors.ink}
+            color={busy || disabled || chatLocked ? colors.subtle : colors.ink}
           />
         </Pressable>
         <ChatTextInput
           emptyCentered
           accessibilityLabel="跟偷揪分身聊天"
           placeholder={
-            reviewing && pendingSignal && !saved
-              ? '請輸入「同意」或「不同意」'
-              : '說說你的想法'
+            chatLocked
+              ? '目前有進行中的需求單，欲重新對話請先取消需求單'
+              : reviewing && pendingSignal && !saved
+                ? '請輸入「同意」或「不同意」'
+                : '說說你的想法'
           }
           value={text}
           onChangeText={(value) => {
@@ -701,18 +760,18 @@ export function QuickStealthComposer({
           }}
           multiline
           maxLength={1000}
-          editable={!busy && !disabled}
+          editable={!busy && !disabled && !chatLocked}
           style={styles.input}
         />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={voiceReview ? '送出語音文字' : '傳送給分身'}
           accessibilityState={{ busy: phase === 'interview' }}
-          disabled={disabled || busy || !inputValid}
+          disabled={disabled || busy || chatLocked || !inputValid}
           onPress={() => {
             submitInput(text);
           }}
-          style={[styles.send, (disabled || busy || !inputValid) && styles.disabled]}
+          style={[styles.send, (disabled || busy || chatLocked || !inputValid) && styles.disabled]}
         >
           {phase === 'interview' ? (
             <ActivityIndicator
@@ -860,6 +919,69 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  progressTrack: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 4,
+  },
+  progressStep: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressTopRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: colors.border,
+  },
+  progressLineHidden: {
+    backgroundColor: 'transparent',
+  },
+  progressLineActive: {
+    backgroundColor: colors.yellow,
+  },
+  progressNode: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressNodeDone: {
+    borderColor: colors.yellow,
+    backgroundColor: colors.yellow,
+  },
+  progressNodeCurrent: {
+    borderColor: colors.yellow,
+    backgroundColor: colors.yellowSoft,
+  },
+  progressStepNum: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.muted,
+  },
+  progressStepNumActive: {
+    color: colors.ink,
+  },
+  progressLabel: {
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: 'center',
+    color: colors.muted,
+    paddingHorizontal: 2,
+  },
+  progressLabelActive: {
+    color: colors.ink,
+    fontWeight: '700',
   },
   choicePrimary: { ...yellowSurface, backgroundColor: colors.yellowSoft },
   input: {

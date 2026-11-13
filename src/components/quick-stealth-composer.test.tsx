@@ -305,3 +305,37 @@ it('does not read an in-flight reply after voice has been switched off', async (
   await act(async () => resolve(draft));
   expect(voice.speak).toHaveBeenCalledTimes(1);
 });
+
+it('shows 4-step request progress bar, hides starters when open, locks chat until formed, and restarts on 再偷揪一單', async () => {
+  const onRestartStealth = jest.fn(async () => {});
+  const screen = await render(
+    <QuickStealthComposer {...props} progressStage={0} onRestartStealth={onRestartStealth} />,
+  );
+  expect(screen.getByRole('button', { name: '想喝飲料' })).toBeTruthy();
+
+  await fireEvent.press(screen.getByRole('button', { name: '查看目前需求單進度' }));
+  expect(screen.getByText('目前的需求單進度')).toBeTruthy();
+  expect(screen.getByText('建立需求單')).toBeTruthy();
+  expect(screen.getByText('找到偷揪夥伴')).toBeTruthy();
+  expect(screen.getByText('聊聊中')).toBeTruthy();
+  expect(screen.getByText('偷揪成立')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: '想喝飲料' })).toBeNull();
+
+  await screen.rerender(
+    <QuickStealthComposer
+      {...props}
+      hasActiveSignal
+      progressStage={2}
+      onRestartStealth={onRestartStealth}
+    />,
+  );
+  expect(screen.getByLabelText('跟偷揪分身聊天').props.editable).toBe(false);
+
+  await screen.rerender(
+    <QuickStealthComposer {...props} progressStage={4} onRestartStealth={onRestartStealth} />,
+  );
+  expect(screen.getByLabelText('跟偷揪分身聊天').props.editable).toBe(true);
+  await fireEvent.press(screen.getByRole('button', { name: '再偷揪一單' }));
+  await waitFor(() => expect(onRestartStealth).toHaveBeenCalledTimes(1));
+  expect(screen.queryByText('目前的需求單進度')).toBeNull();
+});

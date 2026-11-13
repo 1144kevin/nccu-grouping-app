@@ -131,6 +131,7 @@ function QuickSession({ actor }: { actor?: string }) {
   const [analysis, setAnalysis] = useState<StealthSemanticResult>();
   const [notice, setNotice] = useState('');
   const [localMatches, setLocalMatches] = useState<Record<string, StealthMatch>>({});
+  const [dismissedFormedIds, setDismissedFormedIds] = useState<string[]>([]);
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
   };
@@ -177,6 +178,23 @@ function QuickSession({ actor }: { actor?: string }) {
         !m.coordination_opened &&
         Date.parse(m.expires_at) > now,
     );
+  const allMatches = matches.data?.items ?? [];
+  const formedMatch = allMatches.find(
+    (m) => m.status === 'formed' && !dismissedFormedIds.includes(m.id),
+  );
+  const readyMatch = allMatches.find(
+    (m) => m.status === 'ready' && m.my_decision !== 'declined' && Date.parse(m.expires_at) > now,
+  );
+  const pendingMatch = visible.find((m) => m.status === 'pending');
+  const progressStage: 0 | 1 | 2 | 3 | 4 = readyMatch
+    ? 3
+    : pendingMatch
+      ? 2
+      : formedMatch
+        ? 4
+        : activeSignal
+          ? 1
+          : 0;
   const chatStreamExtra = (
     <View style={{ gap: 12 }}>
       {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
@@ -254,7 +272,7 @@ function QuickSession({ actor }: { actor?: string }) {
           </View>
         );
       })}
-      {activeSignal ? (
+      {activeSignal && progressStage < 3 ? (
         <View style={{ alignSelf: 'flex-start' }}>
           <PrimaryButton
             secondary
@@ -305,6 +323,24 @@ function QuickSession({ actor }: { actor?: string }) {
             enabled={!!agent.data?.enabled}
             hasActiveSignal={active.length >= 1}
             activeSignal={activeSignal}
+            progressStage={progressStage}
+            cancelling={revoke.isPending}
+            onCancelActiveSignal={async () => {
+              if (!activeSignal) return;
+              await revoke.mutateAsync(activeSignal.id);
+            }}
+            onRestartStealth={async () => {
+              if (activeSignal) await revoke.mutateAsync(activeSignal.id);
+              if (formedMatch) {
+                setDismissedFormedIds((old) =>
+                  old.includes(formedMatch.id) ? old : [...old, formedMatch.id],
+                );
+              }
+              setAnalysis(undefined);
+              setNotice('');
+              setLocalMatches({});
+              await refresh();
+            }}
             chatStreamExtra={chatStreamExtra}
             focused={focused}
             disabled={
