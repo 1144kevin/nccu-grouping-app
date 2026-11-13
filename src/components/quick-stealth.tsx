@@ -18,6 +18,7 @@ import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
 import { stealthApi, type StealthMatch, type StealthSemanticResult } from '@/lib/stealth-api';
 import { QuickStealthComposer } from '@/components/quick-stealth-composer';
+import { StealthTentativeDraftCard } from '@/components/stealth-tentative-draft-card';
 import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
@@ -395,6 +396,9 @@ export function QuickMatch({
           {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}
         </Text>
       </View>
+      {match.agent_draft && !match.terms && match.status !== 'formed' && match.status !== 'unavailable' ? (
+        <StealthTentativeDraftCard match={match} draft={match.agent_draft} />
+      ) : null}
       {match.status === 'formed' ? (
         <PrimaryButton
           onPress={() => router.push({ pathname: '/stealth-chat/[id]', params: { id: match.id } })}
@@ -414,13 +418,16 @@ export function QuickMatch({
           你已表示有興趣，等待夥伴回覆
         </Text>
       ) : (
-        <PrimaryButton
-          loading={decide.isPending && decide.variables === 'accepted'}
-          disabled={decide.isPending}
-          onPress={() => decide.mutate('accepted')}
-        >
-          有興趣，先聊聊
-        </PrimaryButton>
+        <>
+          <PrimaryButton
+            loading={decide.isPending && decide.variables === 'accepted'}
+            disabled={decide.isPending}
+            onPress={() => decide.mutate('accepted')}
+          >
+            有興趣，先聊聊
+          </PrimaryButton>
+          <Text style={styles.hint}>同意聊聊僅先進入聊天室確認，不會直接同意費用或成立拼單。</Text>
+        </>
       )}
       {match.status !== 'formed' && match.status !== 'unavailable' && !match.is_demo ? (
         <PrimaryButton

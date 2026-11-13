@@ -56,14 +56,16 @@ export type StealthTerms = {
   cost_change_note?: string;
 };
 export type StealthAgentTermsDraft = {
-  provider: 'offline_rules_v1';
-  is_llm: false;
+  provider: 'offline_rules_v1' | 'openai_summary_v1';
+  is_llm: boolean;
   content: string;
   cost_per_person_twd: number | null;
   total_cost_twd: number | null;
   cost_basis: 'known_cost' | 'unknown';
   budget_limit_twd: number | null;
+  starts_at?: string | null;
   deadline_at: string;
+  location_label?: string;
   order_member: number | null;
   pickup_member: number | null;
   role_suggestions: {
@@ -73,8 +75,15 @@ export type StealthAgentTermsDraft = {
     reason: string;
   }[];
   missing_fields: ('cost' | 'order' | 'pickup')[];
+  confirmed_facts?: string[];
+  recommendation_reasons?: string[];
   needs_confirmation: string[];
   ready_to_submit: boolean;
+};
+export type StealthAgentDraftAiResponse = {
+  draft: StealthAgentTermsDraft;
+  fallback: boolean;
+  notice: string;
 };
 export type StealthMatch = {
   id: string;
@@ -383,6 +392,14 @@ export const stealthApi = {
         expected_revision,
         agree: true,
       })
+    ).data,
+  draftAi: async (id: string) =>
+    (
+      await api.post<StealthAgentDraftAiResponse>(
+        `${root}/matches/${encodeURIComponent(id)}/draft-ai`,
+        {},
+        { timeout: 15_000 },
+      )
     ).data,
   draft: async (text: string) =>
     (await api.post<StealthDraft>(`${root}/draft`, { text }, { timeout: 330_000 })).data,

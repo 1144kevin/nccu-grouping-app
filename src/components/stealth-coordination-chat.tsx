@@ -15,12 +15,13 @@ import { displayTimestamp } from '@/lib/display-time';
 import { router } from 'expo-router';
 import { StealthFormation } from '@/components/core-stealth-formation';
 import { StealthReplySuggestions } from '@/components/stealth-reply-suggestions';
+import { StealthTentativeDraftCard } from '@/components/stealth-tentative-draft-card';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useCoreClock } from '@/lib/core-clock';
 import { useChatOutbox } from '@/lib/chat-outbox';
-import type { StealthRoomMessage } from '@/lib/stealth-api';
+import type { StealthAgentTermsDraft, StealthRoomMessage } from '@/lib/stealth-api';
 import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
 import { updateInboxAfterRead } from '@/lib/inbox-read';
@@ -144,6 +145,44 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     mutationFn: (revision: number) => stealthApi.consent(id, revision),
     onSettled: async () => { await refresh(); await query.refetch(); },
   });
+  const [aiDraft, setAiDraft] = useState<StealthAgentTermsDraft | null>(null);
+  const [aiNotice, setAiNotice] = useState('');
+  const activeDraft = aiDraft ?? match?.agent_draft ?? null;
+  const polishAi = useMutation({
+    mutationFn: () => stealthApi.draftAi(id),
+    onSuccess: (res) => {
+      setAiDraft(res.draft);
+      setAiNotice(res.notice || '');
+    },
+    onError: (err) => {
+      setAiNotice(`${coreError(err)} 仍可直接查看暫定方案或手動修改。`);
+    },
+  });
+  const proposeDraft = useMutation({
+    mutationFn: async () => {
+      if (
+        !match ||
+        !activeDraft ||
+        !activeDraft.ready_to_submit ||
+        activeDraft.cost_per_person_twd == null ||
+        activeDraft.order_member == null ||
+        activeDraft.pickup_member == null
+      ) {
+        throw new Error('draft_incomplete');
+      }
+      return stealthApi.terms(match.id, match.terms_revision, {
+        content: activeDraft.content,
+        cost_per_person_twd: activeDraft.cost_per_person_twd,
+        deadline_at: activeDraft.deadline_at,
+        order_member: activeDraft.order_member,
+        pickup_member: activeDraft.pickup_member,
+      });
+    },
+    onSettled: async () => {
+      await refresh();
+      await query.refetch();
+    },
+  });
   const formedIndex = outbox.items.findIndex((item) => item.event_kind === 'formed');
   return (
     <Screen pinKeyboardHeader>
@@ -184,7 +223,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         {formal && match ? (
           <KeyboardScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
             <StealthFormation
-              match={match}
+              match={aiDraft ? { ...match, agent_draft: aiDraft } : match}
               refresh={refresh}
               now={clock.data ? clock.now : undefined}
               onSubmitted={() => { setFormal(false); void query.refetch(); }}
@@ -201,6 +240,30 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               contentContainerStyle={styles.messages}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="interactive"
+              ListHeaderComponent={
+                match &&
+                query.data?.opened &&
+                match.status !== 'formed' &&
+                match.status !== 'unavailable' &&
+                match.terms_revision === 0 &&
+                !match.terms &&
+                activeDraft ? (
+                  <View style={{ marginBottom: spacing.sm }}>
+                    <StealthTentativeDraftCard
+                      match={match}
+                      draft={activeDraft}
+                      aiNotice={aiNotice}
+                      aiPending={polishAi.isPending}
+                      proposePending={proposeDraft.isPending}
+                      proposeError={proposeDraft.error ? coreError(proposeDraft.error) : ''}
+                      canEdit={!!query.data?.can_send}
+                      onPropose={() => proposeDraft.mutate()}
+                      onEdit={() => setFormal(true)}
+                      onPolishAi={() => polishAi.mutate()}
+                    />
+                  </View>
+                ) : null
+              }
               renderItem={({ item, index }) => {
                 if (item.event_kind === 'formed') {
                   return <Text style={styles.formedDivider}>偷揪成立</Text>;

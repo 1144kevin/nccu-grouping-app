@@ -12,14 +12,22 @@ export function StealthFormation({ match, refresh, now, onSubmitted }: {
   match: StealthMatch; refresh: () => Promise<void>; now?: () => number; onSubmitted?: () => void;
 }) {
   const [revision, setRevision] = useState(match.terms_revision);
-  const [content, setContent] = useState(match.terms?.content ?? '');
-  const [cost, setCost] = useState(String(match.terms?.cost_per_person_twd ?? ''));
-  const [deadline, setDeadline] = useState(match.terms?.deadline_at ?? match.ends_at);
+  const [content, setContent] = useState(match.terms?.content ?? match.agent_draft?.content ?? '');
+  const [cost, setCost] = useState(
+    String(match.terms?.cost_per_person_twd ?? match.agent_draft?.cost_per_person_twd ?? ''),
+  );
+  const [deadline, setDeadline] = useState(
+    match.terms?.deadline_at ?? match.agent_draft?.deadline_at ?? match.ends_at,
+  );
   const [draftDeadline, setDraftDeadline] = useState(new Date(deadline));
   const [deadlineVisible, setDeadlineVisible] = useState(false);
   const [deadlineError, setDeadlineError] = useState('');
-  const [order, setOrder] = useState(match.terms?.order_member ?? 0);
-  const [pickup, setPickup] = useState(match.terms?.pickup_member ?? 0);
+  const [order, setOrder] = useState(
+    match.terms?.order_member ?? match.agent_draft?.order_member ?? 0,
+  );
+  const [pickup, setPickup] = useState(
+    match.terms?.pickup_member ?? match.agent_draft?.pickup_member ?? 0,
+  );
   const stale = revision !== match.terms_revision;
   const save = useMutation({
     mutationFn: () => stealthApi.terms(match.id, revision, {
