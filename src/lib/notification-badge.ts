@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
@@ -12,6 +14,23 @@ export type NotificationBadge = {
   penalties: number;
 };
 
+function syncWebAppBadge(count: number) {
+  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return;
+  const nav = navigator as Navigator & {
+    setAppBadge?: (contents?: number) => Promise<void>;
+    clearAppBadge?: () => Promise<void>;
+  };
+  if (count > 0) {
+    void nav.setAppBadge?.(count).catch(() => undefined);
+    return;
+  }
+  if (nav.clearAppBadge) {
+    void nav.clearAppBadge().catch(() => undefined);
+    return;
+  }
+  void nav.setAppBadge?.(0).catch(() => undefined);
+}
+
 export function useNotificationBadge() {
   const actor = useAuthStore((state) => state.user?.id);
   const demoCount = useAppStore(selectUnreadNotificationCount);
@@ -24,7 +43,15 @@ export function useNotificationBadge() {
     retry: 2,
     refetchOnWindowFocus: 'always',
   });
-  return { ...query, count: cloud ? (query.data?.total ?? 0) : demoCount };
+  // Exclude chat messages from Notification Center badge; messages have their own tab badge.
+  const count = cloud
+    ? (query.data?.orders ?? 0) + (query.data?.penalties ?? 0)
+    : demoCount;
+  useEffect(() => {
+    if (!cloud || !query.data) return;
+    syncWebAppBadge(count);
+  }, [cloud, count, query.data]);
+  return { ...query, count };
 }
 
 export function useStealthBadge() {

@@ -3,6 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type Href, router } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { DetailHeader, EmptyState, IconButton, Screen } from '@/components/primitives';
+import { NotificationReadBadge } from '@/components/notification-read-badge';
 import { useAppStore } from '@/store/app-store';
 import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
 import { CORE_API_ENABLED, CORE_SUPABASE_MODE } from '@/lib/core-api';
@@ -61,11 +62,11 @@ function DemoNotificationsScreen() {
             <View style={styles.text}>
               <View style={styles.titleRow}>
                 <Text style={[styles.title, !item.read && styles.unreadTitle]}>{item.title}</Text>
-                <Text style={styles.time}>{item.time}</Text>
+                <NotificationReadBadge unread={!item.read} />
               </View>
+              <Text style={styles.time}>{item.time}</Text>
               <Text style={styles.body}>{item.body}</Text>
             </View>
-            {!item.read ? <View style={styles.dot} /> : null}
           </Pressable>
         )}
       />
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.yellowSoft,
   },
   text: { flex: 1 },
-  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   title: {
     flex: 1,
     color: colors.ink,
@@ -108,8 +109,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   unreadTitle: { fontWeight: '800' },
-  time: { color: colors.subtle, fontSize: 12 },
+  time: { marginTop: 2, color: colors.subtle, fontSize: 12 },
   body: { marginTop: 5, color: colors.muted, fontSize: 15, lineHeight: 23 },
-  dot: { width: 7, height: 7, borderRadius: 4, ...yellowSurface, backgroundColor: colors.yellow },
   pressed: { opacity: 0.65 },
 });

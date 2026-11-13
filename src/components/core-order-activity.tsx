@@ -16,7 +16,7 @@ import { colors, radius, spacing } from '@/theme/tokens';
 import { usePenaltyNotices } from '@/lib/penalty-notices';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth-store';
-import { useNotificationBadge } from '@/lib/notification-badge';
+import { NotificationReadBadge } from '@/components/notification-read-badge';
 
 export function CoreOrderActivityScreen() {
   useEffect(() => {
@@ -42,7 +42,6 @@ export function CoreOrderActivityScreen() {
 function CoreRequestActivity() {
   const query = useCoreOrderActivity(true);
   const notices = usePenaltyNotices();
-  const notificationBadge = useNotificationBadge();
   const actor = useAuthStore((state) => state.user?.id);
   const events = useQuery({
     queryKey: ['core', actor, 'order-events'],
@@ -56,6 +55,7 @@ function CoreRequestActivity() {
             post_content: string;
             points: number | null;
             created_at: string;
+            read_at?: string | null;
           }[];
         }>('/notifications/order-events')
       ).data,
@@ -113,68 +113,70 @@ function CoreRequestActivity() {
         }
         ListHeaderComponent={
           <View>
-            {events.data?.items.map((event) => (
-              <Pressable
-                key={event.id}
-                accessibilityRole="button"
-                style={styles.card}
-                onPress={() => router.push(`/order/${event.post_id}`)}
-              >
-                <Text style={styles.title}>
-                  {(
-                    {
-                      order_waiting: '團員退出，拼單重新等待成團',
-                      order_formation_pending: '主揪提出成團',
-                      order_formed: '拼單已成團',
-                      order_en_route: '主揪已出發',
-                      order_delivering: '主揪已完成購買',
-                      order_cancelled: '拼單已取消',
-                      completed: '拼單已完成',
-                      order_penalty: `信譽積分扣除 ${event.points ?? 0} 分`,
-                    } as Record<string, string>
-                  )[event.kind] ?? '拼單狀態已更新'}
-                </Text>
-                <Text style={styles.hint}>{shortDate(event.created_at)}</Text>
-                <Text numberOfLines={2} style={styles.body}>
-                  {event.post_content}
-                </Text>
-              </Pressable>
-            ))}
-            {(notificationBadge.data?.messages ?? 0) > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                style={styles.card}
-                onPress={() => router.push('/messages')}
-              >
-                <Text style={styles.title}>
-                  你有 {notificationBadge.data?.messages} 則未讀聊天訊息
-                </Text>
-                <Text style={styles.action}>前往訊息 →</Text>
-              </Pressable>
-            ) : null}
+            {events.data?.items.map((event) => {
+              const unread = !event.read_at;
+              return (
+                <Pressable
+                  key={event.id}
+                  accessibilityRole="button"
+                  style={[styles.card, unread && styles.unreadCard]}
+                  onPress={() => router.push(`/order/${event.post_id}`)}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.title, styles.flexTitle]}>
+                      {(
+                        {
+                          order_waiting: '團員退出，拼單重新等待成團',
+                          order_formation_pending: '主揪提出成團',
+                          order_formed: '拼單已成團',
+                          order_en_route: '主揪已出發',
+                          order_delivering: '主揪已完成購買',
+                          order_cancelled: '拼單已取消',
+                          completed: '拼單已完成',
+                          order_penalty: `信譽積分扣除 ${event.points ?? 0} 分`,
+                        } as Record<string, string>
+                      )[event.kind] ?? '拼單狀態已更新'}
+                    </Text>
+                    <NotificationReadBadge unread={unread} />
+                  </View>
+                  <Text style={styles.hint}>{shortDate(event.created_at)}</Text>
+                  <Text numberOfLines={2} style={styles.body}>
+                    {event.post_content}
+                  </Text>
+                </Pressable>
+              );
+            })}
             {notices.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 通知載入失敗，請下拉重試。
               </Text>
             ) : null}
-            {notices.data?.items.map((notice) => (
-              <View key={notice.id} style={styles.card}>
-                <Text style={styles.title}>信譽積分扣除 {notice.points} 分</Text>
-                <Text style={styles.hint}>{shortDate(notice.created_at)}</Text>
-                <Text style={styles.body}>
-                  {notice.response || '經管理員審核後，已調整你的信譽積分。'}
-                </Text>
-                {!notice.read_at ? (
-                  <PrimaryButton
-                    secondary
-                    disabled={markRead.isPending}
-                    onPress={() => markRead.mutate(notice.id)}
-                  >
-                    標為已讀
-                  </PrimaryButton>
-                ) : null}
-              </View>
-            ))}
+            {notices.data?.items.map((notice) => {
+              const unread = !notice.read_at;
+              return (
+                <View key={notice.id} style={[styles.card, unread && styles.unreadCard]}>
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.title, styles.flexTitle]}>
+                      信譽積分扣除 {notice.points} 分
+                    </Text>
+                    <NotificationReadBadge unread={unread} />
+                  </View>
+                  <Text style={styles.hint}>{shortDate(notice.created_at)}</Text>
+                  <Text style={styles.body}>
+                    {notice.response || '經管理員審核後，已調整你的信譽積分。'}
+                  </Text>
+                  {unread ? (
+                    <PrimaryButton
+                      secondary
+                      disabled={markRead.isPending}
+                      onPress={() => markRead.mutate(notice.id)}
+                    >
+                      標為已讀
+                    </PrimaryButton>
+                  ) : null}
+                </View>
+              );
+            })}
             {markRead.error ? (
               <Text accessibilityRole="alert" style={styles.error}>
                 無法標記已讀，請再試一次。
@@ -217,56 +219,56 @@ function CoreRequestActivity() {
             </PrimaryButton>
           ) : null
         }
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`查看動態 ${activityTitle(item)}`}
-            style={styles.card}
-            onPress={() =>
-              router.push({
-                pathname: '/order/[id]',
-                params: {
-                  id: item.post_id,
-                  ...(item.kind === 'hosted_request' &&
-                  item.status === 'pending' &&
-                  !item.post_cancelled &&
-                  !item.post_expired
-                    ? { focus: 'requests' }
-                    : {}),
-                },
-              })
-            }
-          >
-            <View style={styles.row}>
-              <Avatar
-                name={item.requester_name}
-                badge={item.requester_badge ?? '🍱'}
-                userId={item.requester_id}
-                size={42}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.title}>{activityTitle(item)}</Text>
-                <ReputationBadge level={item.requester_level} />
-                <Text style={styles.hint}>{shortDate(item.occurred_at)}</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.subtle} />
-            </View>
-            <Text numberOfLines={2} style={styles.body}>
-              {item.post_content}
-            </Text>
-            {item.kind === 'hosted_request' &&
+        renderItem={({ item }) => {
+          const pendingHosted =
+            item.kind === 'hosted_request' &&
             item.status === 'pending' &&
             !item.post_cancelled &&
-            !item.post_expired ? (
-              <Text style={styles.action}>審核申請 →</Text>
-            ) : null}
-            {item.post_cancelled || item.post_expired ? (
-              <Text style={styles.hint}>
-                {item.post_cancelled ? '這筆拼單目前已取消。' : '這筆拼單目前已截止。'}
+            !item.post_expired;
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`查看動態 ${activityTitle(item)}`}
+              style={[styles.card, pendingHosted && styles.unreadCard]}
+              onPress={() =>
+                router.push({
+                  pathname: '/order/[id]',
+                  params: {
+                    id: item.post_id,
+                    ...(pendingHosted ? { focus: 'requests' } : {}),
+                  },
+                })
+              }
+            >
+              <View style={styles.row}>
+                <Avatar
+                  name={item.requester_name}
+                  badge={item.requester_badge ?? '🍱'}
+                  userId={item.requester_id}
+                  size={42}
+                />
+                <View style={{ flex: 1 }}>
+                  <View style={styles.cardHeader}>
+                    <Text style={[styles.title, styles.flexTitle]}>{activityTitle(item)}</Text>
+                    <NotificationReadBadge unread={pendingHosted} />
+                  </View>
+                  <ReputationBadge level={item.requester_level} />
+                  <Text style={styles.hint}>{shortDate(item.occurred_at)}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.subtle} />
+              </View>
+              <Text numberOfLines={2} style={styles.body}>
+                {item.post_content}
               </Text>
-            ) : null}
-          </Pressable>
-        )}
+              {pendingHosted ? <Text style={styles.action}>審核申請 →</Text> : null}
+              {item.post_cancelled || item.post_expired ? (
+                <Text style={styles.hint}>
+                  {item.post_cancelled ? '這筆拼單目前已取消。' : '這筆拼單目前已截止。'}
+                </Text>
+              ) : null}
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -301,6 +303,17 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
   },
+  unreadCard: {
+    borderColor: '#E8CA54',
+    backgroundColor: '#FFFDF3',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  flexTitle: { flex: 1 },
   title: { color: colors.ink, fontSize: 16, fontWeight: '700', lineHeight: 24 },
   body: { color: colors.ink, fontSize: 14, lineHeight: 22 },
   hint: { color: colors.muted, fontSize: 12, lineHeight: 20 },
