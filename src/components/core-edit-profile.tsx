@@ -143,7 +143,11 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
         </View>
         <Text style={styles.hint}>顯示名稱、頭像與介紹會出現在公開個人資料；信箱不會公開。</Text>
         <Text style={styles.label}>頭像</Text>
-        <View style={styles.badges}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.badges}
+        >
           {PROFILE_AVATARS.map((item) => (
             <Pressable
               key={item.badge}
@@ -155,11 +159,11 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
               style={[styles.badge, item.badge === badge && !photo && (useIllustration || !user.avatar_id) && styles.selected]}
             >
               <View style={styles.badgeImageWrap}>
-                <Image source={item.image} contentFit="cover" style={{ width: 84, height: 84 }} />
+                <Image source={item.image} contentFit="cover" style={{ width: 63, height: 63 }} />
               </View>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
         <Text style={styles.label}>顯示名稱</Text>
         <TextInput
           accessibilityLabel="顯示名稱"
@@ -225,21 +229,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     color: colors.ink,
   },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  badges: { flexDirection: 'row', gap: spacing.sm, paddingRight: spacing.xs },
   badge: {
-    width: 92,
-    height: 92,
+    width: 69,
+    height: 69,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 46,
+    borderRadius: 34.5,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeImageWrap: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 63,
+    height: 63,
+    borderRadius: 31.5,
     overflow: 'hidden',
     backgroundColor: colors.surface,
   },
