@@ -346,7 +346,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                             disabled={decline.isPending || accept.isPending || match.status === 'unavailable'}
                             loading={decline.isPending}
                             onPress={() => decline.mutate()}
-                            style={styles.termsActionButton}
+                            style={styles.termsRejectButton}
                           >
                             拒絕
                           </PrimaryButton>
@@ -543,6 +543,14 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 42,
     borderRadius: radius.md,
+  },
+  termsRejectButton: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.subtle,
   },
   termsStatusText: {
     marginTop: 4,
