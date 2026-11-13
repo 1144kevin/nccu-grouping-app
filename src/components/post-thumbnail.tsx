@@ -14,6 +14,7 @@ export function PostThumbnail({ post, size = 56 }: { post: CorePost; size?: numb
       name={post.author_name}
       badge={post.author_badge ?? '🍱'}
       userId={post.author_id}
+      square
       size={size}
     />
   );
@@ -22,7 +23,7 @@ export function PostThumbnail({ post, size = 56 }: { post: CorePost; size?: numb
       style={{
         width: size,
         height: size,
-        borderRadius: image ? 0 : size / 2,
+        borderRadius: 0,
         overflow: 'hidden',
         backgroundColor: colors.surface,
       }}

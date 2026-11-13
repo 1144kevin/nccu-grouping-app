@@ -56,7 +56,7 @@ export function CoreProfileScreen() {
           onPress={() => router.push('/edit-profile')}
           style={styles.identity}
         >
-          <Avatar name={user.display_name} badge={user.badge ?? '🍱'} userId={user.id} size={76} />
+          <Avatar name={user.display_name} badge={user.badge ?? '🍱'} userId={user.id} size={152} />
           <View style={styles.identityText}>
             <Text style={styles.username}>{user.display_name}</Text>
             <Text style={styles.joined}>
