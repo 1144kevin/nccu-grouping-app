@@ -86,7 +86,8 @@ export function AppLoadingPage({
     };
   }, [progressAnim, ready]);
 
-  const level: PizzaLevel = progress < 0.34 ? 1 : progress < 0.68 ? 2 : 3;
+  // PizzaLevel 1..5 corresponds to UI Lv.0..Lv.4, so Lv.1..Lv.3 are levels 2, 3, 4.
+  const level: PizzaLevel = progress < 0.34 ? 2 : progress < 0.68 ? 3 : 4;
   const rotate = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
