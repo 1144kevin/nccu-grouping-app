@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
