@@ -248,7 +248,7 @@ function AvatarBody({ name, badge, size = 48, uri: source, onPress, square = fal
           width: size,
           height: size,
           borderRadius: square ? 0 : size / 2,
-          backgroundColor: !source && preset ? colors.surface : palette[index],
+          backgroundColor: !source && preset ? '#F2F2F0' : palette[index],
           overflow: 'hidden',
         },
       ]}
