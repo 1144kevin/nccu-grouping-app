@@ -57,7 +57,7 @@ it('opens the profile after saving a directly opened edit page', async () => {
   expect(router.back).not.toHaveBeenCalled();
 });
 
-it('offers four preset avatars and saves a selected preset in place of a profile photo', async () => {
+it('offers sixteen preset avatars and saves a selected preset in place of a profile photo', async () => {
   useAuthStore.setState({ user: { ...user, avatar_id: 'old-avatar', badge: '🍱' } });
   const screen = await render(
     <QueryClientProvider client={client}>
@@ -65,11 +65,11 @@ it('offers four preset avatars and saves a selected preset in place of a profile
     </QueryClientProvider>,
   );
   expect(screen.getByText('頭像')).toBeTruthy();
-  expect(screen.getAllByRole('radio')).toHaveLength(4);
-  await fireEvent.press(screen.getByLabelText('頭像 外送湊單'));
+  expect(screen.getAllByRole('radio')).toHaveLength(16);
+  await fireEvent.press(screen.getByLabelText('頭像 手搖杯'));
   await fireEvent.press(screen.getByRole('button', { name: '儲存變更' }));
   await waitFor(() => expect(coreApi.updateProfile).toHaveBeenCalledWith(
-    expect.objectContaining({ badge: '🧋', avatar_id: null }),
+    expect.objectContaining({ badge: 'eagle-01', avatar_id: null }),
   ));
 });
 

@@ -14,8 +14,7 @@ import type { PickedPostImage } from '@/lib/pick-post-images';
 import { profileSocial } from '@/lib/profile-social';
 import { newRequestKey } from '@/lib/core-api';
 import { queryClient } from '@/lib/query-client';
-import { PROFILE_AVATARS } from '@/lib/profile-avatars';
-import { Image } from 'expo-image';
+import { ProfileAvatarPicker } from '@/components/profile-avatar-picker';
 
 export function CoreEditProfileScreen({ onboarding }: { onboarding?: boolean } = {}) {
   const user = useAuthStore((state) => state.user);
@@ -134,27 +133,11 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
         </View>
         <Text style={styles.hint}>顯示名稱、頭像與介紹會出現在公開個人資料；信箱不會公開。</Text>
         <Text style={styles.label}>頭像</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.badges}
-        >
-          {PROFILE_AVATARS.map((item) => (
-            <Pressable
-              key={item.badge}
-              accessibilityRole="radio"
-              accessibilityLabel={`頭像 ${item.label}`}
-              accessibilityState={{ checked: item.badge === badge && !photo && (useIllustration || !user.avatar_id) }}
-              disabled={busy}
-              onPress={() => { setBadge(item.badge); setPhoto(null); setUseIllustration(true); }}
-              style={[styles.badge, item.badge === badge && !photo && (useIllustration || !user.avatar_id) && styles.selected]}
-            >
-              <View style={styles.badgeImageWrap}>
-                <Image source={item.image} contentFit="cover" style={{ width: 63, height: 63 }} />
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
+        <ProfileAvatarPicker
+          value={!photo && (useIllustration || !user.avatar_id) ? badge : null}
+          disabled={busy}
+          onChange={(next) => { setBadge(next); setPhoto(null); setUseIllustration(true); }}
+        />
         <Text style={styles.label}>顯示名稱</Text>
         <TextInput
           accessibilityLabel="顯示名稱"

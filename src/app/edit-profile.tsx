@@ -9,8 +9,7 @@ import { useAppStore } from '@/store/app-store';
 import { CORE_API_ENABLED } from '@/lib/core-api';
 import { CoreEditProfileScreen } from '@/components/core-edit-profile';
 import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
-import { PROFILE_AVATARS } from '@/lib/profile-avatars';
-import { Image } from 'expo-image';
+import { ProfileAvatarPicker } from '@/components/profile-avatar-picker';
 
 
 export default function EditProfileScreen() {
@@ -43,25 +42,7 @@ function DemoEditProfileScreen() {
           <Text style={styles.previewBio}>{bio.trim() || '尚未填寫個人介紹'}</Text>
         </View>
         <Text style={styles.label}>頭像</Text>
-        <View style={styles.badges}>
-          {PROFILE_AVATARS.map((item) => (
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityLabel={`頭像 ${item.label}`}
-              accessibilityState={{ checked: badge === item.badge }}
-              key={item.badge}
-              onPress={() => setBadge(item.badge)}
-              style={[styles.badge, badge === item.badge && styles.badgeActive]}
-            >
-              <Image source={item.image} contentFit="contain" style={{ width: 42, height: 42 }} />
-              {badge === item.badge ? (
-                <View style={styles.check}>
-                  <MaterialCommunityIcons name="check" size={10} color={colors.ink} />
-                </View>
-              ) : null}
-            </Pressable>
-          ))}
-        </View>
+        <ProfileAvatarPicker value={badge} onChange={setBadge} />
         <Text style={styles.label}>顯示名稱</Text>
         <TextInput
           maxLength={24}

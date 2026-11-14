@@ -15,7 +15,7 @@ export type CoreUser = {
   display_name: string;
   created_at: string;
   bio?: string;
-  badge?: '🍜' | '🥐' | '🍕' | '🧋' | '🍱' | '🍍';
+  badge?: string;
   version?: number;
   auth_mode: 'local_development' | 'supabase';
   auth_provider?: 'email' | 'google' | 'unknown';
