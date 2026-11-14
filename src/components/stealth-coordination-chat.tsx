@@ -15,18 +15,64 @@ import { displayTime } from '@/lib/display-time';
 import { displayTimestamp } from '@/lib/display-time';
 import { router } from 'expo-router';
 import { StealthFormation } from '@/components/core-stealth-formation';
-import { StealthTentativeDraftCard } from '@/components/stealth-tentative-draft-card';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useCoreClock } from '@/lib/core-clock';
 import { useChatOutbox } from '@/lib/chat-outbox';
-import type { StealthAgentTermsDraft, StealthRoomMessage } from '@/lib/stealth-api';
+import type { StealthAgentTermsDraft, StealthMatch, StealthRoomMessage, StealthTerms } from '@/lib/stealth-api';
 import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
 import { updateInboxAfterRead } from '@/lib/inbox-read';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
+
+const CATEGORY_NOUNS: Record<string, string> = {
+  pizza: '披薩',
+  meal: '正餐',
+  drink: '飲料',
+  bakery: '麵包',
+  snack: '零食',
+};
+
+const LOCATION_NAMES: Record<string, string> = {
+  main_gate: '政大正門',
+  east_gate: '政大東側門',
+  south_gate: '政大南門',
+};
+
+function buildFallbackTerms(
+  match: StealthMatch,
+  draft?: StealthAgentTermsDraft | null,
+): StealthTerms {
+  if (match.terms) return match.terms;
+  const catLabel = CATEGORY_NOUNS[match.category] ?? '餐點';
+  const placeLabel = LOCATION_NAMES[match.location_id] ?? match.location_id ?? '政大正門';
+  const content =
+    draft?.content && draft.content.trim().length >= 10
+      ? draft.content.trim()
+      : `一起分享${catLabel}，在${placeLabel}協調集合。每人費用、下單與取餐依全員最後確認的方案處理。`;
+  const cost =
+    draft?.cost_per_person_twd ??
+    match.known_cost_twd ??
+    match.budget_max_twd ??
+    (match.category === 'drink' || match.category === 'snack' || match.category === 'bakery'
+      ? 80
+      : 120);
+  const deadline =
+    draft?.deadline_at ??
+    match.ends_at ??
+    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const orderMember = draft?.order_member ?? 1;
+  const pickupMember = draft?.pickup_member ?? (match.member_count >= 2 ? 2 : 1);
+  return {
+    content,
+    cost_per_person_twd: cost,
+    deadline_at: deadline,
+    order_member: orderMember,
+    pickup_member: pickupMember,
+  };
+}
 
 export function StealthCoordinationChat({ id }: { id: string }) {
   const actor = useAuthStore((s) => s.user?.id);
@@ -70,6 +116,9 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
   }, [actor, focused, id, query.data?.opened, latestRoomMessage]);
   useEffect(() => {
     if (!actor || !query.data?.opened) return;
+    const latestTermsMsg = [...(query.data.items ?? [])]
+      .reverse()
+      .find((m) => m.event_kind === 'terms' && m.event_terms);
     queryClient.setQueryData<Awaited<ReturnType<typeof stealthApi.matches>>>(
       ['core', actor, 'stealth', 'matches'],
       (old) =>
@@ -77,15 +126,26 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           ? {
               ...old,
               items: old.items.map((item) =>
-                item.id === id ? { ...item, coordination_opened: true } : item,
+                item.id === id
+                  ? {
+                      ...item,
+                      coordination_opened: true,
+                      ...(latestTermsMsg &&
+                      (item.terms_revision ?? 0) < (latestTermsMsg.terms_revision ?? 1)
+                        ? {
+                            terms: latestTermsMsg.event_terms ?? item.terms,
+                            terms_revision: latestTermsMsg.terms_revision ?? 1,
+                          }
+                        : {}),
+                    }
+                  : item,
               ),
             }
           : old,
     );
-  }, [actor, id, query.data?.opened]);
+  }, [actor, id, query.data?.opened, query.data?.items]);
   const [text, setText] = useState('');
   const [formal, setFormal] = useState(false);
-  const [draftExpanded, setDraftExpanded] = useState(false);
   const frozen = useRef<{ text: string; key: string } | null>(null);
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: key });
@@ -125,63 +185,48 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
       if (frozen.current) outbox.fail(frozen.current.key);
     },
   });
+  const [aiDraft] = useState<StealthAgentTermsDraft | null>(null);
+  const activeDraft = aiDraft ?? match?.agent_draft ?? null;
   const accept = useMutation({
-    mutationFn: (revision: number) => stealthApi.consent(id, revision),
+    mutationFn: async (revision: number) => {
+      if (match && match.terms_revision === 0 && !match.terms) {
+        const initialTerms = buildFallbackTerms(match, activeDraft);
+        await stealthApi.terms(id, 0, initialTerms);
+        return stealthApi.consent(id, 1);
+      }
+      return stealthApi.consent(id, revision || match?.terms_revision || 1);
+    },
     onSettled: async () => { await refresh(); await query.refetch(); },
   });
   const decline = useMutation({
     mutationFn: () => stealthApi.decide(id, 'declined'),
     onSettled: async () => { await refresh(); await query.refetch(); },
   });
-  const [aiDraft, setAiDraft] = useState<StealthAgentTermsDraft | null>(null);
-  const [aiNotice, setAiNotice] = useState('');
-  const activeDraft = aiDraft ?? match?.agent_draft ?? null;
-  const polishAi = useMutation({
-    mutationFn: () => stealthApi.draftAi(id),
-    onSuccess: (res) => {
-      setAiDraft(res.draft);
-      setAiNotice(res.notice || '');
-    },
-    onError: (err) => {
-      setAiNotice(`${coreError(err)} 仍可直接查看暫定方案或手動修改。`);
-    },
-  });
-  const proposeDraft = useMutation({
-    mutationFn: async () => {
-      if (
-        !match ||
-        !activeDraft ||
-        !activeDraft.ready_to_submit ||
-        activeDraft.cost_per_person_twd == null ||
-        activeDraft.order_member == null ||
-        activeDraft.pickup_member == null
-      ) {
-        throw new Error('draft_incomplete');
-      }
-      return stealthApi.terms(match.id, match.terms_revision, {
-        content: activeDraft.content,
-        cost_per_person_twd: activeDraft.cost_per_person_twd,
-        deadline_at: activeDraft.deadline_at,
-        order_member: activeDraft.order_member,
-        pickup_member: activeDraft.pickup_member,
-      });
-    },
-    onSettled: async () => {
-      await refresh();
-      await query.refetch();
-    },
-  });
-  const formedIndex = outbox.items.findIndex((item) => item.event_kind === 'formed');
-  const hasTentativeDraft = Boolean(
-    !formal &&
-      match &&
-      query.data?.opened &&
-      match.status !== 'formed' &&
-      match.status !== 'unavailable' &&
-      match.terms_revision === 0 &&
-      !match.terms &&
-      activeDraft,
+  const displayItems =
+    query.data?.opened &&
+    match &&
+    match.status !== 'unavailable' &&
+    !outbox.items.some((item) => item.event_kind === 'terms')
+      ? [
+          {
+            id: `initial-terms:${match.id}`,
+            content: '提出了拼單方案',
+            created_at:
+              outbox.items[0]?.created_at ?? match.created_at ?? new Date().toISOString(),
+            member_number: match.host_member_number ?? 1,
+            is_me: false,
+            event_kind: 'terms' as const,
+            terms_revision: match.terms_revision || 1,
+            event_terms: buildFallbackTerms(match, activeDraft),
+          },
+          ...outbox.items,
+        ]
+      : outbox.items;
+  const latestTermsRevision = Math.max(
+    match?.terms_revision ?? 0,
+    ...displayItems.map((m) => m.terms_revision ?? 0),
   );
+  const formedIndex = displayItems.findIndex((item) => item.event_kind === 'formed');
   return (
     <Screen pinKeyboardHeader>
       <DetailHeader
@@ -224,46 +269,6 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         {query.data?.opened && !query.data.can_send ? (
           <Text style={styles.note}>有人撤回、封鎖或拼單已取消，訊息保留唯讀。</Text>
         ) : null}
-        {hasTentativeDraft && match && activeDraft ? (
-          <View style={styles.announcementWrap}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={draftExpanded ? '收合共同暫定方案' : '展開共同暫定方案'}
-              onPress={() => setDraftExpanded((v) => !v)}
-              style={styles.announcementBar}
-            >
-              <MaterialCommunityIcons name="bullhorn-outline" size={16} color={colors.brown} />
-              <Text style={styles.announcementTitle}>暫定方案</Text>
-              <Text numberOfLines={1} style={styles.announcementPreview}>
-                {activeDraft.content}
-              </Text>
-              <MaterialCommunityIcons
-                name={draftExpanded ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={colors.brown}
-              />
-            </Pressable>
-            {draftExpanded ? (
-              <View style={styles.announcementCard}>
-                <StealthTentativeDraftCard
-                  match={match}
-                  draft={activeDraft}
-                  aiNotice={aiNotice}
-                  aiPending={polishAi.isPending}
-                  proposePending={proposeDraft.isPending}
-                  proposeError={proposeDraft.error ? coreError(proposeDraft.error) : ''}
-                  canEdit={!!query.data?.can_send}
-                  onPropose={() => proposeDraft.mutate()}
-                  onEdit={() => {
-                    setDraftExpanded(false);
-                    setFormal(true);
-                  }}
-                  onPolishAi={() => polishAi.mutate()}
-                />
-              </View>
-            ) : null}
-          </View>
-        ) : null}
         {formal && match ? (
           <KeyboardScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
             <StealthFormation
@@ -280,7 +285,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
               onScroll={dates.onScroll}
               scrollEventThrottle={100}
               inverted
-              data={[...outbox.items].reverse()}
+              data={[...displayItems].reverse()}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.messages}
               keyboardShouldPersistTaps="handled"
@@ -291,7 +296,9 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                 }
                 if (item.event_kind === 'terms' && item.event_terms) {
                   const activeTerms =
-                    match && item.terms_revision === match.terms_revision && match.status !== 'formed';
+                    match &&
+                    item.terms_revision === latestTermsRevision &&
+                    match.status !== 'formed';
                   return (
                     <View style={styles.termsCard}>
                       <View style={styles.termsHeader}>
@@ -381,7 +388,7 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                     </View>
                   );
                 }
-                const chronologicalIndex = outbox.items.length - 1 - index;
+                const chronologicalIndex = displayItems.length - 1 - index;
                 const afterFormed = formedIndex !== -1 && chronologicalIndex > formedIndex;
                 const member = afterFormed ? sortedMembers[item.member_number - 1] : undefined;
                 return (

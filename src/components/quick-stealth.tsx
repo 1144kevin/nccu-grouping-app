@@ -18,7 +18,6 @@ import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { queryClient } from '@/lib/query-client';
 import { stealthApi, type StealthMatch, type StealthSemanticResult } from '@/lib/stealth-api';
 import { QuickStealthComposer } from '@/components/quick-stealth-composer';
-import { StealthTentativeDraftCard } from '@/components/stealth-tentative-draft-card';
 import { selectSemanticMatches } from '@/lib/stealth-semantic';
 import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
@@ -444,9 +443,6 @@ export function QuickMatch({
           {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}
         </Text>
       </View>
-      {match.agent_draft && !match.terms && match.status !== 'formed' && match.status !== 'unavailable' ? (
-        <StealthTentativeDraftCard match={match} draft={match.agent_draft} />
-      ) : null}
       {match.status === 'formed' ? (
         <PrimaryButton
           onPress={() => router.push({ pathname: '/stealth-chat/[id]', params: { id: match.id } })}

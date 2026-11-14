@@ -363,3 +363,32 @@ it('hides historical unavailable rooms and does not lock composer when no active
   await fireEvent.press(screen.getByRole('button', { name: '查看目前需求單進度' }));
   expect(screen.getByText(/目前沒有進行中的需求單/)).toBeTruthy();
 });
+
+it('shows initial 拼單方案 v1 card with reject and accept buttons immediately when entering stealth chat room', async () => {
+  jest.mocked(stealthApi.matches).mockResolvedValue({
+    items: [
+      {
+        ...match,
+        status: 'ready',
+        my_decision: 'accepted',
+        coordination_opened: true,
+        location_id: 'east_gate',
+        ends_at: '2026-10-22T12:00:00Z',
+        terms: null,
+        terms_revision: 0,
+        confirmed_count: 0,
+        my_terms_accepted: false,
+      },
+    ],
+  } as never);
+  jest.mocked(stealthApi.room).mockResolvedValue({ opened: true, can_send: true, items: [] });
+  const screen = await render(wrap(<StealthCoordinationChat id="pair" />));
+  await waitFor(() => expect(screen.getByText('拼單方案 v1')).toBeTruthy());
+  expect(
+    screen.getByText('一起分享飲料，在政大東側門協調集合。每人費用、下單與取餐依全員最後確認的方案處理。'),
+  ).toBeTruthy();
+  expect(screen.getByRole('button', { name: '拒絕' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /接受 0\/2/ })).toBeTruthy();
+  expect(screen.queryByText('暫定方案')).toBeNull();
+  expect(screen.queryByText('共同暫定方案')).toBeNull();
+});
