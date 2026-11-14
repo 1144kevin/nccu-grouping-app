@@ -46,8 +46,20 @@ export type StealthSignal = StealthSignalInput & {
   version: number;
   created_at: string;
 };
-export type StealthHistoryItem = { id: string; title: string; category: StealthCategory; created_at: string; location_id: string; starts_at: string; ends_at: string; budget_max_twd: number | null; status: 'active' | 'revoked' | 'consumed' | 'expired' | 'formed'; formed_post_id: string | null };
+export type StealthHistoryItem = {
+  id: string;
+  title: string;
+  category: StealthCategory;
+  created_at: string;
+  location_id: string;
+  starts_at: string;
+  ends_at: string;
+  budget_max_twd: number | null;
+  status: 'active' | 'revoked' | 'consumed' | 'expired' | 'formed';
+  formed_post_id: string | null;
+};
 export type StealthTerms = {
+  location?: import('@/types/domain').PostLocation | null;
   content: string;
   cost_per_person_twd: number;
   deadline_at: string;
@@ -240,9 +252,17 @@ export type StealthIntake = {
 const root = '/stealth-cloud';
 export const stealthApi = {
   history: async (cursor?: { cursor_time: string; cursor_id: string }) =>
-    (await api.get<{ items: StealthHistoryItem[]; has_more: boolean }>(`${root}/history`, { params: cursor })).data,
+    (
+      await api.get<{ items: StealthHistoryItem[]; has_more: boolean }>(`${root}/history`, {
+        params: cursor,
+      })
+    ).data,
   formedRoles: async (postId: string) =>
-    (await api.get<{ buyer_id: string; pickup_id: string }>(`${root}/formed/${encodeURIComponent(postId)}/roles`)).data,
+    (
+      await api.get<{ buyer_id: string; pickup_id: string }>(
+        `${root}/formed/${encodeURIComponent(postId)}/roles`,
+      )
+    ).data,
   speechStream: async (text: string, signal: AbortSignal) =>
     (
       await api.post<ReadableStream<Uint8Array>>(

@@ -23,6 +23,7 @@ import { useCoreClock } from '@/lib/core-clock';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, yellowSurface } from '@/theme/tokens';
 import { displayTimestamp } from '@/lib/display-time';
+import { StealthTentativeDraftCard } from './stealth-tentative-draft-card';
 
 const IGNORED_MATCH_REASONS = new Set([
   '取餐地點一致',
@@ -51,13 +52,15 @@ function buildMatchSpecialSummary(match: StealthMatch, explanations: string[]): 
   }
   const suggestions = match.agent_draft?.role_suggestions ?? [];
   const pickupPartner = suggestions.find(
-    (s) => s.role === 'pickup' && s.member_number != null && s.member_number !== match.my_member_number,
+    (s) =>
+      s.role === 'pickup' && s.member_number != null && s.member_number !== match.my_member_number,
   );
   if (pickupPartner && !parts.some((p) => p.includes('取餐') || p.includes('跑這一趟'))) {
     parts.push('對方願意跑這一趟幫忙去買／取餐');
   }
   const orderPartner = suggestions.find(
-    (s) => s.role === 'order' && s.member_number != null && s.member_number !== match.my_member_number,
+    (s) =>
+      s.role === 'order' && s.member_number != null && s.member_number !== match.my_member_number,
   );
   if (orderPartner && !parts.some((p) => p.includes('下單'))) {
     parts.push('對方願意負責下單與付款協調');
@@ -81,7 +84,7 @@ function buildMatchSpecialSummary(match: StealthMatch, explanations: string[]): 
       `對方今天剛好想在「${loc}」一起湊${stealthCategories[match.category] ?? '同類需求'}，時間與條件互補`,
     );
   }
-  return parts.slice(0, 3).join('；');
+  return [...new Set(parts)].join('；');
 }
 
 export function QuickStealthScreen() {
@@ -244,7 +247,8 @@ function QuickSession({ actor }: { actor?: string }) {
         <View style={styles.inChatCardWrap}>
           <View style={styles.systemBubble}>
             <Text style={styles.body}>
-              目前已使用這張偷揪單等待配對中（保留 24 小時）。同時最多只能有一張偷揪單，若覺得這張單不行或想重開新單，請先點選卡片右上角取消：
+              目前已使用這張偷揪單等待配對中（保留 24
+              小時）。同時最多只能有一張偷揪單，若覺得這張單不行或想重開新單，請先點選卡片右上角取消：
             </Text>
           </View>
           <StealthRequestSummary
@@ -323,10 +327,7 @@ function QuickSession({ actor }: { actor?: string }) {
       />
       <KeyboardViewport>
         <View
-          style={[
-            styles.page,
-            { paddingBottom: keyboardOpen ? 8 : Math.max(8, insets.bottom) },
-          ]}
+          style={[styles.page, { paddingBottom: keyboardOpen ? 8 : Math.max(8, insets.bottom) }]}
         >
           <QuickStealthComposer
             actor={actor}
@@ -395,6 +396,13 @@ export function QuickMatch({
   onUpdated?: (match: StealthMatch) => void;
 }) {
   const actor = useAuthStore((s) => s.user?.id);
+  const aiReasons = useQuery({
+    queryKey: ['core', actor, 'stealth-match-analysis', snapshot.id, snapshot.terms_revision],
+    queryFn: () => stealthApi.draftAi(snapshot.id),
+    enabled: !!actor && !!snapshot.agent_draft && ['pending', 'ready'].includes(snapshot.status) && !snapshot.is_demo,
+    staleTime: Infinity,
+    retry: false,
+  });
   const decide = useMutation({
     mutationFn: (decision: 'accepted' | 'declined') => stealthApi.decide(snapshot.id, decision),
     onSuccess: async (result) => {
@@ -443,6 +451,14 @@ export function QuickMatch({
           {match.known_cost_twd == null ? '實際費用待討論' : `已知 NT$ ${match.known_cost_twd}／人`}
         </Text>
       </View>
+      {match.agent_draft ? (
+        <StealthTentativeDraftCard
+          match={match}
+          draft={aiReasons.data?.draft ?? match.agent_draft}
+          aiPending={aiReasons.isPending && aiReasons.isFetching}
+          aiNotice={aiReasons.data?.notice || (aiReasons.isError ? 'AI 分析暫時無法使用，先顯示已確認條件。' : undefined)}
+        />
+      ) : null}
       {match.status === 'formed' ? (
         <PrimaryButton
           onPress={() => router.push({ pathname: '/stealth-chat/[id]', params: { id: match.id } })}

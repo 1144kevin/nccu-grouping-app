@@ -68,7 +68,7 @@ export function StealthTentativeDraftCard({
         : '待確認';
   const reasons = draft.recommendation_reasons?.length
     ? draft.recommendation_reasons
-    : (match.highlights ?? []).slice(0, 3);
+    : (match.highlights ?? []);
   const roleSummary = `買：${memberLabel(draft.order_member, match.my_member_number)} · 取：${memberLabel(draft.pickup_member, match.my_member_number)}`;
   const showPropose = Boolean(onPropose && draft.ready_to_submit);
   const showPolish = Boolean(!showPropose && onPolishAi);

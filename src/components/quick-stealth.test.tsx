@@ -1,3 +1,4 @@
+jest.mock('@/components/location-picker', () => ({ LocationPicker: () => null }));
 import { afterEach, beforeEach, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -308,11 +309,9 @@ it('keeps a newly accepted card through a stale refresh and updates it when part
   await fireEvent.press(screen.getByRole('button', { name: '有興趣，先聊聊' }));
   await waitFor(() => expect(screen.getByText(/你已表示有興趣/)).toBeTruthy());
   expect(router.push).not.toHaveBeenCalled();
-  jest
-    .mocked(stealthApi.matches)
-    .mockResolvedValue({
-      items: [{ ...live, my_decision: 'accepted', status: 'ready', coordination_opened: true }],
-    });
+  jest.mocked(stealthApi.matches).mockResolvedValue({
+    items: [{ ...live, my_decision: 'accepted', status: 'ready', coordination_opened: true }],
+  });
   await act(async () => {
     await queryClient.invalidateQueries({ queryKey: ['core', 'self', 'stealth'] });
   });
@@ -359,12 +358,12 @@ it('hides historical unavailable rooms and does not lock composer when no active
   const screen = await render(wrap(<QuickStealthScreen />));
   await waitFor(() => expect(screen.getByText(/今天有什麼想跟我分享/)).toBeTruthy());
   expect(screen.queryByRole('button', { name: '查看聊天室紀錄' })).toBeNull();
-  expect(screen.getByLabelText('跟偷揪分身聊天')).toHaveProp('editable', true);
+  await waitFor(() => expect(screen.getByLabelText('跟偷揪分身聊天')).toHaveProp('editable', true));
   await fireEvent.press(screen.getByRole('button', { name: '查看目前需求單進度' }));
   expect(screen.getByText(/目前沒有進行中的需求單/)).toBeTruthy();
 });
 
-it('shows initial 拼單方案 v1 card with reject and accept buttons immediately when entering stealth chat room', async () => {
+it('does not fabricate a formal proposal or price when entering an empty room', async () => {
   jest.mocked(stealthApi.matches).mockResolvedValue({
     items: [
       {
@@ -383,12 +382,7 @@ it('shows initial 拼單方案 v1 card with reject and accept buttons immediatel
   } as never);
   jest.mocked(stealthApi.room).mockResolvedValue({ opened: true, can_send: true, items: [] });
   const screen = await render(wrap(<StealthCoordinationChat id="pair" />));
-  await waitFor(() => expect(screen.getByText('拼單方案 v1')).toBeTruthy());
-  expect(
-    screen.getByText('一起分享飲料，在政大東側門協調集合。每人費用、下單與取餐依全員最後確認的方案處理。'),
-  ).toBeTruthy();
-  expect(screen.getByRole('button', { name: '拒絕' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: /接受 0\/2/ })).toBeTruthy();
-  expect(screen.queryByText('暫定方案')).toBeNull();
-  expect(screen.queryByText('共同暫定方案')).toBeNull();
+  await waitFor(() => expect(screen.getByRole('button', { name: '填寫拼單' })).toBeTruthy());
+  expect(screen.queryByText('拼單方案 v1')).toBeNull();
+  expect(stealthApi.terms).not.toHaveBeenCalled();
 });

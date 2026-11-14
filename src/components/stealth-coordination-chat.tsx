@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { InlineLoading } from '@/components/inline-loading';
 import { ChatComposer, ChatPhoto } from '@/components/chat-composer';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { AppText as Text } from '@/components/app-text';
 import { ChatTextInput as TextInput } from '@/components/chat-text-input';
 import { KeyboardViewport, KeyboardScrollView } from '@/components/keyboard-layout';
@@ -11,68 +11,21 @@ import { Avatar, DetailHeader, PrimaryButton, Screen, IconButton } from '@/compo
 import { ReputationBadge } from '@/components/reputation-badge';
 import { ChatSendButton } from './chat-controls';
 import { useChatDateIndicator } from './chat-date-indicator';
-import { displayTime } from '@/lib/display-time';
-import { displayTimestamp } from '@/lib/display-time';
+import { displayTime, displayTimestamp } from '@/lib/display-time';
 import { router } from 'expo-router';
+import { StealthTentativeDraftCard } from './stealth-tentative-draft-card';
 import { StealthFormation } from '@/components/core-stealth-formation';
 import { coreError, newRequestKey } from '@/lib/core-api';
 import { socialApi } from '@/lib/social-api';
 import { useCoreScreenFocused } from '@/lib/core-hooks';
 import { useCoreClock } from '@/lib/core-clock';
 import { useChatOutbox } from '@/lib/chat-outbox';
-import type { StealthAgentTermsDraft, StealthMatch, StealthRoomMessage, StealthTerms } from '@/lib/stealth-api';
+import type { StealthAgentTermsDraft, StealthRoomMessage } from '@/lib/stealth-api';
 import { stealthApi } from '@/lib/stealth-api';
 import { queryClient } from '@/lib/query-client';
 import { updateInboxAfterRead } from '@/lib/inbox-read';
 import { useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
-
-const CATEGORY_NOUNS: Record<string, string> = {
-  pizza: '披薩',
-  meal: '正餐',
-  drink: '飲料',
-  bakery: '麵包',
-  snack: '零食',
-};
-
-const LOCATION_NAMES: Record<string, string> = {
-  main_gate: '政大正門',
-  east_gate: '政大東側門',
-  south_gate: '政大南門',
-};
-
-function buildFallbackTerms(
-  match: StealthMatch,
-  draft?: StealthAgentTermsDraft | null,
-): StealthTerms {
-  if (match.terms) return match.terms;
-  const catLabel = CATEGORY_NOUNS[match.category] ?? '餐點';
-  const placeLabel = LOCATION_NAMES[match.location_id] ?? match.location_id ?? '政大正門';
-  const content =
-    draft?.content && draft.content.trim().length >= 10
-      ? draft.content.trim()
-      : `一起分享${catLabel}，在${placeLabel}協調集合。每人費用、下單與取餐依全員最後確認的方案處理。`;
-  const cost =
-    draft?.cost_per_person_twd ??
-    match.known_cost_twd ??
-    match.budget_max_twd ??
-    (match.category === 'drink' || match.category === 'snack' || match.category === 'bakery'
-      ? 80
-      : 120);
-  const deadline =
-    draft?.deadline_at ??
-    match.ends_at ??
-    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  const orderMember = draft?.order_member ?? 1;
-  const pickupMember = draft?.pickup_member ?? (match.member_count >= 2 ? 2 : 1);
-  return {
-    content,
-    cost_per_person_twd: cost,
-    deadline_at: deadline,
-    order_member: orderMember,
-    pickup_member: pickupMember,
-  };
-}
 
 export function StealthCoordinationChat({ id }: { id: string }) {
   const actor = useAuthStore((s) => s.user?.id);
@@ -186,42 +139,23 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
     },
   });
   const [aiDraft] = useState<StealthAgentTermsDraft | null>(null);
-  const activeDraft = aiDraft ?? match?.agent_draft ?? null;
   const accept = useMutation({
     mutationFn: async (revision: number) => {
-      if (match && match.terms_revision === 0 && !match.terms) {
-        const initialTerms = buildFallbackTerms(match, activeDraft);
-        await stealthApi.terms(id, 0, initialTerms);
-        return stealthApi.consent(id, 1);
-      }
       return stealthApi.consent(id, revision || match?.terms_revision || 1);
     },
-    onSettled: async () => { await refresh(); await query.refetch(); },
+    onSettled: async () => {
+      await refresh();
+      await query.refetch();
+    },
   });
   const decline = useMutation({
     mutationFn: () => stealthApi.decide(id, 'declined'),
-    onSettled: async () => { await refresh(); await query.refetch(); },
+    onSettled: async () => {
+      await refresh();
+      await query.refetch();
+    },
   });
-  const displayItems =
-    query.data?.opened &&
-    match &&
-    match.status !== 'unavailable' &&
-    !outbox.items.some((item) => item.event_kind === 'terms')
-      ? [
-          {
-            id: `initial-terms:${match.id}`,
-            content: '提出了拼單方案',
-            created_at:
-              outbox.items[0]?.created_at ?? match.created_at ?? new Date().toISOString(),
-            member_number: match.host_member_number ?? 1,
-            is_me: false,
-            event_kind: 'terms' as const,
-            terms_revision: match.terms_revision || 1,
-            event_terms: buildFallbackTerms(match, activeDraft),
-          },
-          ...outbox.items,
-        ]
-      : outbox.items;
+  const displayItems = outbox.items;
   const latestTermsRevision = Math.max(
     match?.terms_revision ?? 0,
     ...displayItems.map((m) => m.terms_revision ?? 0),
@@ -269,13 +203,24 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
         {query.data?.opened && !query.data.can_send ? (
           <Text style={styles.note}>有人撤回、封鎖或拼單已取消，訊息保留唯讀。</Text>
         ) : null}
+        {!formal && match?.agent_draft && !match.terms ? (
+          <StealthTentativeDraftCard
+            match={match}
+            draft={match.agent_draft}
+            canEdit
+            onEdit={() => setFormal(true)}
+          />
+        ) : null}
         {formal && match ? (
           <KeyboardScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.md }}>
             <StealthFormation
               match={aiDraft ? { ...match, agent_draft: aiDraft } : match}
               refresh={refresh}
               now={clock.data ? clock.now : undefined}
-              onSubmitted={() => { setFormal(false); void query.refetch(); }}
+              onSubmitted={() => {
+                setFormal(false);
+                void query.refetch();
+              }}
             />
           </KeyboardScrollView>
         ) : (
@@ -314,6 +259,16 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                         </View>
                       </View>
                       <Text style={styles.termsContent}>{item.event_terms.content}</Text>
+                      {item.event_terms.location ? (
+                        <View style={styles.termsInfoRow}>
+                          <MaterialCommunityIcons
+                            name="map-marker-outline"
+                            size={16}
+                            color={colors.muted}
+                          />
+                          <Text style={styles.termsInfoText}>{item.event_terms.location.name}</Text>
+                        </View>
+                      ) : null}
                       <View style={styles.termsInfoList}>
                         <View style={styles.termsInfoRow}>
                           <MaterialCommunityIcons
@@ -351,7 +306,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                         <View style={styles.termsActions}>
                           <PrimaryButton
                             secondary
-                            disabled={decline.isPending || accept.isPending || match.status === 'unavailable'}
+                            disabled={
+                              decline.isPending ||
+                              accept.isPending ||
+                              match.status === 'unavailable'
+                            }
                             loading={decline.isPending}
                             onPress={() => decline.mutate()}
                             style={styles.termsRejectButton}
@@ -375,7 +334,8 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                         </View>
                       ) : (
                         <Text style={[styles.hint, styles.termsStatusText]}>
-                          {match?.status === 'formed' && item.terms_revision === match.terms_revision
+                          {match?.status === 'formed' &&
+                          item.terms_revision === match.terms_revision
                             ? '已成立'
                             : '方案已更新'}
                         </Text>
@@ -440,7 +400,11 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
           </View>
         )}
         {formal && match && match.status !== 'unavailable' && query.data?.opened ? (
-          <PrimaryButton secondary style={{ marginHorizontal: spacing.md, marginBottom: spacing.xl }} onPress={() => setFormal(!formal)}>
+          <PrimaryButton
+            secondary
+            style={{ marginHorizontal: spacing.md, marginBottom: spacing.xl }}
+            onPress={() => setFormal(!formal)}
+          >
             回到聊天
           </PrimaryButton>
         ) : null}

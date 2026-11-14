@@ -1,3 +1,6 @@
+import { SettingField as FieldRow } from '@/components/setting-field';
+import { LocationPicker } from '@/components/location-picker';
+import type { PostLocation } from '@/types/domain';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -8,26 +11,6 @@ import { PrimaryButton, SectionTitle } from '@/components/primitives';
 import { coreError } from '@/lib/core-api';
 import { stealthApi, type StealthMatch } from '@/lib/stealth-api';
 import { colors, radius, spacing, typography, yellowSurface } from '@/theme/tokens';
-
-function FieldRow({
-  icon,
-  title,
-  children,
-}: {
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.fieldRow}>
-      <View style={styles.fieldLabelRow}>
-        <MaterialCommunityIcons name={icon} size={18} color={colors.muted} />
-        <Text style={styles.fieldTitle}>{title}</Text>
-      </View>
-      {children}
-    </View>
-  );
-}
 
 /**
  * Formal proposal composer matching PostComposer's clean field layout,
@@ -44,7 +27,11 @@ export function StealthFormation({
   refresh: () => Promise<void>;
   onSubmitted?: () => void;
 }) {
+  const [openedAt] = useState(() => Date.now());
   const initialDraft = match.terms ?? match.agent_draft;
+  const [location, setLocation] = useState<PostLocation | undefined>(
+    match.terms?.location ?? undefined,
+  );
   const [revision, setRevision] = useState(match.terms_revision);
   const [content, setContent] = useState(initialDraft?.content ?? '');
   const [cost, setCost] = useState(
@@ -60,7 +47,9 @@ export function StealthFormation({
   const stale = revision !== match.terms_revision;
   const amount = Number(cost);
   const valid =
-    content.trim().length >= 5 &&
+    content.trim().length >= 10 &&
+    cost.trim() !== '' &&
+    !!location &&
     Number.isInteger(amount) &&
     amount >= 0 &&
     order > 0 &&
@@ -69,6 +58,7 @@ export function StealthFormation({
   const save = useMutation({
     mutationFn: () =>
       stealthApi.terms(match.id, revision, {
+        location,
         content: content.trim(),
         cost_per_person_twd: amount,
         deadline_at: new Date(deadline).toISOString(),
@@ -94,6 +84,7 @@ export function StealthFormation({
           <PrimaryButton
             secondary
             onPress={() => {
+              setLocation(match.terms?.location ?? undefined);
               setRevision(match.terms_revision);
               setContent(match.terms?.content ?? '');
               setCost(String(match.terms?.cost_per_person_twd ?? ''));
@@ -158,6 +149,14 @@ export function StealthFormation({
         </Pressable>
       </FieldRow>
 
+      <FieldRow icon="map-marker-outline" title="取餐地點（必填）">
+        <LocationPicker
+          value={location}
+          onChange={setLocation}
+          disabled={save.isPending || stale}
+        />
+      </FieldRow>
+
       <FieldRow icon="cart-outline" title="誰負責購買">
         <View style={styles.chipRow}>
           {members.map((n) => {
@@ -211,6 +210,7 @@ export function StealthFormation({
         </Text>
       ) : null}
 
+      <Text style={styles.fieldHint}>每人金額為實際協商費用，預算上限不會自動當成售價。</Text>
       <PrimaryButton
         disabled={!valid || stale || save.isPending}
         loading={save.isPending}
@@ -221,7 +221,7 @@ export function StealthFormation({
       </PrimaryButton>
 
       <DeadlinePickerModal
-        startDate={startOfDay(now?.() ?? Date.now())}
+        startDate={startOfDay(now?.() ?? openedAt)}
         value={draftDeadline}
         visible={deadlineVisible}
         onChange={setDraftDeadline}

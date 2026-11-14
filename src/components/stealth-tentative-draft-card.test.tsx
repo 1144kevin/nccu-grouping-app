@@ -1,3 +1,4 @@
+jest.mock('@/components/location-picker', () => ({ LocationPicker: () => null }));
 import { describe, expect, it, jest } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react-native';
