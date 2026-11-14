@@ -57,7 +57,7 @@ it('opens the profile after saving a directly opened edit page', async () => {
   expect(router.back).not.toHaveBeenCalled();
 });
 
-it('offers eight preset avatars and saves a selected preset in place of a profile photo', async () => {
+it('offers three avatar rows and saves a selected preset in place of a profile photo', async () => {
   useAuthStore.setState({ user: { ...user, avatar_id: 'old-avatar', badge: '🍱' } });
   const screen = await render(
     <QueryClientProvider client={client}>
@@ -65,11 +65,44 @@ it('offers eight preset avatars and saves a selected preset in place of a profil
     </QueryClientProvider>,
   );
   expect(screen.getByText('頭像')).toBeTruthy();
-  expect(screen.getAllByRole('radio')).toHaveLength(8);
+  expect(screen.getByText('水果人')).toBeTruthy();
+  expect(screen.getByText('橘子寶寶')).toBeTruthy();
+  expect(screen.getAllByRole('radio')).toHaveLength(28);
   await fireEvent.press(screen.getByLabelText('頭像 手搖杯'));
   await fireEvent.press(screen.getByRole('button', { name: '儲存變更' }));
   await waitFor(() => expect(coreApi.updateProfile).toHaveBeenCalledWith(
     expect.objectContaining({ badge: 'eagle-01', avatar_id: null }),
+  ));
+});
+
+it('saves a fruit avatar in place of an uploaded profile photo', async () => {
+  useAuthStore.setState({ user: { ...user, avatar_id: 'old-avatar', badge: 'eagle-01' } });
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <CoreEditProfileScreen />
+    </QueryClientProvider>,
+  );
+  await fireEvent.press(screen.getByLabelText('頭像 橘子老闆'));
+  expect(screen.getByLabelText('頭像 橘子老闆').props.accessibilityState.checked).toBe(true);
+  await fireEvent.press(screen.getByRole('button', { name: '儲存變更' }));
+  await waitFor(() => expect(coreApi.updateProfile).toHaveBeenCalledWith(
+    expect.objectContaining({ badge: 'fruit-orange', avatar_id: null }),
+  ));
+});
+
+it('saves an orange baby avatar in place of a fruit avatar', async () => {
+  useAuthStore.setState({ user: { ...user, badge: 'fruit-orange' } });
+  const screen = await render(
+    <QueryClientProvider client={client}>
+      <CoreEditProfileScreen />
+    </QueryClientProvider>,
+  );
+  await fireEvent.press(screen.getByLabelText('頭像 橘子學生'));
+  expect(screen.getByLabelText('頭像 橘子學生').props.accessibilityState.checked).toBe(true);
+  expect(screen.getByLabelText('頭像 橘子老闆').props.accessibilityState.checked).toBe(false);
+  await fireEvent.press(screen.getByRole('button', { name: '儲存變更' }));
+  await waitFor(() => expect(coreApi.updateProfile).toHaveBeenCalledWith(
+    expect.objectContaining({ badge: 'orange-student', avatar_id: null }),
   ));
 });
 
