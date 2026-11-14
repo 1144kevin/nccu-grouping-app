@@ -234,40 +234,39 @@ it('keeps accepted invitations visible while waiting and hides expired opportuni
   };
   jest.mocked(stealthApi.matches).mockResolvedValue({
     items: [
+      { ...active, id: 'accepted', my_decision: 'accepted', score: 80 },
       active,
       { ...active, id: 'second-pending', score: 65 },
-      { ...active, id: 'third-pending', score: 60 },
-      { ...active, id: 'accepted', my_decision: 'accepted' },
       { ...active, id: 'formed', status: 'formed' },
       { ...active, id: 'expired', expires_at: '2026-10-21T12:00:00Z' },
     ],
   } as never);
   const screen = await render(wrap(<QuickStealthScreen />));
-  await waitFor(() =>
-    expect(screen.getAllByRole('button', { name: '有興趣，先聊聊' })).toHaveLength(1),
-  );
-  expect(screen.getByText(/你已表示有興趣/)).toBeTruthy();
+  await waitFor(() => expect(screen.getByText(/你已表示有興趣/)).toBeTruthy());
+  expect(screen.queryByRole('button', { name: '有興趣，先聊聊' })).toBeNull();
+  expect(screen.getAllByText(/現在有一個配對機會，請問是否要接受/)).toHaveLength(1);
 });
 
-it('shows only one pending opportunity message when three pending proposals exist', async () => {
-  const active = {
+it('does not pop up a second pending opportunity after accepting the first one', async () => {
+  const first = {
     ...match,
+    id: 'first-pending',
     starts_at: '2026-10-22T10:00:00Z',
     expires_at: '2026-10-22T12:00:00Z',
-    score: 70,
+    score: 80,
     location_id: 'main_gate',
-  };
-  jest.mocked(stealthApi.matches).mockResolvedValue({
-    items: [
-      active,
-      { ...active, id: 'second-pending', score: 65 },
-      { ...active, id: 'third-pending', score: 60 },
-    ],
-  } as never);
+  } as StealthMatch;
+  const second = { ...first, id: 'second-pending', score: 70 } as StealthMatch;
+  const third = { ...first, id: 'third-pending', score: 60 } as StealthMatch;
+  jest.mocked(stealthApi.matches).mockResolvedValue({ items: [first, second, third] });
+  jest.mocked(stealthApi.decide).mockResolvedValue({ ...first, my_decision: 'accepted' });
   const screen = await render(wrap(<QuickStealthScreen />));
   await waitFor(() =>
     expect(screen.getAllByRole('button', { name: '有興趣，先聊聊' })).toHaveLength(1),
   );
+  await fireEvent.press(screen.getByRole('button', { name: '有興趣，先聊聊' }));
+  await waitFor(() => expect(screen.getByText(/你已表示有興趣，等待夥伴回覆/)).toBeTruthy());
+  expect(screen.queryByRole('button', { name: '有興趣，先聊聊' })).toBeNull();
   expect(screen.getAllByText(/現在有一個配對機會，請問是否要接受/)).toHaveLength(1);
 });
 

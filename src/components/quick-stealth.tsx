@@ -177,10 +177,11 @@ function QuickSession({ actor }: { actor?: string }) {
         m.my_decision !== 'declined' &&
         Date.parse(m.expires_at) > now,
     );
-  const shownMatches = [
-    ...visible.filter((m) => m.status === 'ready' || m.my_decision === 'accepted'),
-    ...visible.filter((m) => m.status === 'pending' && m.my_decision === 'pending').slice(0, 1),
-  ];
+  const shownMatches = (
+    visible.some((m) => m.status === 'ready' || m.my_decision === 'accepted')
+      ? visible.filter((m) => m.status === 'ready' || m.my_decision === 'accepted')
+      : visible
+  ).slice(0, 1);
   const allMatches = matches.data?.items ?? [];
   const formedMatch = allMatches.find((m) => {
     if (m.status !== 'formed' || dismissedFormedIds.includes(m.id)) return false;
