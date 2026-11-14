@@ -55,7 +55,11 @@ it('Expo Go hides unsupported Google login and keeps real email/password authent
 it('native builds retain Google login', async () => {
   jest.mocked(runtime.isExpoGo).mockReturnValue(false);
   const screen = await render(<CoreLoginScreen />);
+  expect(screen.getByText('政缺一咖 · 和附近的人一起分享')).toBeTruthy();
   expect(screen.getByRole('button', { name: '使用 Google 帳號登入' })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '還沒有帳號？立即註冊' }));
+  expect(screen.getByText('政缺一咖，正缺你這咖')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '使用Google帳號註冊' })).toBeTruthy();
 });
 
 it('requires consent before email registration and makes both documents readable first', async () => {

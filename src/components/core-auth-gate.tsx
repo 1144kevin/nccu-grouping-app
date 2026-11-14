@@ -125,9 +125,9 @@ function LoginForm() {
           <BrandLogo size={54} onBrand />
         </View>
         <Text style={styles.title}>
-          {mode === 'login' ? '一起揪，更有味' : '從這裡，找到你的咖'}
+          {mode === 'login' ? '一起揪，更有味' : '政缺一咖，正缺你這咖'}
         </Text>
-        <Text style={styles.hint}>政缺一咖 · 和附近的同學一起分享</Text>
+        <Text style={styles.hint}>政缺一咖 · 和附近的人一起分享</Text>
       </View>
       {accountDeleted ? (
         <Text accessibilityRole="alert" style={styles.hint}>
@@ -153,7 +153,11 @@ function LoginForm() {
             }}
             loading={googleBusy}
           >
-            {googleBusy ? '正在前往 Google' : '使用 Google 帳號登入'}
+            {googleBusy
+              ? '正在前往 Google'
+              : mode === 'register'
+                ? '使用Google帳號註冊'
+                : '使用 Google 帳號登入'}
           </PrimaryButton>
           <View style={styles.separator}>
             <View style={styles.rule} />

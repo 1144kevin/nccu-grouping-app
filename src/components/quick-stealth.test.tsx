@@ -235,6 +235,8 @@ it('keeps accepted invitations visible while waiting and hides expired opportuni
   jest.mocked(stealthApi.matches).mockResolvedValue({
     items: [
       active,
+      { ...active, id: 'second-pending', score: 65 },
+      { ...active, id: 'third-pending', score: 60 },
       { ...active, id: 'accepted', my_decision: 'accepted' },
       { ...active, id: 'formed', status: 'formed' },
       { ...active, id: 'expired', expires_at: '2026-10-21T12:00:00Z' },
@@ -245,6 +247,28 @@ it('keeps accepted invitations visible while waiting and hides expired opportuni
     expect(screen.getAllByRole('button', { name: '有興趣，先聊聊' })).toHaveLength(1),
   );
   expect(screen.getByText(/你已表示有興趣/)).toBeTruthy();
+});
+
+it('shows only one pending opportunity message when three pending proposals exist', async () => {
+  const active = {
+    ...match,
+    starts_at: '2026-10-22T10:00:00Z',
+    expires_at: '2026-10-22T12:00:00Z',
+    score: 70,
+    location_id: 'main_gate',
+  };
+  jest.mocked(stealthApi.matches).mockResolvedValue({
+    items: [
+      active,
+      { ...active, id: 'second-pending', score: 65 },
+      { ...active, id: 'third-pending', score: 60 },
+    ],
+  } as never);
+  const screen = await render(wrap(<QuickStealthScreen />));
+  await waitFor(() =>
+    expect(screen.getAllByRole('button', { name: '有興趣，先聊聊' })).toHaveLength(1),
+  );
+  expect(screen.getAllByText(/現在有一個配對機會，請問是否要接受/)).toHaveLength(1);
 });
 
 it('allows text and photo picking in an opened chat even when its invitation has expired', async () => {
@@ -287,11 +311,18 @@ it('keeps a newly accepted card through a stale refresh and updates it when part
   expect(router.push).not.toHaveBeenCalled();
   jest
     .mocked(stealthApi.matches)
-    .mockResolvedValue({ items: [{ ...live, my_decision: 'accepted', status: 'ready' }] });
+    .mockResolvedValue({
+      items: [{ ...live, my_decision: 'accepted', status: 'ready', coordination_opened: true }],
+    });
   await act(async () => {
     await queryClient.invalidateQueries({ queryKey: ['core', 'self', 'stealth'] });
   });
-  await waitFor(() => expect(screen.getByRole('button', { name: '開始聊天' })).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: '進入偷揪聊天室' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '進入偷揪聊天室' }));
+  expect(router.push).toHaveBeenCalledWith({
+    pathname: '/stealth-chat/[id]',
+    params: { id: 'pair' },
+  });
 });
 
 it('removes a withdrawn card even if the next refresh still has the old accepted decision', async () => {
