@@ -65,8 +65,9 @@ it('offers three avatar rows and saves a selected preset in place of a profile p
     </QueryClientProvider>,
   );
   expect(screen.getByText('頭像')).toBeTruthy();
-  expect(screen.getByText('水果人')).toBeTruthy();
-  expect(screen.getByText('橘子寶寶')).toBeTruthy();
+  expect(screen.queryByText('校園頭像')).toBeNull();
+  expect(screen.queryByText('水果人')).toBeNull();
+  expect(screen.queryByText('橘子寶寶')).toBeNull();
   expect(screen.getAllByRole('radio')).toHaveLength(28);
   await fireEvent.press(screen.getByLabelText('頭像 手搖杯'));
   await fireEvent.press(screen.getByRole('button', { name: '儲存變更' }));

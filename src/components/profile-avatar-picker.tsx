@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { FRUIT_AVATARS, ORANGE_AVATARS, PROFILE_AVATARS } from '@/lib/profile-avatars';
-import { AppText as Text } from './app-text';
 import { colors, spacing } from '@/theme/tokens';
 
 export function ProfileAvatarPicker({
@@ -16,15 +15,13 @@ export function ProfileAvatarPicker({
   return (
     <View style={{ gap: 12 }}>
       {[
-        { label: '校園頭像', items: PROFILE_AVATARS },
-        { label: '水果人', items: FRUIT_AVATARS },
-        { label: '橘子寶寶', items: ORANGE_AVATARS },
+        { key: 'campus', items: PROFILE_AVATARS },
+        { key: 'fruit', items: FRUIT_AVATARS },
+        { key: 'orange', items: ORANGE_AVATARS },
       ].map((group) => (
-        <View key={group.label} style={{ gap: 8 }}>
-          <Text style={{ color: colors.muted, fontSize: 13 }}>{group.label}</Text>
+        <View key={group.key}>
           <ScrollView
             horizontal
-            accessibilityLabel={group.label}
             style={styles.scroll}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.options}
