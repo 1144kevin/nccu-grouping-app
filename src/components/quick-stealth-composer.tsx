@@ -31,6 +31,7 @@ type Props = {
   activeSignal?: StealthSignal;
   progressStage?: 0 | 1 | 2 | 3 | 4;
   cancelling?: boolean;
+  onRefresh?: () => Promise<void>;
   onCancelActiveSignal?: () => Promise<void>;
   onRestartStealth?: () => Promise<void>;
   chatStreamExtra?: ReactNode;
@@ -57,6 +58,7 @@ export function QuickStealthComposer({
   activeSignal,
   progressStage,
   cancelling = false,
+  onRefresh,
   onCancelActiveSignal,
   onRestartStealth,
   chatStreamExtra,
@@ -454,7 +456,10 @@ export function QuickStealthComposer({
           accessibilityRole="button"
           accessibilityLabel="重新開始對話"
           disabled={busy}
-          onPress={restart}
+          onPress={() => {
+            restart();
+            void onRefresh?.();
+          }}
           style={styles.voiceToggle}
         >
           <MaterialCommunityIcons name="restart" size={20} color={colors.muted} />

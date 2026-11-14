@@ -341,3 +341,26 @@ it('removes a withdrawn card even if the next refresh still has the old accepted
   await fireEvent.press(screen.getByRole('button', { name: '撤回聊聊邀請' }));
   await waitFor(() => expect(screen.queryByText(/你已表示有興趣/)).toBeNull());
 });
+
+it('hides historical unavailable rooms and does not lock composer when no active signal exists', async () => {
+  jest.mocked(stealthApi.signals).mockResolvedValue({ items: [] } as never);
+  jest.mocked(stealthApi.matches).mockResolvedValue({
+    items: [
+      {
+        ...match,
+        id: 'old-unavailable-room',
+        status: 'unavailable',
+        my_decision: 'accepted',
+        coordination_opened: true,
+        starts_at: '2026-10-01T10:00:00Z',
+        expires_at: '2026-10-01T12:00:00Z',
+      },
+    ],
+  } as never);
+  const screen = await render(wrap(<QuickStealthScreen />));
+  await waitFor(() => expect(screen.getByText(/今天有什麼想跟我分享/)).toBeTruthy());
+  expect(screen.queryByRole('button', { name: '查看聊天室紀錄' })).toBeNull();
+  expect(screen.getByLabelText('跟偷揪分身聊天')).toHaveProp('editable', true);
+  await fireEvent.press(screen.getByRole('button', { name: '查看目前需求單進度' }));
+  expect(screen.getByText(/目前沒有進行中的需求單/)).toBeTruthy();
+});

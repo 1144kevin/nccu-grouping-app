@@ -171,18 +171,15 @@ function QuickSession({ actor }: { actor?: string }) {
           ? (localMatches[match.id] ?? match)
           : match,
     )
-    .filter((m) => {
-      if (m.my_decision === 'declined') return false;
-      if (m.status === 'ready' || m.coordination_opened) return true;
-      return m.status === 'pending' && Date.parse(m.expires_at) > now;
-    });
+    .filter(
+      (m) =>
+        ['pending', 'ready'].includes(m.status) &&
+        m.my_decision !== 'declined' &&
+        Date.parse(m.expires_at) > now,
+    );
   const shownMatches = [
-    ...visible.filter(
-      (m) => m.status === 'ready' || m.coordination_opened || m.my_decision === 'accepted',
-    ),
-    ...visible
-      .filter((m) => m.status === 'pending' && m.my_decision === 'pending' && !m.coordination_opened)
-      .slice(0, 1),
+    ...visible.filter((m) => m.status === 'ready' || m.my_decision === 'accepted'),
+    ...visible.filter((m) => m.status === 'pending' && m.my_decision === 'pending').slice(0, 1),
   ];
   const allMatches = matches.data?.items ?? [];
   const formedMatch = allMatches.find((m) => {
@@ -194,21 +191,20 @@ function QuickSession({ actor }: { actor?: string }) {
     return Number.isFinite(matchTime) && matchTime > now - 24 * 60 * 60 * 1000;
   });
   const readyMatch = allMatches.find(
-    (m) =>
-      m.my_decision !== 'declined' &&
-      ((m.status === 'ready' && Date.parse(m.expires_at) > now) ||
-        (m.coordination_opened && m.status !== 'formed')),
+    (m) => m.status === 'ready' && m.my_decision !== 'declined' && Date.parse(m.expires_at) > now,
   );
   const pendingMatch = visible.find((m) => m.status === 'pending');
-  const progressStage: 0 | 1 | 2 | 3 | 4 = readyMatch
-    ? 3
-    : pendingMatch
-      ? 2
-      : formedMatch
-        ? 4
-        : activeSignal
-          ? 1
-          : 0;
+  const progressStage: 0 | 1 | 2 | 3 | 4 = activeSignal
+    ? readyMatch
+      ? 3
+      : pendingMatch
+        ? 2
+        : formedMatch
+          ? 4
+          : 1
+    : formedMatch
+      ? 4
+      : 0;
   const chatStreamExtra = (
     <View style={{ gap: 12 }}>
       {agent.isPending || capability.isPending ? <InlineLoading label="正在載入需求" /> : null}
@@ -339,6 +335,7 @@ function QuickSession({ actor }: { actor?: string }) {
             activeSignal={activeSignal}
             progressStage={progressStage}
             cancelling={revoke.isPending}
+            onRefresh={refresh}
             onCancelActiveSignal={async () => {
               if (!activeSignal) return;
               await revoke.mutateAsync(activeSignal.id);
