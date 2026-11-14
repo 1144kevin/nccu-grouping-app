@@ -31,21 +31,6 @@ import { profileSocial } from '@/lib/profile-social';
 import { useNotificationBadge } from '@/lib/notification-badge';
 import { profileAvatarImage } from '@/lib/profile-avatars';
 
-function isIOSStandaloneWeb(): boolean {
-  if (Platform.OS !== 'web' || typeof window === 'undefined' || typeof navigator === 'undefined') {
-    return false;
-  }
-  const nav = navigator as Navigator & { standalone?: boolean };
-  const standalone =
-    nav.standalone === true || window.matchMedia?.('(display-mode: standalone)').matches === true;
-  if (!standalone) return false;
-  const ua = navigator.userAgent || '';
-  return (
-    /iPad|iPhone|iPod/i.test(ua) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
-}
-
 export function Screen({
   children,
   scroll = false,
@@ -53,10 +38,6 @@ export function Screen({
   pinKeyboardHeader = false,
 }: PropsWithChildren<{ scroll?: boolean; style?: ViewStyle; pinKeyboardHeader?: boolean }>) {
   const [viewportBox, setViewportBox] = useState<{ height: number; offsetTop: number }>();
-  const [iosStandaloneTopPad, setIosStandaloneTopPad] = useState(false);
-  useEffect(() => {
-    if (isIOSStandaloneWeb()) setIosStandaloneTopPad(true);
-  }, []);
   useEffect(() => {
     if (Platform.OS !== 'web' || !pinKeyboardHeader || typeof window === 'undefined' || !window.visualViewport) return;
     const current = window.visualViewport;
@@ -109,7 +90,6 @@ export function Screen({
           } as unknown as ViewStyle),
       ]}
     >
-      {iosStandaloneTopPad ? <View style={styles.iosStandaloneSpacer} /> : null}
       {content}
     </SafeAreaView>
   );
@@ -441,10 +421,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 520,
     alignSelf: 'center',
-    backgroundColor: colors.background,
-  },
-  iosStandaloneSpacer: {
-    height: 12,
     backgroundColor: colors.background,
   },
   screenContent: { flex: 1, minHeight: 0, overflow: 'hidden' },

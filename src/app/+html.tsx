@@ -17,11 +17,15 @@ export default function Root({ children }: PropsWithChildren) {
         <ScrollViewStyleReset />
         <style
           dangerouslySetInnerHTML={{
-            __html: 'html, body { background-color: #FFFFFF; }',
+            __html:
+              'html, body { background-color: #FFFFFF; } .ios-top-blur-fix { display: none; } @media (display-mode: standalone) { .ios-top-blur-fix { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 11px; background-color: #FFFFFF; pointer-events: none; z-index: 9999; } }',
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <div id="ios-top-blur-fix" className="ios-top-blur-fix" aria-hidden="true" />
+        {children}
+      </body>
     </html>
   );
 }

@@ -26,6 +26,30 @@ export function AppearanceController() {
       document.head.appendChild(themeColor);
     }
     themeColor.setAttribute('content', palette.background);
+
+    let topBlurFix = document.getElementById('ios-top-blur-fix');
+    if (!topBlurFix) {
+      topBlurFix = document.createElement('div');
+      topBlurFix.id = 'ios-top-blur-fix';
+      topBlurFix.className = 'ios-top-blur-fix';
+      topBlurFix.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(topBlurFix);
+    }
+    const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { standalone?: boolean }) : undefined;
+    const isStandalone =
+      nav?.standalone === true ||
+      (typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches === true);
+    topBlurFix.style.position = 'fixed';
+    topBlurFix.style.top = '0px';
+    topBlurFix.style.left = '0px';
+    topBlurFix.style.width = '100%';
+    topBlurFix.style.height = '11px';
+    topBlurFix.style.backgroundColor = palette.background;
+    topBlurFix.style.pointerEvents = 'none';
+    topBlurFix.style.zIndex = '9999';
+    if (isStandalone) {
+      topBlurFix.style.display = 'block';
+    }
   }, [dark]);
   return <StatusBar style={dark ? 'light' : 'dark'} />;
 }
