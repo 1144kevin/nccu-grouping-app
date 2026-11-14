@@ -10,6 +10,7 @@ import { invalidateCore } from '@/lib/core-hooks';
 import { applyProfileUpdate, useAuthStore } from '@/store/auth-store';
 import { colors, radius, spacing, yellowSurface } from '@/theme/tokens';
 import { pickPersonalImage } from '@/lib/pick-personal-image';
+import { cropAvatarImage } from '@/lib/crop-avatar-image';
 import type { PickedPostImage } from '@/lib/pick-post-images';
 import { profileSocial } from '@/lib/profile-social';
 import { newRequestKey } from '@/lib/core-api';
@@ -44,9 +45,12 @@ function ProfileForm({ user, onboarding }: { user: CoreUser; onboarding: boolean
     try {
       const selected = await pickPersonalImage(camera);
       if (selected) {
-        setPhoto(selected);
-        setUseIllustration(false);
-        avatarDraft.current = { key: newRequestKey() };
+        const cropped = await cropAvatarImage(selected);
+        if (cropped) {
+          setPhoto(cropped);
+          setUseIllustration(false);
+          avatarDraft.current = { key: newRequestKey() };
+        }
       }
     } catch (error) {
       setPhotoError(coreError(error));
@@ -219,7 +223,7 @@ const styles = StyleSheet.create({
     height: 63,
     borderRadius: 31.5,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    backgroundColor: '#F2F2F0',
   },
   selected: { ...yellowSurface, backgroundColor: colors.yellowSoft, borderColor: colors.yellow },
   error: { color: colors.danger, fontSize: 14 },

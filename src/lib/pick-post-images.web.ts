@@ -105,7 +105,7 @@ export function pickPostImages(
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*,.heic,.heif';
-    input.multiple = true;
+    input.multiple = limit > 1;
     input.style.display = 'none';
     document.body.appendChild(input);
     input.addEventListener(

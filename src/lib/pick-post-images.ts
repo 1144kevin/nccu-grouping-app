@@ -15,8 +15,8 @@ export async function pickPostImages(
     mediaTypes: ['images'],
     quality: 0.85,
     allowsEditing: false,
-    allowsMultipleSelection: true,
-    orderedSelection: true,
+    allowsMultipleSelection: limit > 1,
+    orderedSelection: limit > 1,
     selectionLimit: limit,
     base64: true,
   });
