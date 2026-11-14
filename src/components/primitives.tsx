@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   iosStandaloneSpacer: {
-    height: 6,
+    height: 12,
     backgroundColor: colors.background,
   },
   screenContent: { flex: 1, minHeight: 0, overflow: 'hidden' },
