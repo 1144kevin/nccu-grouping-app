@@ -88,7 +88,7 @@ export function StealthTentativeDraftCard({
           <Text style={styles.sectionTitle}>推薦理由</Text>
           {reasons.map((r) => (
             <Text key={r} style={styles.reasonText}>
-              • {r}
+              {r}
             </Text>
           ))}
         </View>
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 11, color: colors.muted, fontWeight: '600' },
   section: { gap: 4, paddingTop: 2 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.ink },
-  reasonText: { fontSize: 13, lineHeight: 19, color: colors.brown },
+  reasonText: { fontSize: 13, lineHeight: 19, color: colors.ink },
   content: { fontSize: 14, lineHeight: 20, color: colors.ink, marginBottom: 2 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowText: { flex: 1, fontSize: 13, lineHeight: 19, color: colors.ink },

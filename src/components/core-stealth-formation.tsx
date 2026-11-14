@@ -149,14 +149,6 @@ export function StealthFormation({
         </Pressable>
       </FieldRow>
 
-      <FieldRow icon="map-marker-outline" title="取餐地點（必填）">
-        <LocationPicker
-          value={location}
-          onChange={setLocation}
-          disabled={save.isPending || stale}
-        />
-      </FieldRow>
-
       <FieldRow icon="cart-outline" title="誰負責購買">
         <View style={styles.chipRow}>
           {members.map((n) => {
@@ -197,6 +189,14 @@ export function StealthFormation({
             );
           })}
         </View>
+      </FieldRow>
+
+      <FieldRow icon="map-marker-outline" title="取餐地點（必填）">
+        <LocationPicker
+          value={location}
+          onChange={setLocation}
+          disabled={save.isPending || stale}
+        />
       </FieldRow>
 
       {deadlineError ? (
