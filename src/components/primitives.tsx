@@ -97,7 +97,6 @@ export function Screen({
 
 export function AppHeader({
   title,
-  searchScope = 'all',
 }: {
   title?: string;
   searchScope?: 'all' | 'posts' | 'orders' | 'messages' | 'history';
@@ -133,7 +132,7 @@ export function AppHeader({
       <IconButton
         icon="magnify"
         label="搜尋"
-        onPress={() => router.push({ pathname: '/search', params: { scope: searchScope } })}
+        onPress={() => router.push({ pathname: '/search', params: { scope: 'all' } })}
       />
     </View>
   );

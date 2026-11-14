@@ -30,10 +30,11 @@ const filterOptions: { label: string; value: 'all' | ResultType }[] = [
 
 export default function SearchScreen() {
   const { query, scope } = useLocalSearchParams<{ query?: string; scope?: string }>();
+  const screenKey = `${scope ?? 'all'}:${query ?? ''}`;
   return CORE_API_ENABLED ? (
-    <CoreSearchScreen initialQuery={query ?? ''} initialScope={scope} />
+    <CoreSearchScreen key={screenKey} initialQuery={query ?? ''} initialScope={scope} />
   ) : (
-    <DemoSearchScreen />
+    <DemoSearchScreen key={screenKey} />
   );
 }
 
