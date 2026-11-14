@@ -275,7 +275,10 @@ export function GlassTabBar({ state, descriptors, navigation, insets }: BottomTa
   const createBadge = createRoute ? descriptors[createRoute.key]?.options.tabBarBadge : undefined;
 
   return (
-    <View pointerEvents="box-none" style={[styles.dock, { bottom: Math.max(insets.bottom, 12) }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.dock, { bottom: Math.max(insets.bottom - 14, 8) }]}
+    >
       {createMenuOpen ? (
         <View pointerEvents="box-none" style={styles.bubbleRow}>
           <Animated.View
