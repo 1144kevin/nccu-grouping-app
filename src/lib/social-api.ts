@@ -106,7 +106,7 @@ export const socialApi = {
     (await api.get<OrderWorkflow>(`/orders/${encodeURIComponent(postId)}/workflow`)).data,
   workflowAction: async (
     postId: string,
-    action: 'vote' | 'depart' | 'purchase' | 'complete',
+    action: 'vote' | 'unvote' | 'depart' | 'purchase' | 'complete',
     image_id?: string,
   ) =>
     (

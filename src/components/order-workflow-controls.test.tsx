@@ -35,3 +35,48 @@ it('does not change the order if the camera is cancelled', async () => {
   await waitFor(() => expect(captureOrderPhoto).toHaveBeenCalledTimes(1));
   expect(socialApi.workflowAction).not.toHaveBeenCalled();
 });
+
+it('requires host to press 成團 first before members can press 成團, and allows host to 取消成團', async () => {
+  jest.mocked(socialApi.workflow).mockResolvedValue({
+    ...state,
+    stage: 'waiting',
+    is_host: false,
+    host_vote: false,
+    my_vote: false,
+  });
+  const memberScreen = await render(
+    <QueryClientProvider client={queryClient}>
+      <OrderWorkflowControls id="order-1" actor="member" active />
+    </QueryClientProvider>,
+  );
+  await waitFor(() =>
+    expect(memberScreen.getByRole('button', { name: '等待主揪按成團' })).toBeDisabled(),
+  );
+
+  jest.mocked(socialApi.workflow).mockResolvedValue({
+    ...state,
+    stage: 'waiting',
+    is_host: true,
+    host_vote: true,
+    my_vote: true,
+    formation_votes: 1,
+  });
+  jest.mocked(socialApi.workflowAction).mockResolvedValue({
+    ...state,
+    stage: 'waiting',
+    is_host: true,
+    host_vote: false,
+    my_vote: false,
+    formation_votes: 0,
+  });
+  const hostScreen = await render(
+    <QueryClientProvider client={queryClient}>
+      <OrderWorkflowControls id="order-2" actor="actor" active />
+    </QueryClientProvider>,
+  );
+  await waitFor(() => expect(hostScreen.getByRole('button', { name: '取消成團' })).toBeEnabled());
+  await fireEvent.press(hostScreen.getByRole('button', { name: '取消成團' }));
+  await waitFor(() =>
+    expect(socialApi.workflowAction).toHaveBeenCalledWith('order-2', 'unvote', undefined),
+  );
+});

@@ -36,7 +36,7 @@ export function OrderWorkflowControls({
     retry: false,
   });
   const action = useMutation({
-    mutationFn: async (kind: 'vote' | 'depart' | 'purchase' | 'complete') => {
+    mutationFn: async (kind: 'vote' | 'unvote' | 'depart' | 'purchase' | 'complete') => {
       let image: string | undefined;
       if (kind === 'purchase' || (kind === 'complete' && !query.data?.is_host)) {
         const photo = await captureOrderPhoto();
@@ -61,12 +61,18 @@ export function OrderWorkflowControls({
     ) : null;
   const state = query.data;
   const button =
-    state.stage === 'waiting' && state.member_count > 1 && (state.is_host || state.host_vote)
-      ? {
-          action: 'vote' as const,
-          text: state.my_vote ? '已同意成團' : '成團',
-          disabled: state.my_vote,
-        }
+    state.stage === 'waiting' && state.member_count > 1
+      ? state.is_host || state.host_vote
+        ? {
+            action: 'vote' as const,
+            text: state.my_vote ? '已同意成團' : '成團',
+            disabled: state.my_vote,
+          }
+        : {
+            action: 'vote' as const,
+            text: '等待主揪按成團',
+            disabled: true,
+          }
       : state.stage === 'formed' && state.is_host
         ? { action: 'depart' as const, text: '出發', disabled: false }
         : state.stage === 'en_route' && state.is_host
@@ -78,6 +84,9 @@ export function OrderWorkflowControls({
                 disabled: state.my_completed,
               }
             : null;
+  const canCancelFormation =
+    state.is_host &&
+    ((state.stage === 'waiting' && state.host_vote) || state.stage === 'formed');
   return (
     <View style={{ gap: 8 }}>
       <Text style={{ fontWeight: '700', color: colors.ink }}>{stageText[state.stage]}</Text>
@@ -93,11 +102,21 @@ export function OrderWorkflowControls({
       ) : null}
       {button ? (
         <PrimaryButton
-          loading={action.isPending}
+          loading={action.isPending && action.variables === button.action}
           disabled={button.disabled || action.isPending}
           onPress={() => action.mutate(button.action)}
         >
           {button.text}
+        </PrimaryButton>
+      ) : null}
+      {canCancelFormation ? (
+        <PrimaryButton
+          secondary
+          loading={action.isPending && action.variables === 'unvote'}
+          disabled={action.isPending}
+          onPress={() => action.mutate('unvote')}
+        >
+          取消成團
         </PrimaryButton>
       ) : null}
       {action.error ? (

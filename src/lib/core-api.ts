@@ -44,6 +44,7 @@ export type CorePost = {
   completed?: boolean;
   workflow_stage?: 'waiting' | 'formed' | 'en_route' | 'delivering' | 'completed' | null;
   workflow_formed_once?: boolean;
+  workflow_host_voted?: boolean;
   images?: { id: string; width: number; height: number }[];
   semantic_recommendation?: { similarity: number; model_id: string; combined_score: number } | null;
   recommendation?: {

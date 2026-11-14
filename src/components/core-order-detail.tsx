@@ -116,7 +116,11 @@ export function CoreOrderDetail({ id }: { id: string }) {
       })) ?? []),
   ];
   const pending = requests.data?.filter((r) => r.status === 'pending') ?? [];
-  const closed = post.status === 'expired' || post.status === 'cancelled';
+  const closed =
+    post.status === 'expired' ||
+    post.status === 'cancelled' ||
+    formed ||
+    !!post.workflow_host_voted;
   const status = orderStateLabel(post, completed);
   return (
     <Screen>
