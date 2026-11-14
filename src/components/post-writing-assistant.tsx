@@ -270,7 +270,6 @@ function WritingSession({
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>AI 文案助手</Text>
-      <Text style={styles.hint}>照片或口述需求都能整理成完整文案，至少 50 字，採用前可編輯。</Text>
       <Text style={styles.hint}>使用時，所選照片或口述文字會傳送至 OpenAI 處理。</Text>
       <View style={styles.actions}>
         <Pressable
@@ -326,7 +325,7 @@ function WritingSession({
       </View>
       {!(getImageBase64s || imageBase64s?.length || imageBase64) ? (
         <Text style={styles.hint}>
-          不用打字，選擇 1～5 張宣傳單、食物、物品或品牌照片，就能生成拼單貼文。
+          不用打字，選擇宣傳單、食物或物品照片，就能生成拼單貼文。
         </Text>
       ) : null}
       {busy && !voiceOpen ? (

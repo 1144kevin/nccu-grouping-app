@@ -555,7 +555,7 @@ export function PostComposer({
               </NativeScrollView>
               {CORE_API_ENABLED ? (
                 <Text style={[styles.fieldHint, styles.mediaHint]}>
-                  最多可加入 5 張圖片，支援 HEIC；大圖會自動壓縮後上傳。
+                  最多可加入 5 張圖片。
                   {photos.length ? `會一起辨識這 ${photos.length} 張照片，不用輸入文字。` : ''}
                 </Text>
               ) : null}
@@ -807,8 +807,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   publish: {
-    minWidth: 64,
-    height: 38,
+    minWidth: 56,
+    height: 30,
+    paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.md,
@@ -819,7 +820,7 @@ const styles = StyleSheet.create({
   publishText: {
     color: colors.ink,
     fontFamily: typography.rounded,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   content: { padding: spacing.lg, paddingBottom: 120 },
