@@ -342,15 +342,16 @@ function QuickSession({ actor }: { actor?: string }) {
               await revoke.mutateAsync(activeSignal.id);
             }}
             onRestartStealth={async () => {
-              if (activeSignal) await revoke.mutateAsync(activeSignal.id);
-              if (formedMatch) {
-                setDismissedFormedIds((old) =>
-                  old.includes(formedMatch.id) ? old : [...old, formedMatch.id],
-                );
+              const formedIds = allMatches
+                .filter((m) => m.status === 'formed')
+                .map((m) => m.id);
+              if (formedIds.length) {
+                setDismissedFormedIds((old) => [...new Set([...old, ...formedIds])]);
               }
               setAnalysis(undefined);
               setNotice('');
               setLocalMatches({});
+              if (activeSignal) await revoke.mutateAsync(activeSignal.id);
               await refresh();
             }}
             chatStreamExtra={chatStreamExtra}

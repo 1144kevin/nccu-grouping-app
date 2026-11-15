@@ -692,9 +692,9 @@ export function QuickStealthComposer({
               <PrimaryButton
                 loading={cancelling}
                 onPress={async () => {
-                  await onRestartStealth?.();
                   restart();
                   setRequestPanel(false);
+                  await onRestartStealth?.();
                 }}
               >
                 再偷揪一單
