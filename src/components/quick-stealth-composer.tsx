@@ -488,12 +488,14 @@ export function QuickStealthComposer({
               message.role === 'user' ? styles.userBubble : styles.assistantBubble,
             ]}
           >
-            <Text style={styles.body}>{message.text}</Text>
+            <Text style={[styles.body, message.role === 'user' && styles.userBody]}>
+              {message.text}
+            </Text>
           </View>
         ))}
         {pendingAnswer ? (
           <View style={styles.userBubble}>
-            <Text style={styles.body}>{pendingAnswer}</Text>
+            <Text style={[styles.body, styles.userBody]}>{pendingAnswer}</Text>
           </View>
         ) : null}
         {phase === 'interview' ? (
@@ -753,7 +755,6 @@ export function QuickStealthComposer({
           />
         </Pressable>
         <ChatTextInput
-          emptyCentered
           accessibilityLabel="跟偷揪分身聊天"
           placeholder=""
           value={text}
@@ -864,9 +865,10 @@ const styles = StyleSheet.create({
     maxWidth: '90%',
     borderRadius: 18,
     borderBottomRightRadius: 4,
-    backgroundColor: colors.surface,
+    backgroundColor: '#171717',
     padding: 14,
   },
+  userBody: { color: '#FFFFFF' },
   body: { fontSize: 15, lineHeight: 25, color: colors.ink },
   choices: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   starter: {
