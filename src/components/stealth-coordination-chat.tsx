@@ -319,7 +319,15 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                             color={colors.brown}
                           />
                           <Text style={styles.termsPillText}>
-                            拼單方案{item.terms_revision ? ` v${item.terms_revision}` : ''}
+                            拼單方案
+                            {item.terms_revision
+                              ? ` v${
+                                  !item.id.startsWith('initial-terms:') &&
+                                  (item.terms_revision > 1 || !!item.event_terms.location)
+                                    ? item.terms_revision + 1
+                                    : item.terms_revision
+                                }`
+                              : ''}
                           </Text>
                         </View>
                       </View>

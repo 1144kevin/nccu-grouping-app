@@ -222,6 +222,7 @@ export function QuickStealthComposer({
     setError('');
     setVoiceReview(false);
     setPendingAnswer(display);
+    setText('');
     const next = [...turns, answer.trim()];
     const nextFields = [...fields, preview?.question?.field ?? null];
     const controller = new AbortController();
@@ -239,7 +240,6 @@ export function QuickStealthComposer({
       setTurns(next);
       setFields(nextFields);
       setPreview(result);
-      setText('');
       setMessages((old) => [
         ...old,
         { role: 'user', text: display },
