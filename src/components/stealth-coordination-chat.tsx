@@ -446,16 +446,25 @@ function Chat({ id, actor }: { id: string; actor?: string }) {
                       {item.image_id ? (
                         <ChatPhoto imageId={item.image_id} localUri={item.local_image_uri} />
                       ) : (
-                        <Text style={styles.body}>{item.content}</Text>
+                        <Text style={[styles.body, item.is_me && styles.mineText]}>
+                          {item.content}
+                        </Text>
                       )}
                       {item.delivery ? (
                         item.delivery === 'sending' ? (
-                          <InlineLoading label="傳送中" textStyle={styles.hint} />
+                          <InlineLoading
+                            label="傳送中"
+                            textStyle={item.is_me && !item.image_id ? styles.mineHint : styles.hint}
+                          />
                         ) : (
-                          <Text style={styles.hint}>尚未送出，請重試</Text>
+                          <Text style={item.is_me && !item.image_id ? styles.mineHint : styles.hint}>
+                            尚未送出，請重試
+                          </Text>
                         )
                       ) : null}
-                      <Text style={styles.hint}>{displayTime(item.created_at)}</Text>
+                      <Text style={item.is_me && !item.image_id ? styles.mineHint : styles.hint}>
+                        {displayTime(item.created_at)}
+                      </Text>
                     </View>
                   </View>
                 );
@@ -608,7 +617,9 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: '90%',
   },
-  mine: { ...yellowSurface, backgroundColor: colors.yellowSoft, alignSelf: 'flex-end' },
+  mine: { backgroundColor: '#171717', alignSelf: 'flex-end' },
+  mineText: { color: '#FFFFFF' },
+  mineHint: { color: 'rgba(255, 255, 255, 0.72)', fontSize: 12 },
   photoMessage: { backgroundColor: 'transparent', padding: 0 },
   body: { fontSize: 16, color: colors.ink, lineHeight: 24 },
   hint: { color: colors.muted, fontSize: 12 },

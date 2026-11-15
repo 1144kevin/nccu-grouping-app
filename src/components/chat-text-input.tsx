@@ -8,6 +8,7 @@ export function ChatTextInput({
   value,
   style,
   onContentSizeChange,
+  onFocus,
   emptyCentered = false,
   ...props
 }: TextInputProps & { emptyCentered?: boolean }) {
@@ -29,6 +30,17 @@ export function ChatTextInput({
       placeholderTextColor={colors.chatPlaceholder}
       multiline
       numberOfLines={1}
+      onFocus={(event) => {
+        if (Platform.OS === 'web' && !emptyCentered && !value && input.current) {
+          const element = input.current as unknown as HTMLTextAreaElement;
+          requestAnimationFrame(() => {
+            if (!element.value && typeof element.setSelectionRange === 'function') {
+              element.setSelectionRange(0, 0);
+            }
+          });
+        }
+        onFocus?.(event);
+      }}
       onContentSizeChange={(event) => {
         if (Platform.OS !== 'web')
           setHeight(value ? clamp(event.nativeEvent.contentSize.height + 14) : 40);
